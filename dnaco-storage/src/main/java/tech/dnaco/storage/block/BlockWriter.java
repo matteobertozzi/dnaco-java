@@ -105,27 +105,17 @@ public class BlockWriter {
     final int keyShared = keyDeltaEncoder.add(entry.getKey());
     final int keyUnshared = entry.getKey().length() - keyShared;
 
-    if (true) {
-      INT_ENCODER.writeUnsignedVarLong(writer, entry.getSeqId());
-      INT_ENCODER.writeUnsignedVarLong(writer, entry.getTimestamp());
-      //INT_ENCODER.writeFixed32(writer, hashCode);
-      INT_ENCODER.writeUnsignedVarLong(writer, entry.getFlags());
-      INT_ENCODER.writeUnsignedVarLong(writer, keyShared);
-      INT_ENCODER.writeUnsignedVarLong(writer, keyUnshared);
-      INT_ENCODER.writeUnsignedVarLong(writer, entry.getValue().length());
-      writer.write(entry.getKey(), keyShared, keyUnshared);
-      //System.out.println(" -> KEY SHARED " + keyShared + " -> UNSHARED " + keyUnshared + " -> " + len);
-      writer.write(entry.getValue());
-    } else {
-      INT_ENCODER.writeFixed64(writer, entry.getSeqId());
-      INT_ENCODER.writeFixed64(writer, entry.getTimestamp());
-      INT_ENCODER.writeFixed64(writer, entry.getFlags());
-      INT_ENCODER.writeFixed32(writer, entry.getKey().hashCode());
-      INT_ENCODER.writeFixed32(writer, entry.getKey().length());
-      INT_ENCODER.writeFixed32(writer, entry.getValue().length());
-      writer.write(entry.getKey());
-      writer.write(entry.getValue());
-    }
+    INT_ENCODER.writeUnsignedVarLong(writer, entry.getSeqId());
+    INT_ENCODER.writeUnsignedVarLong(writer, entry.getTimestamp());
+    //INT_ENCODER.writeFixed32(writer, hashCode);
+    INT_ENCODER.writeUnsignedVarLong(writer, entry.getFlags());
+    INT_ENCODER.writeUnsignedVarLong(writer, keyShared);
+    INT_ENCODER.writeUnsignedVarLong(writer, keyUnshared);
+    INT_ENCODER.writeUnsignedVarLong(writer, entry.getValue().length());
+    writer.write(entry.getKey(), keyShared, keyUnshared);
+    //System.out.println(" -> KEY SHARED " + keyShared + " -> UNSHARED " + keyUnshared + " -> " + len);
+    writer.write(entry.getValue());
+  
     final int entrySize = writer.writeOffset() - writerInitialSize;
     this.restartBlockSize += entrySize;
 

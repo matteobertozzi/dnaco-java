@@ -37,17 +37,17 @@ public class ByteArrayReader extends BytesInputStream {
     this.buffer = buf;
     this.bufOff = off;
     this.bufLen = len;
-    this.rpos = 0;
+    this.rpos = bufOff;
   }
 
   @Override
   public void reset() {
-    this.rpos = 0;
+    this.rpos = bufOff;
   }
 
   @Override
   public void seekTo(final int offset) {
-    this.rpos = offset;
+    this.rpos = bufOff + offset;
   }
 
   @Override
@@ -73,12 +73,12 @@ public class ByteArrayReader extends BytesInputStream {
   }
 
   @Override
-  public int read() throws IOException {
+  public int read() {
     return rpos < bufLen ? (buffer[rpos++] & 0xff) : -1;
   }
 
   @Override
-  public byte[] readNBytes(int len) throws IOException {
+  public byte[] readNBytes(int len) {
     // TODO: check if available
     byte[] block = new byte[len];
     System.arraycopy(buffer, rpos, block, 0, len);

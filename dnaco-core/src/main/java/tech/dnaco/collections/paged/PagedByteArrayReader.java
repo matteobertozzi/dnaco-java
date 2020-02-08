@@ -45,7 +45,7 @@ public class PagedByteArrayReader extends BytesInputStream {
   }
 
   @Override
-  public int read() throws IOException {
+  public int read() {
     final int pageSize = pages[0].length;
     final int pageIndex = readIndex / pageSize;
     final int pageOffset = readIndex & (pageSize - 1);

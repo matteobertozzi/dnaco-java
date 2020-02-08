@@ -17,13 +17,13 @@
 
 package tech.dnaco.collections;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
-
-import tech.dnaco.collections.ArrayUtil;
 
 public class TestArrayUtil {
   @Test
@@ -91,5 +91,61 @@ public class TestArrayUtil {
 
     System.out.println(Arrays.toString(ArraySortUtil.merge(a, b)));
     System.out.println(Arrays.toString(ArraySortUtil.mergeAndSquash(a, b)));
+  }
+
+
+  @Test
+  public void testCountNotNull() {
+    assertEquals(0, ArrayUtil.countNotNull(null));
+    assertEquals(0, ArrayUtil.countNotNull(new String[] {}));
+    assertEquals(0, ArrayUtil.countNotNull(new String[] { null, null, null }));
+    assertEquals(1, ArrayUtil.countNotNull(new String[] { null, "foo", null }));
+    assertEquals(2, ArrayUtil.countNotNull(new String[] { "bar", "foo", null }));
+    assertEquals(3, ArrayUtil.countNotNull(new String[] { "bar", "foo", "car" }));
+  }
+
+  @Test
+  public void testCopyNotNull() {
+    final String[] src = new String[] { null, "aa", null, "bb", null };
+    final String[] res = new String[] { "aa", "bb" };
+    assertArrayEquals(res, ArrayUtil.copyNotNull(src));
+
+    assertArrayEquals(null, ArrayUtil.copyNotNull(null));
+    assertArrayEquals(new String[0], ArrayUtil.copyNotNull(new String[] {}));
+    assertArrayEquals(new String[0], ArrayUtil.copyNotNull(new String[] { null, null }));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testAddAll() {
+    assertArrayEquals(new String[] {}, ArrayUtil.addAll(null, new String[] {}));
+    assertArrayEquals(new String[] { "aa", "bb" }, ArrayUtil.addAll(null, "aa", "bb"));
+    assertArrayEquals(new String[] {}, ArrayUtil.addAll(new String[] {}, new String[] {}));
+    assertArrayEquals(new String[] { "a", "b", "c" }, ArrayUtil.addAll(new String[] { "a" }, new String[] { "b", "c" }));
+    assertArrayEquals(new String[] { "a", "b", "c", "d", "e" }, ArrayUtil.addAll(new String[] { "a", "b" }, "c", "d", "e"));
+
+    try {
+      ArrayUtil.addAll(new Integer[] { 1, 2 }, "aa", "bb");
+      fail("unexpected addAll() between different types");
+    } catch (final IllegalArgumentException e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testSubarray() {
+    final String[] src = new String[] { "aa", "bb", "cc", "dd" };
+    final String[] res = new String[] { "bb", "cc" };
+    assertArrayEquals(res, ArrayUtil.subarray(src, 1, 3));
+    if (src != ArrayUtil.subarray(src, 0, 4)) {
+      fail("expected the same instance to be returned");
+    }
+
+    final int[] srcInt = new int[] { 1, 2, 3, 4 };
+    final int[] resInt = new int[] { 2, 3 };
+    assertArrayEquals(resInt, ArrayUtil.subarray(srcInt, 1, 3));
+    if (srcInt != ArrayUtil.subarray(srcInt, 0, 4)) {
+      fail("expected the same instance to be returned");
+    }
   }
 }

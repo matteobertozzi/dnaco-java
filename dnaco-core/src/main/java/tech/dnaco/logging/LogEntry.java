@@ -173,7 +173,7 @@ public class LogEntry {
     final byte[] buf4 = new byte[4];
     IntEncoder.BIG_ENDIAN.writeFixed32(buf4, 0, block.size());
     writer.add(buf4, 0, 4);
-    block.forEach((buf, off, len) -> writer.add(buf, off, len));
+    block.forEach(writer::add);
   }
 
   // ===============================================================================================
@@ -259,8 +259,7 @@ public class LogEntry {
 
   private static String readBinaryString(final InputStream stream) throws IOException {
     final int length = IntDecoder.BIG_ENDIAN.readUnsignedVarInt(stream);
-    if (length <= 0)
-      return null;
+    if (length <= 0) return null;
 
     final byte[] buf = IOUtil.readNBytes(stream, length);
     return new String(buf);

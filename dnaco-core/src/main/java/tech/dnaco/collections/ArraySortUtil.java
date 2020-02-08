@@ -112,7 +112,49 @@ public final class ArraySortUtil {
     for (i = len - 1; i > 0; --i) {
       int c = 1;
       int r = 0;
-      ArrayUtil.swap(buf, off + 0, off + i);
+      ArrayUtil.swap(buf, off, off + i);
+      while (c < i) {
+        if (c < i - 1 && comparator.compare(buf, off + c, off + c + 1) < 0)
+          c += 1;
+        if (comparator.compare(buf, off + r, off + c) >= 0)
+          break;
+        ArrayUtil.swap(buf, off + r, off + c);
+        r = c;
+        c = r * 2 + 1;
+      }
+    }
+  }
+
+  // ================================================================================
+  //  T Sort related
+  // ================================================================================
+  public interface ArrayComparator<T> {
+    int compare(T[] array, int aIndex, int bIndex);
+  }
+
+  public static <T> void sort(final T[] buf, final int off, final int len, final ArrayComparator<T> comparator) {
+    int i = (len / 2 - 1);
+
+    // heapify
+    for (; i >= 0; --i) {
+      int c = i * 2 + 1;
+      int r = i;
+      while (c < len) {
+        if (c < len - 1 && comparator.compare(buf, off + c, off + c + 1) < 0)
+          c += 1;
+        if (comparator.compare(buf, off + r, off + c) >= 0)
+          break;
+        ArrayUtil.swap(buf, off + r, off + c);
+        r = c;
+        c = r * 2 + 1;
+      }
+    }
+
+    // sort
+    for (i = len - 1; i > 0; --i) {
+      int c = 1;
+      int r = 0;
+      ArrayUtil.swap(buf, off, off + i);
       while (c < i) {
         if (c < i - 1 && comparator.compare(buf, off + c, off + c + 1) < 0)
           c += 1;

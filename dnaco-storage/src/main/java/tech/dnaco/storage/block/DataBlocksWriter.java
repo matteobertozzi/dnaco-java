@@ -24,7 +24,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import tech.dnaco.bytes.ByteArraySlice;
@@ -62,7 +61,7 @@ public class DataBlocksWriter implements AutoCloseable {
   private final BlockWriter blockWriter;
   private final BlockStats stats;
   private final long startTime;
-  
+
   private final byte[] firstKey;
   private int firstKeyLen;
 
@@ -83,16 +82,12 @@ public class DataBlocksWriter implements AutoCloseable {
     stats.writeTo(stream); // ???
   }
 
+  public long estimateSize() throws IOException {
+    return stream.position();
+  }
+
   @Override
   public void close() throws IOException {
-    if (blockWriter.hasData()) {
-      flushBlock();
-    }
-
-    // write block Index
-    writeBlocksIndex();
-    writeTrailer();
-
     stream.flush();
     stream.close();
 
@@ -101,21 +96,23 @@ public class DataBlocksWriter implements AutoCloseable {
     dataBlockFlushTime.add(System.nanoTime() - startTime);
   }
 
-  private void writeBlocksIndex() throws IOException {
+  public List<BlockInfo> writeBlocksIndex() throws IOException {
+    if (blockWriter.hasData()) flushBlock();
+
     int indexSize = 8;
     for (final BlockInfo blk: blocks) {
-      indexSize += 8 + 8 + 8 + blk.firstKey.length + blk.lastKey.length;
+      indexSize += 8 + 8 + 8 + blk.getFirstKey().length + blk.getLastKey().length;
     }
 
     try (ByteArrayWriter indexWriter = new ByteArrayWriter(new byte[indexSize])) {
       indexSize = IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(indexWriter, blocks.size());
       for (final BlockInfo blk: blocks) {
-        indexSize += IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(indexWriter, blk.offset);
-        indexSize += IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(indexWriter, blk.firstKey.length);
-        indexSize += IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(indexWriter, blk.lastKey.length);
-        indexWriter.write(blk.firstKey);
-        indexWriter.write(blk.lastKey);
-        indexSize += blk.firstKey.length + blk.lastKey.length;
+        indexSize += IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(indexWriter, blk.getOffset());
+        indexSize += IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(indexWriter, blk.getFirstKey().length);
+        indexSize += IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(indexWriter, blk.getLastKey().length);
+        indexWriter.write(blk.getFirstKey());
+        indexWriter.write(blk.getLastKey());
+        indexSize += blk.getFirstKey().length + blk.getLastKey().length;
       }
 
       // write compressed index
@@ -123,15 +120,13 @@ public class DataBlocksWriter implements AutoCloseable {
       IntEncoder.BIG_ENDIAN.writeFixed32(stream, indexSize);
       System.out.println(" -> WRITE BLOCK INDEX " + blocks.size() + " -> " + indexSize);
     }
-  }
 
-  private void writeTrailer() {
-
+    return blocks;
   }
 
   public void add(final BlockEntry entry) throws IOException {
-    //entry.setSeqId(entry.getSeqId() - stats.getSeqIdMin());
-    //entry.setTimestamp(entry.getTimestamp() - stats.getTimestampMin());
+    entry.setSeqId(entry.getSeqId() - stats.getSeqIdMin());
+    entry.setTimestamp(entry.getTimestamp() - stats.getTimestampMin());
 
     if (!blockWriter.hasSpace(entry)) {
       flushBlock();
@@ -150,40 +145,6 @@ public class DataBlocksWriter implements AutoCloseable {
     final ByteArraySlice lastKey = blockWriter.getLastKey();
     blocks.get(blocks.size() - 1).setLastKey(lastKey);
     blockWriter.flush(stream);
-  }
-
-  public static final class BlockInfo {
-    private final byte[] firstKey;
-    private byte[] lastKey;
-    private final long offset;
-
-    public BlockInfo(final byte[] firstKey, final int firstKeyLen, final long offset) {
-      this(firstKey, firstKeyLen, null, 0, offset);
-    }
-
-    public BlockInfo(final byte[] firstKey, final int firstKeyLen,
-        final byte[] lastKey, final int lastKeyLen, final long offset) {
-      this.firstKey = Arrays.copyOf(firstKey, firstKeyLen);
-      this.lastKey = (lastKey != null) ? Arrays.copyOf(lastKey, lastKeyLen) : null;
-      this.offset = offset;
-    }
-
-    private void setLastKey(final ByteArraySlice key) {
-      this.lastKey = Arrays.copyOf(key.rawBuffer(), key.length());
-    }
-
-    public long getOffset() {
-      return offset;
-    }
-
-    public byte[] firstKey() {
-      return firstKey;
-    }
-
-    @Override
-    public String toString() {
-      return "BlockInfo [firstKey=" + new String(firstKey) + ", offset=" + offset + "]";
-    }
   }
 
   public static void main(final String[] args) throws Exception {

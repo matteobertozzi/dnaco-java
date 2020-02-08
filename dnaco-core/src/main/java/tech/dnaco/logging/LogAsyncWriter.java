@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
@@ -45,16 +46,15 @@ import tech.dnaco.util.ThreadUtil;
 public class LogAsyncWriter implements AutoCloseable {
   private static final int FORCE_FLUSH_BUFFER_SIZE = (16 << 20);
 
+  private final CopyOnWriteArrayList<LogWriter> writers = new CopyOnWriteArrayList<>();
   private final ThreadData<LogBuffer> logBuffers = new ThreadData<>();
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final Supplier<LogBuffer> logBufferSupplier;
   private final LogWriterTask writerTask;
-  private final LogWriter writer;
 
   private Thread writerThread;
 
-  public LogAsyncWriter(final LogWriter writer, final boolean binaryFormat) {
-    this.writer = writer;
+  public LogAsyncWriter(final boolean binaryFormat) {
     this.writerTask = new LogWriterTask(2500);
     this.logBufferSupplier = () -> new LogThreadBuffer(binaryFormat);
   }
@@ -64,7 +64,7 @@ public class LogAsyncWriter implements AutoCloseable {
       Logger.logToStderr(LogLevel.WARNING, "logger already started");
     }
 
-    System.out.println("start log writer");
+    Logger.debug("starting async-log writer: {}", writers);
     writerThread = new Thread(writerTask, getClass().getName());
     writerThread.start();
   }
@@ -74,7 +74,7 @@ public class LogAsyncWriter implements AutoCloseable {
       Logger.logToStderr(LogLevel.WARNING, "logger already stopped");
     }
 
-    System.out.println("stop log writer");
+    Logger.debug("stoping log writers: {}", writers);
     writerTask.forceFlush();
     ThreadUtil.shutdown(writerThread);
   }
@@ -82,6 +82,16 @@ public class LogAsyncWriter implements AutoCloseable {
   @Override
   public void close() {
     stop();
+  }
+
+  public LogAsyncWriter registerWriter(final LogWriter writer) {
+    this.writers.add(writer);
+    return this;
+  }
+
+  public LogAsyncWriter unregisterWriter(final LogWriter writer) {
+    this.writers.remove(writer);
+    return this;
   }
 
   public void addToLogQueue(final Thread thread, final String projectId, final LogEntry entry) {
@@ -211,7 +221,7 @@ public class LogAsyncWriter implements AutoCloseable {
         long cleanerTs = 0;
         while (running.get()) {
           if ((System.nanoTime() - cleanerTs) > TimeUnit.HOURS.toNanos(1)) {
-            writer.manageOldLogs();
+            for (LogWriter writer: writers) writer.manageOldLogs();
             cleanerTs = System.nanoTime();
           }
 
@@ -241,10 +251,12 @@ public class LogAsyncWriter implements AutoCloseable {
 
       Logger.logToStdout(LogLevel.TRACE, "flush queues: {} buffers: {}", projectIds, buffers.size());
       for (final String projectId: projectIds) {
-        try {
-          writer.writeQueue(projectId, buffers);
-        } catch (final Throwable e) {
-          Logger.logToStderr(LogLevel.ALERT, e, "unable to flush {} buffers", projectId);
+        for (LogWriter writer: writers) {
+          try {
+            writer.writeQueue(projectId, buffers);
+          } catch (final Throwable e) {
+            Logger.logToStderr(LogLevel.ALERT, e, "unable to flush {} buffers to {}", projectId, writer);
+          }
         }
       }
     }

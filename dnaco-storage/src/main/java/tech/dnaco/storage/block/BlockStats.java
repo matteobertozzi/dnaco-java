@@ -72,6 +72,14 @@ public class BlockStats {
     return timestampMax;
   }
 
+  public long getKeysSize() {
+    return keySize;
+  }
+
+  public long getValuesSize() {
+    return valueSize;
+  }
+
   public int getRowCount() {
     return rowCount;
   }
@@ -88,6 +96,20 @@ public class BlockStats {
     this.keySize = 0;
     this.valueSize = 0;
     this.rowCount = 0;
+  }
+
+  public void update(final BlockStats stats) {
+    keyMinLength = Math.min(keyMinLength, stats.getKeyMinLength());
+    keyMaxLength = Math.max(keyMaxLength, stats.getKeyMaxLength());
+    valueMinLength = Math.min(valueMinLength, stats.getValueMinLength());
+    valueMaxLength = Math.max(valueMaxLength, stats.getValueMaxLength());
+    seqIdMin = Math.min(seqIdMin, stats.getSeqIdMin());
+    seqIdMax = Math.max(seqIdMax, stats.getSeqIdMax());
+    timestampMin = Math.min(timestampMin, stats.getTimestampMin());
+    timestampMax = Math.max(timestampMax, stats.getTimestampMax());
+    keySize += stats.getKeysSize();
+    valueSize += stats.getValuesSize();
+    rowCount += stats.getRowCount();
   }
 
   public void update(final BlockEntry entry) {

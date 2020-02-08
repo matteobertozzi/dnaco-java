@@ -22,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +39,10 @@ import tech.dnaco.telemetry.TimeRangeCounter;
 import tech.dnaco.telemetry.TimeRangeGauge;
 
 public class LogFileWriter implements LogWriter {
+  private static final DateTimeFormatter LOG_FOLDER_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+  private static final DateTimeFormatter ROLL_DATE_FORMAT = DateTimeFormatter.ofPattern("HHmmssSSS");
+  private static final int ROLL_SIZE = 32 << 20;
+
   private final TimeRangeCounter diskFlushes = new TelemetryCollector.Builder()
       .setName("logger.logger_disk_flushes")
       .setLabel("Logger disk flushes")
@@ -66,9 +71,17 @@ public class LogFileWriter implements LogWriter {
 
   @Override
   public void writeQueue(final String projectId, final List<LogBuffer> buffers) {
-    final File logFile = new File(logDir, StringUtil.defaultIfEmpty(projectId, "general"));
+    final LocalDateTime now = LocalDateTime.now();
+
+    final File logDayDir = new File(logDir, LOG_FOLDER_DATE_FORMAT.format(now));
+    final File logFile = new File(logDayDir, StringUtil.defaultIfEmpty(projectId, "general"));
     logFile.getParentFile().mkdirs();
     // Logger.logToStderr(LogLevel.ALERT, "unable to create log directory: {}", logFile.getParentFile());
+
+    if (logFile.length() > ROLL_SIZE) {
+      final String rollNameName = logFile.getName() + "." + ROLL_DATE_FORMAT.format(now);
+      logFile.renameTo(new File(logFile.getParentFile(), rollNameName));
+    }
 
     try (OutputStream stream = new GZIPOutputStream(new FileOutputStream(logFile, true))) {
       final long startTime = System.nanoTime();
@@ -84,8 +97,6 @@ public class LogFileWriter implements LogWriter {
       Logger.logToStderr(LogLevel.ERROR, e, "unable to flush logs for groupId {}", projectId);
     }
   }
-
-  public static final DateTimeFormatter LOG_FOLDER_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
   @Override
   public void manageOldLogs() {
@@ -118,5 +129,10 @@ public class LogFileWriter implements LogWriter {
   private static boolean isElegibleForDeletion(final File folder, final long elegibleTs) {
     final LocalDate folderDate = LocalDate.parse(folder.getName(), LOG_FOLDER_DATE_FORMAT);
     return TimeUnit.DAYS.toMillis(folderDate.toEpochDay()) < elegibleTs;
+  }
+
+  @Override
+  public String toString() {
+    return "LogFileWriter[" + logDir + "]";
   }
 }

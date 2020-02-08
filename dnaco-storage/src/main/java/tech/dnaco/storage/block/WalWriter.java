@@ -17,15 +17,9 @@
 
 package tech.dnaco.storage.block;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.ByteArrayWriter;
@@ -38,7 +32,6 @@ import tech.dnaco.collections.IntArrayList;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.telemetry.Histogram;
 import tech.dnaco.telemetry.TelemetryCollector;
-import tech.dnaco.telemetry.TelemetryCollectorRegistry;
 
 public class WalWriter implements AutoCloseable {
   private static final Histogram walPrepareTime = new TelemetryCollector.Builder()
@@ -62,12 +55,16 @@ public class WalWriter implements AutoCloseable {
   private static final IntEncoder INT_ENCODER = IntEncoder.BIG_ENDIAN;
   private static final IntDecoder INT_DECODER = IntDecoder.BIG_ENDIAN;
 
-  private static final AtomicLong WAL_SEQID = new AtomicLong(0);
+  private final BlockManager blockManager;
 
   private static final int BLOCK_SIZE = 8 << 20;
   private final ByteArrayWriter block = new ByteArrayWriter(new byte[BLOCK_SIZE]);
   private final IntArrayList entryIndex = new IntArrayList(10_000);
   private final BlockStats stats = new BlockStats();
+
+  public WalWriter(final BlockManager blockManager) {
+    this.blockManager = blockManager;
+  }
 
   @Override
   public void close() throws IOException {
@@ -86,9 +83,9 @@ public class WalWriter implements AutoCloseable {
     writeEntry(block, entry);
   }
 
-  private static void writeEntry(final ByteArrayWriter writer, final BlockEntry entry)
+  private void writeEntry(final ByteArrayWriter writer, final BlockEntry entry)
       throws IOException {
-    final long seqId = entry.getSeqId() >= 0 ? entry.getSeqId() : WAL_SEQID.incrementAndGet();
+    final long seqId = entry.getSeqId() >= 0 ? entry.getSeqId() : blockManager.newEntrySeqId();
     INT_ENCODER.writeFixed32(writer, entry.getKey().length());
     writer.write(entry.getKey());
     INT_ENCODER.writeFixed64(writer, seqId);
@@ -120,7 +117,7 @@ public class WalWriter implements AutoCloseable {
       entry.setKey(new ByteArraySlice());
       entry.setValue(new ByteArraySlice());
 
-      final File walFile = new File(String.format("DNAdb/%020d.wal", WAL_SEQID.incrementAndGet()));
+      final File walFile = blockManager.newBlockFile();
       try (final DataBlocksWriter writer = new DataBlocksWriter(walFile, stats)) {
         for (int i = 0, n = entryIndex.size(); i < n; ++i) {
           readEntry(entry, block.rawBuffer(), entryIndex.get(i));
@@ -133,6 +130,9 @@ public class WalWriter implements AutoCloseable {
                                + " value=" + entry.getValue());
           }
         }
+        
+        List<BlockInfo> blocks = writer.writeBlocksIndex();
+        blockManager.addBlocks(walFile, blocks);
       }
       final long flushTime = System.nanoTime() - startTime;
       walFlushTime.add(flushTime);
@@ -164,41 +164,4 @@ public class WalWriter implements AutoCloseable {
       return Long.compare(bSeqId, aSeqId);
     }
   };
-
-  public static void main(final String[] args) throws Exception {
-    try (DataInputStream stream = new DataInputStream(new BufferedInputStream(new FileInputStream("lega-tabgen.kv")))) {
-      final long prepareTime = System.nanoTime();
-      final BlockStats stats = new BlockStats();
-      stats.update(new BlockEntry()
-            .setKey(new ByteArraySlice())
-            .setValue(new ByteArraySlice()));
-
-      final List<BlockEntry> entries = new ArrayList<>(1_000_000);
-      while (stream.available() > 0) {
-        final String key = stream.readUTF();
-        final String value = stream.readUTF();
-        final BlockEntry entry = new BlockEntry()
-          .setTimestamp(System.currentTimeMillis())
-          .setSeqId(entries.size())
-          .setFlags(BlockEntry.FLAG_UPSERT)
-          .setKey(new ByteArraySlice(key.getBytes()))
-          .setValue(new ByteArraySlice(value.getBytes()));
-        entries.add(entry);
-      }
-      System.out.println(" -> [T] Prepare " + HumansUtil.humanTimeSince(prepareTime) + " ROWS " + entries.size());
-      Collections.shuffle(entries);
-
-      if (true) {
-        final long writeTime = System.nanoTime();
-        try (WalWriter writer = new WalWriter()) {
-          for (final BlockEntry entry: entries) {
-            writer.append(entry);
-          }
-        }
-        System.out.println(" -> [T] Writer " + HumansUtil.humanTimeSince(writeTime));
-      }
-    }
-    
-    TelemetryCollectorRegistry.INSTANCE.humanReport();
-  }
 }

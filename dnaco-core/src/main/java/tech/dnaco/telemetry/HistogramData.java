@@ -46,7 +46,7 @@ public class HistogramData implements TelemetryCollectorData {
   }
 
   public long getNumEvents() {
-    return ArrayUtil.sum(events, 0, events.length);
+    return ArrayUtil.sum(events, 0, ArrayUtil.length(events));
   }
 
   public long getMinValue() {
@@ -91,15 +91,17 @@ public class HistogramData implements TelemetryCollectorData {
   @Override
   public JsonElement toJson() {
     final JsonObject json = new JsonObject();
-    json.add("bounds", JsonUtil.newJsonArray(bounds));
-    json.add("events", JsonUtil.newJsonArray(events));
+    if (bounds != null) {
+      json.add("bounds", JsonUtil.newJsonArray(bounds));
+      json.add("events", JsonUtil.newJsonArray(events));
+    }
     return json;
   }
 
   @Override
   public StringBuilder toHumanReport(final StringBuilder report, final HumanLongValueConverter humanConverter) {
     final long numEvents = getNumEvents();
-    if (numEvents == 0) return report.append("(no data)");
+    if (numEvents == 0) return report.append("(no data)\n");
 
     report.append("Count: ").append(HumansUtil.humanCount(numEvents));
     report.append(" Median: ").append(humanConverter.toHuman(Math.round(median())));

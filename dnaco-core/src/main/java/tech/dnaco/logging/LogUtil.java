@@ -35,17 +35,17 @@ public final class LogUtil {
   }
 
   public static String toTraceId(final long traceId) {
-    return BaseN.encodeBase35(traceId);
+    return BaseN.encodeBase58(traceId);
   }
 
   public static long fromTraceId(final String traceId) {
-    return BaseN.decodeBase35(traceId);
+    return BaseN.decodeBase58(traceId);
   }
 
   // ===============================================================================================
   //  Log Levels related
   // ===============================================================================================
-  private static LogLevel[] LOG_LEVELS = LogLevel.values();
+  private static final LogLevel[] LOG_LEVELS = LogLevel.values();
   public static LogLevel levelFromOrdinal(final int ordinal) {
     return LOG_LEVELS[ordinal];
   }

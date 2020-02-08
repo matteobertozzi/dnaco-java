@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.function.Predicate;
 import java.util.zip.GZIPInputStream;
@@ -63,12 +64,17 @@ public class LogReader implements AutoCloseable {
   public static void main(final String[] args) throws Exception {
     final LongArrayList filterTraceIds = new LongArrayList(8);
     final HashSet<LogLevel> filterLevels = new HashSet<>(8);
+    final ArrayList<File> logs = new ArrayList<>();
 
     for (int i = 0; i < args.length; ++i) {
       if (args[i].equals("-l")) {
         filterLevels.add(LogLevel.valueOf(args[i]));
       } else if (args[i].equals("-t")) {
         filterTraceIds.add(Long.parseLong(args[i]));
+      } else if (args[i].startsWith("-")) {
+        throw new UnsupportedOperationException("unknown option " + args[i]);
+      } else {
+        logs.add(new File(args[i]));
       }
     }
 
@@ -82,11 +88,12 @@ public class LogReader implements AutoCloseable {
       }
     };
 
-    final File logFile = new File("logs/general");
-    try (LogReader reader = new LogReader(logFile)) {
-      LogEntry entry;
-      while ((entry = reader.read(headerPredicate)) != null) {
-        entry.printEntry(null, System.out);
+    for (File logFile: logs) {
+      try (LogReader reader = new LogReader(logFile)) {
+        LogEntry entry;
+        while ((entry = reader.read(headerPredicate)) != null) {
+          entry.printEntry(null, System.out);
+        }
       }
     }
   }

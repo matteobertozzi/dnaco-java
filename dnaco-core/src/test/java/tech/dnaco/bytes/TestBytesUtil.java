@@ -5,8 +5,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
 public class TestBytesUtil {
+
+  @Test
+  public void testEquals() {
+    assertEquals(true, BytesUtil.equals(null, null));
+    assertEquals(true, BytesUtil.equals(new byte[0], new byte[0]));
+    assertEquals(true, BytesUtil.equals(null, new byte[0]));
+    assertEquals(true, BytesUtil.equals(new byte[0], null));
+    assertEquals(true, BytesUtil.equals(new byte[] { 10 }, new byte[] { 10 }));
+    assertEquals(false, BytesUtil.equals(new byte[] { 10 }, new byte[] { 20 }));
+    assertEquals(false, BytesUtil.equals(new byte[] { 10 }, null));
+  }
+
   @Test
   public void testToHex() {
+    final byte[] x = new byte[] { (byte) 0xf1, (byte) 0x0a, (byte) 0xcb, (byte) 0x57 };
+    assertEquals("f10acb57", BytesUtil.toHexString(x));
+
     final byte[] data = new byte[256];
     for (int i = 0; i < data.length; ++i) {
       data[i] = (byte) (i & 0xff);

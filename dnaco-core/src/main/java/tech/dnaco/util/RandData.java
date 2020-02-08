@@ -53,7 +53,7 @@ public final class RandData {
     int length = off + len;
     while (length >= 8) {
       final long v = rand.nextLong();
-      buf[--length] = (byte)((v >>  0) & 0xff);
+      buf[--length] = (byte)((v) & 0xff);
       buf[--length] = (byte)((v >>  8) & 0xff);
       buf[--length] = (byte)((v >> 16) & 0xff);
       buf[--length] = (byte)((v >> 24) & 0xff);
@@ -66,7 +66,7 @@ public final class RandData {
     if (length > 0) {
       final long v = rand.nextLong();
       switch (length) {
-        case 7: buf[--length] = (byte)((v >>  0) & 0xff);
+        case 7: buf[--length] = (byte)((v) & 0xff);
         case 6: buf[--length] = (byte)((v >>  8) & 0xff);
         case 5: buf[--length] = (byte)((v >> 16) & 0xff);
         case 4: buf[--length] = (byte)((v >> 24) & 0xff);
@@ -85,8 +85,16 @@ public final class RandData {
     return generateChars(length, StringUtil.ALPHA_NUMERIC_CHARS);
   }
 
+  public static String generateAlphaNumericString(final int length) {
+    return new String(generateAlphaNumericChars(length));
+  }
+
   public static char[] generateChars(final int length, final char[] charset) {
     return generateChars(new char[length], charset);
+  }
+
+  public static String generateString(final int length, final char[] charset) {
+    return new String(generateChars(length, charset));
   }
 
   @SuppressWarnings("fallthrough")
@@ -94,16 +102,16 @@ public final class RandData {
     final SecureRandom rand = Holder.secureRand;
     int length = buffer.length;
     while (length >= 4) {
-      final long v = rand.nextInt() & 0xffffffff;
-      buffer[--length] = charset[(int)((v >>  0) & 0xff) % charset.length];
+      final long v = rand.nextInt();
+      buffer[--length] = charset[(int)((v) & 0xff) % charset.length];
       buffer[--length] = charset[(int)((v >>  8) & 0xff) % charset.length];
       buffer[--length] = charset[(int)((v >> 16) & 0xff) % charset.length];
       buffer[--length] = charset[(int)((v >> 20) & 0xff) % charset.length];
     }
     if (length > 0) {
-      final long v = rand.nextInt() & 0xffffffff;
+      final long v = rand.nextInt();
       switch (length) {
-        case 3: buffer[--length] = charset[(int)((v >>  0) & 0xff) % charset.length];
+        case 3: buffer[--length] = charset[(int)((v) & 0xff) % charset.length];
         case 2: buffer[--length] = charset[(int)((v >>  8) & 0xff) % charset.length];
         case 1: buffer[--length] = charset[(int)((v >> 16) & 0xff) % charset.length];
       }

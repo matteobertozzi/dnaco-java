@@ -31,7 +31,7 @@ public interface BytesSlice extends Comparable<BytesSlice> {
   void forEach(ByteArrayConsumer consumer);
   void forEach(int off, int len, ByteArrayConsumer consumer);
 
-  public static final BytesSlice EMPTY_SLICE = new BytesSlice() {
+  BytesSlice EMPTY_SLICE = new BytesSlice() {
     @Override public int compareTo(BytesSlice o) { return o.isEmpty() ? 0 : 1; }
     @Override public int length() { return 0; }
     @Override public boolean isEmpty() { return true; }

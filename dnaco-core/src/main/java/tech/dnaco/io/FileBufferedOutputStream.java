@@ -51,9 +51,7 @@ public class FileBufferedOutputStream extends OutputStream {
     return stream.getChannel();
   }
 
-  public long position() throws IOException {
-    //System.out.println(" ----> READ POSITION " + stream.getChannel().position() + " BUF-LEN " + bufLength + " POSITION " + position);
-    //return stream.getChannel().position() + bufLength;
+  public long position() {
     return position;
   }
 

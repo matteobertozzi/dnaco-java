@@ -44,34 +44,36 @@ public class TimeRangeCounter implements TelemetryCollector {
     this.next = 0;
   }
 
-  public void inc() {
-    add(System.currentTimeMillis(), 1);
+  public long inc() {
+    return add(System.currentTimeMillis(), 1);
   }
 
-  public void dec() {
-    add(System.currentTimeMillis(), -1);
+  public long dec() {
+    return add(System.currentTimeMillis(), -1);
   }
 
-  public void inc(final long amount) {
-    add(System.currentTimeMillis(), amount);
+  public long inc(final long amount) {
+    return add(System.currentTimeMillis(), amount);
   }
 
-  public void add(final long now, final long delta) {
+  public long add(final long now, final long delta) {
     if ((now - lastInterval) < window) {
       final int index = Math.toIntExact(next % counters.length);
       counters[index] += delta;
-      return;
+      return counters[index];
     }
 
+    final int index;
     if ((now - lastInterval) >= window) {
       injectZeros(now);
-      final int index = Math.toIntExact(++next % counters.length);
+      index = Math.toIntExact(++next % counters.length);
       setLastInterval(now);
       counters[index] = computeNewValue(delta);
     } else {
-      final int index = Math.toIntExact(next % counters.length);
+      index = Math.toIntExact(next % counters.length);
       counters[index] += delta;
     }
+    return counters[index];
   }
 
   @Override

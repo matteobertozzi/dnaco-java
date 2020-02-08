@@ -24,19 +24,30 @@ import java.util.List;
 public class HumansTableView {
   private static final int COLUMN_WRAP_LENGTH = 80;
 
-  private ArrayList<String> columns = new ArrayList<>();
-  private ArrayList<String[]> rows = new ArrayList<>();
+  private final ArrayList<String> columns = new ArrayList<>();
+  private final ArrayList<String[]> rows = new ArrayList<>();
 
   public HumansTableView addColumn(final String name) {
     this.columns.add(name);
     return this;
   }
 
+  public HumansTableView addColumns(final String... names) {
+    return addColumns(Arrays.asList(names));
+  }
+
   public HumansTableView addColumns(final List<String> names) {
     this.columns.addAll(names);
     return this;
   }
-  
+
+  public HumansTableView addColumns(final List<String> names, final int off, final int len) {
+    for (int i = 0; i < len; ++i) {
+      this.columns.add(names.get(off + i));
+    }
+    return this;
+  }
+
   public HumansTableView addRow(Object... rowValues) {
     return addRow(Arrays.asList(rowValues));
   }
@@ -46,6 +57,7 @@ public class HumansTableView {
     int index = 0;
     for (Object colValue: rowValues) {
       row[index++] = valueOf(colValue);
+      if (index >= row.length) break;
     }
     rows.add(row);
     return this;
@@ -77,9 +89,7 @@ public class HumansTableView {
   private void drawHeaderBorder(final StringBuilder builder, final int[] columnsLength) {
     for (int i = 0; i < columnsLength.length; ++i) {
       builder.append("+-");
-      for (int j = 0; j < columnsLength[i]; ++j) {
-        builder.append('-');
-      }
+      builder.append("-".repeat(columnsLength[i]));
       builder.append('-');
     }
     builder.append("+\n");
@@ -94,7 +104,7 @@ public class HumansTableView {
       buf.append("| ");
       if (columnsLength[i] < colValue.length()) {
         truncatedColumns.add(colValue.substring(columnsLength[i]));
-        buf.append(colValue.substring(0, columnsLength[i]));
+        buf.append(colValue, 0, columnsLength[i]);
         hasTruncation = true;
       } else {
         truncatedColumns.add("");
@@ -137,5 +147,18 @@ public class HumansTableView {
     view.addRow("zar is in the car", 20);
     view.addRow("war", 30);
     System.out.println(view.addHumanView(new StringBuilder()).toString());
+
+    final HumansTableView table = new HumansTableView();
+    table.addColumns(Arrays.asList("", "max timestamp", "max",
+      "min", "avg", "xfreq", "trace-ids  "));
+
+    table.addRow("SELECT * FROM tabgen WHERE\t\nsync_lastmodrecord >= ? AND (sync_idagente = ? OR syn " +
+        "c_idagente = ?) AND sync_op = ? ", " 13 Jun 2019 09:27:23\n", " 4.4320sec", "2ms", "563ms", "8", "[6731, 6933, 6e41, 6e70]");
+    table.addRow("UPDATE sync_user SET lastupdated=?, lastsyncdataconnection=?, sendalldatanext=?," +
+        "applicationVersion=? WHERE \nusername=?  ", " 13 Jun 2019 09:27:23", " 4.4320sec", "2ms", "563ms", "8", "[6731, 6933]");
+    table.addRow("UPDATE   answersext SET sync_op = 10 WHERE\tsync_idagente = ? AND sync_deviceid = " +
+        " ? AND sync_op < 10   "," 13 Jun 2019 09:27:23\n", " 4.4320sec", "2ms", "563ms", "8", "[6731]");
+    table.addRow("SELECT * FROM tabgendef WHERE sync_lastmodrecord >= ? AND (sync_idagente = ? OR", " 13 Jun 2019 09:27:23", " 4.4320sec", "2ms", "563ms", "8", "[6731, 6933]");
+    System.out.println(table.addHumanView(new StringBuilder()));
   }
 }

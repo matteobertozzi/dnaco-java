@@ -38,6 +38,14 @@ public final class IOUtil {
     }
   }
 
+  public static void closeQuietly(final AutoCloseable closeable) {
+    try {
+      closeable.close();
+    } catch (Exception e) {
+      Logger.trace("unable to close stream: {}", closeable);
+    }
+  }
+
   public static byte[] readNBytes(final InputStream stream, final int len) throws IOException {
     final byte[] buf = stream.readNBytes(len);
     if (buf == null || buf.length != len) {

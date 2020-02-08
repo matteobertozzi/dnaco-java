@@ -92,7 +92,7 @@ public class HashIndexedArray<K> {
     return Arrays.toString(keys);
   }
 
-  public static void main(final String[] args) throws Exception {
+  public static void main(final String[] args) {
     new HashIndexedArray<>(new String[] {"paramname", "paramvalue"});
     new HashIndexedArray<>(new String[] {"idqg", "descrizione", "img", "idqlist", "flag1", "flag2", "flag3", "flag4", "flag5"});
     new HashIndexedArray<>(new String[] {"idq", "descrizione", "enable", "lang", "codiceq"});

@@ -33,9 +33,10 @@ public final class Logger {
     EXCLUDE_CLASSES.add(Logger.class.getName());
   }
 
-  private static ThreadLocal<LoggerSession> localSession = new ThreadLocal<>();
-  private static PrintStream STDERR = System.out;
-  private static PrintStream STDOUT = System.err;
+  private static final ThreadLocal<LoggerSession> localSession = ThreadLocal.withInitial(LoggerSession::newSystemGeneralSession);
+
+  private static final PrintStream STDERR = System.out;
+  private static final PrintStream STDOUT = System.err;
   private static LogAsyncWriter writer;
   private static LogLevel defaultLevel = LogLevel.TRACE;
 
@@ -81,7 +82,7 @@ public final class Logger {
   public static boolean isEnabled(final LogLevel level) {
     final LoggerSession session = getSession();
     LogLevel scopeLevel = (session != null) ? session.getLevel() : defaultLevel;
-    return level.ordinal() < scopeLevel.ordinal();
+    return level.ordinal() <= scopeLevel.ordinal();
   }
 
   public static boolean isTraceEnabled() {
@@ -179,10 +180,14 @@ public final class Logger {
     log(LogLevel.TRACE, null, format, args);
   }
 
+  public static void raw(final String text) {
+    logRaw(LogLevel.ALWAYS, null, text, null);
+  }
+
   // ===============================================================================================
   //  Logging methods
   // ===============================================================================================
-  public static void log(final LogLevel level, final Throwable exception, final String format, final Supplier<?>[] args) {
+  private static void log(final LogLevel level, final Throwable exception, final String format, final Supplier<?>[] args) {
     if (!isEnabled(level)) return;
 
     final Object[] params;
@@ -195,12 +200,14 @@ public final class Logger {
       }
     }
 
-    log(level, exception, format, params);
+    logRaw(level, exception, format, params);
   }
 
-  public static void log(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
-    if (!isEnabled(level)) return;
+  private static void log(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
+    if (isEnabled(level)) logRaw(level, exception, format, args);
+  }
 
+  private static void logRaw(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
     final Thread thread = Thread.currentThread();
     final LoggerSession session = getSession();
     if (session == null) {
@@ -208,6 +215,7 @@ public final class Logger {
     }
 
     final LogEntry entry = new LogEntry()
+        .setModuleId(session.getModuleId())
         .setGroupId(session.getGroupId())
         .setThreadName(thread.getName())
         .setClassAndMethod(buildMethodLine(thread))
@@ -216,7 +224,7 @@ public final class Logger {
         .setLevel(level)
         .setTimestamp(System.currentTimeMillis())
         .setFormat(format, args);
-    
+
     // add to trace buffer for error reporting
     LogTraceBuffer.add(session.getProjectId(), entry);
 

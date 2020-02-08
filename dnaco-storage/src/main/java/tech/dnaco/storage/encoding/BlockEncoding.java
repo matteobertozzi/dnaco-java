@@ -47,11 +47,11 @@ public final class BlockEncoding {
     return encode(stream, writer.rawBuffer(), writer.offset(), writer.writeOffset());
   }
 
-  public static int encode(final OutputStream stream, 
+  public static int encode(final OutputStream stream,
       final byte[] block, final int blockOff, final int blockSize) throws IOException {
     final byte[] hash = DEFAULT_HASH > 0 ? HashUtil.hash(HASH_ALGO[DEFAULT_HASH], block, blockOff, blockSize) : null;
     final ByteArraySlice zBlock = ZstdUtil.compress(block, blockOff, blockSize);
-    
+
     int size = IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(stream, zBlock.length());
     size += IntEncoder.BIG_ENDIAN.writeUnsignedVarLong(stream, blockSize);
     size += 1 + BytesUtil.length(hash) + zBlock.length();
@@ -72,7 +72,8 @@ public final class BlockEncoding {
   public static byte[] decode(final ByteBufferInputStream stream) throws IOException {
     final int zBlockLen = IntDecoder.BIG_ENDIAN.readUnsignedVarInt(stream);
     final int blockLen = IntDecoder.BIG_ENDIAN.readUnsignedVarInt(stream);
-    final int hashId = stream.read() & 0xff;
+    final int hashId = stream.read();
+    System.out.println(" -> ZBLK " + zBlockLen + " BLK " + blockLen + " HASH " + hashId);
     final byte[] hash = hashId > 0 ? stream.readNBytes(HASH_LENGTH[hashId]) : null;
     final byte[] zBlock = stream.readNBytes(zBlockLen);
     final byte[] block = new byte[blockLen];

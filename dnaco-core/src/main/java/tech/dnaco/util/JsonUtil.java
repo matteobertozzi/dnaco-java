@@ -17,24 +17,68 @@
 
 package tech.dnaco.util;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+import java.util.Base64;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
+
+import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.collections.ArrayUtil;
 
 public final class JsonUtil {
-  private static final Gson GSON = new Gson();
+  public static final String JSON_DATE_FORMAT_PATTERN = "YYYYMMddHHmmss";
+  private static final Gson GSON = new GsonBuilder()
+      .registerTypeAdapter(byte[].class, new BytesTypeAdapter())
+      .setDateFormat(JSON_DATE_FORMAT_PATTERN)
+      .create();
 
   private JsonUtil() {
     // no-op
   }
 
   // ================================================================================
-  //  From Json helpers
+  // From Json helpers
   // ================================================================================
+  public static <T> T fromJson(final String json, final Class<T> classOfT) {
+    return GSON.fromJson(json, classOfT);
+  }
+
   public static <T> T fromJson(final JsonElement json, final Class<T> classOfT) {
     return GSON.fromJson(json, classOfT);
+  }
+
+  public static <T> T fromJson(final byte[] json, final Class<T> classOfT) throws IOException {
+    return fromJson(json, 0, BytesUtil.length(json), classOfT);
+  }
+
+  public static <T> T fromJson(final byte[] json, final int jsonOff, final int jsonLen, final Class<T> classOfT)
+      throws IOException {
+    try (ByteArrayInputStream stream = new ByteArrayInputStream(json, jsonOff, jsonLen)) {
+      try (InputStreamReader reader = new InputStreamReader(stream)) {
+        return GSON.fromJson(reader, classOfT);
+      }
+    }
+  }
+
+  public static <T> T fromJson(final File jsonFile, final Class<T> classOfT)
+      throws IOException {
+    try (FileReader reader = new FileReader(jsonFile)) {
+      return GSON.fromJson(reader, classOfT);
+    }
   }
 
   // ================================================================================
@@ -61,5 +105,21 @@ public final class JsonUtil {
       json.add(buf[off + i]);
     }
     return json;
+  }
+
+  // ================================================================================
+  // Gson Type Adapters
+  // ================================================================================
+  public static final class BytesTypeAdapter implements JsonDeserializer<byte[]>, JsonSerializer<byte[]> {
+    @Override
+    public JsonElement serialize(final byte[] src, final Type typeOfSrc, final JsonSerializationContext context) {
+      return new JsonPrimitive(Base64.getEncoder().encodeToString(src));
+    }
+
+    @Override
+    public byte[] deserialize(final JsonElement json, final Type typeOfT, final JsonDeserializationContext context)
+        throws JsonParseException {
+      return Base64.getDecoder().decode(json.getAsString());
+    }
   }
 }

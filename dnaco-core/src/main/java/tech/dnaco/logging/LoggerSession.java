@@ -29,7 +29,7 @@ public class LoggerSession {
   private final LogLevel level;
   private final long traceId;
 
-  protected LoggerSession(final String projectId, final String moduleId, final String groupId, 
+  protected LoggerSession(final String projectId, final String moduleId, final String groupId,
       final LogLevel level, final long traceId) {
     this.projectId = projectId;
     this.moduleId = StringUtil.nullIfEmpty(moduleId);
@@ -38,9 +38,18 @@ public class LoggerSession {
     this.traceId = traceId;
   }
 
-  public static LoggerSession newSession(final String projectId, final String moduleId, 
+  public static LoggerSession newSession(final String projectId, final String moduleId,
       final String groupId, final LogLevel level, final long traceId) {
     return new LoggerSession(projectId, moduleId, groupId, level, traceId);
+  }
+
+  public static LoggerSession newSystemSession(final String moduleId, final String groupId,
+      final LogLevel level, final long traceId) {
+    return newSession(SYSTEM_PROJECT_ID, moduleId, groupId, level, traceId);
+  }
+
+  public static LoggerSession newSystemGeneralSession() {
+    return newSession(SYSTEM_PROJECT_ID, "general", null, Logger.getDefaultLevel(), 0);
   }
 
   public String getProjectId() {
@@ -65,7 +74,7 @@ public class LoggerSession {
 
   @Override
   public String toString() {
-    return "LoggerSession [projectId=" + projectId + ", groupId=" + groupId + ", moduleId=" + moduleId + 
+    return "LoggerSession [projectId=" + projectId + ", groupId=" + groupId + ", moduleId=" + moduleId +
       ", level=" + level + ", traceId=" + traceId + "]";
   }
 }

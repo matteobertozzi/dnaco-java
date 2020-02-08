@@ -20,9 +20,15 @@ package tech.dnaco.hash;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import tech.dnaco.bytes.BytesUtil;
+
 public final class HashUtil {
   private HashUtil() {
     // no-op
+  }
+
+  public static byte[] hash(final String algo, final byte[] buf) {
+    return hash(algo, buf, 0, BytesUtil.length(buf));
   }
 
   public static byte[] hash(final String algo, final byte[] buf, final int off, final int len) {

@@ -95,7 +95,7 @@ public abstract class IntEncoder {
         case 4: buf[off++] = (byte)((v >>> 24) & 0xff);
         case 3: buf[off++] = (byte)((v >>> 16) & 0xff);
         case 2: buf[off++] = (byte)((v >>>  8) & 0xff);
-        case 1: buf[off++] = (byte)((v >>>  0) & 0xff);
+        case 1: buf[off++] = (byte)((v) & 0xff);
       }
     }
 
@@ -125,7 +125,7 @@ public abstract class IntEncoder {
     @Override
     public void writeFixed(final OutputStream stream, final long v, final int bytesWidth) throws IOException {
       for (int i = 0; i < bytesWidth; ++i) {
-        stream.write((int)((v >>> (i << 3)) & 0xff));
+        stream.write((byte)((v >>> (i << 3)) & 0xff));
       }
     }
   }

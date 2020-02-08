@@ -17,54 +17,95 @@
 
 package tech.dnaco.storage.encoding;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-
-import tech.dnaco.bytes.encoding.IntEncoder;
+import java.util.Arrays;
 
 import tech.dnaco.bytes.encoding.IntEncoder;
 
 public class BitEncoder implements AutoCloseable {
   private final OutputStream stream;
-  private final int mask;
+  private final long mask;
   private final int width;
 
   private long vBuffer = 0;
-  private int vCount = 0;
-  
+  private int availBits;
+  private int vBits = 0;
+
   public BitEncoder(final OutputStream stream, final int width) {
     this.stream = stream;
-    this.mask = (1 << width) - 1;
     this.width = width;
+    this.mask = (width == 64) ? 0xffffffffffffffffL : ((1L << width) - 1);
+    this.availBits = Long.BYTES << 3;
   }
 
   @Override
   public void close() throws IOException {
-    flush();
+    if (availBits != (Long.BYTES << 3)) {
+      flush();
+    }
   }
 
   public void add(final int v) throws IOException {
-    vBuffer = (vBuffer << width) | (v & mask);
-    vCount++;
-    if (((vCount * width) & 7) == 0) {
-      flush((vCount * width) / 8);
+    if (availBits == 0) flush();
+
+    //System.out.println("ADD " + Long.toBinaryString(v) + " MASK " + Long.toBinaryString(mask) + " -> " + Long.toBinaryString(vBuffer));
+    if (availBits >= width) {
+      vBuffer = (vBuffer << width) | (v & mask);
+      availBits -= width;
+      vBits += width;
+      return;
     }
+
+    final int v1Width = (width - availBits);
+    final long maskV0 = (1 << availBits) - 1;
+    final long maskV1 = (1 << v1Width) - 1;
+
+    final long v0 = (v >> v1Width) & maskV0;
+    final long v1 = v & maskV1;
+
+    //System.out.println("AVAIL-BITS " + availBits);
+    //System.out.println(" - v0: " + Long.toBinaryString(v0));
+    //System.out.println(" - v1: " + Long.toBinaryString(v1));
+    vBuffer = (vBuffer << availBits) | v0;
+    vBits += availBits;
+    availBits = 0;
+    flush();
+
+    vBuffer = v1;
+    availBits = (Long.BYTES << 3) - v1Width;
+    vBits += v1Width;
   }
 
   public void flush() throws IOException {
-    if (vCount == 0) return;
-
-    while (((vCount * width) & 7) != 0) {
-      vBuffer = (vBuffer << width);
-      vCount++;
-    }
-
-    flush((vCount * width) / 8);
+    //System.out.println("ENCODE vBuffer=" + vBuffer + " -> " + Long.toBinaryString(vBuffer) + " bits=" + vBits + " bytes=" + ((vBits + 7) / 8));
+    IntEncoder.BIG_ENDIAN.writeFixed(stream, vBuffer, (vBits + 7) >> 3);
+    availBits = Long.BYTES << 3;
+    vBuffer = 0;
+    vBits = 0;
   }
 
-  private void flush(final int bytesWidth) throws IOException {
-    IntEncoder.BIG_ENDIAN.writeFixed(stream, vBuffer, bytesWidth);
-    vBuffer = 0;
-    vCount = 0;
+  public static void main(String[] args) throws IOException {
+    final int N = 12;
+    try (ByteArrayOutputStream writer = new ByteArrayOutputStream()) {
+      try (BitEncoder encoder = new BitEncoder(writer, 9)) {
+        for (int i = 0; i < N; ++i) {
+          encoder.add(N - i);
+        }
+      }
+
+      writer.flush();
+      final byte[] encodedData = writer.toByteArray();
+      //System.out.println("Encoded Data " + encodedData.length + " -> " + BytesUtil.toHexString(encodedData));
+
+      try (ByteArrayInputStream reader = new ByteArrayInputStream(encodedData)) {
+        long[] data = new long[N];
+        BitDecoder decoder = new BitDecoder(reader, 9, data.length);
+        for (int i = 0; i < data.length; ++i) data[i] = decoder.read();
+        System.out.println(Arrays.toString(data));
+      }
+    }
   }
 }

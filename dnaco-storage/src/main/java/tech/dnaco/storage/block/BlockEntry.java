@@ -93,6 +93,10 @@ public class BlockEntry {
     return this;
   }
 
+  public boolean isDeleted() {
+    return (flags & FLAG_DELETE) == FLAG_DELETE;
+  }
+
   public void hash(final MessageDigest digest) {
     final byte[] buf = new byte[8];
     IntEncoder.BIG_ENDIAN.writeFixed64(buf, 0, seqId);
@@ -108,7 +112,8 @@ public class BlockEntry {
   @Override
   public String toString() {
     return "BlockEntry [seqId=" + seqId + ", timestamp=" + timestamp + ", flags=" + flags +
-        ", key=" + key + ", value=" + value + "]";
+        ", key=" + key //+ ", value=" + value 
+        + "]";
   }
 
   public static int compareKey(final BlockEntry a, final BlockEntry b) {
@@ -118,6 +123,6 @@ public class BlockEntry {
   public static int compare(final BlockEntry a, final BlockEntry b) {
     final int cmp = a.getKey().compareTo(b.getKey());
     //System.out.println("CMP " + cmp + " -> " + a.seqId + " -> " + b.seqId);
-    return cmp != 0 ? cmp : Long.compare(a.getSeqId(), b.getSeqId());
+    return cmp != 0 ? cmp : Long.compare(b.getSeqId(), a.getSeqId());
   }
 }

@@ -107,7 +107,7 @@ public abstract class IntDecoder {
         case 4: result += (((long)buf[off++] & 0xff) << 24);
         case 3: result += (((long)buf[off++] & 0xff) << 16);
         case 2: result += (((long)buf[off++] & 0xff) <<  8);
-        case 1: result += (((long)buf[off++] & 0xff) <<  0);
+        case 1: result += (((long) buf[off++] & 0xff));
       }
       return result;
     }
@@ -139,8 +139,9 @@ public abstract class IntDecoder {
     @Override
     public long readFixed(final InputStream stream, final int bytesWidth) throws IOException {
       long result = 0;
-      for (int i = 0; i < bytesWidth; ++i) {
-        result += (((long)(stream.read() & 0xff)) << (i << 3));
+      for (long i = 0; i < bytesWidth; ++i) {
+        final long v = stream.read() & 0xff;
+        result += (v << (i << 3));
       }
       return result;
     }

@@ -23,6 +23,8 @@ import tech.dnaco.strings.StringUtil;
 
 public final class BytesUtil {
   public static final byte[] EMPTY_BYTES = new byte[0];
+  public static final byte[] NEW_LINE = new byte[] { '\n' };
+  public static final byte[] CRLF = new byte[] { '\r', '\n' };
 
   private BytesUtil() {
     // no-op
@@ -47,7 +49,7 @@ public final class BytesUtil {
   //  Bytes equals/compare util
   // ================================================================================
   public static boolean equals(final byte[] a, final byte[] b) {
-    return Arrays.equals(a, b);
+    return (isEmpty(a) && isEmpty(b)) ? true : Arrays.equals(a, b);
   }
 
   public static boolean equals(final byte[] a, final int aOff, final int aLen,
@@ -72,10 +74,59 @@ public final class BytesUtil {
   }
 
   // ================================================================================
+  //  Bytes to binary
+  // ================================================================================
+  public static String toBinaryString(final byte[] buf) {
+    return toBinaryString(buf, 0, length(buf));
+  }
+
+  public static String toBinaryString(final byte[] buf, final int off, final int len) {
+    final StringBuilder builder = new StringBuilder(len * 8);
+    for (int i = 0; i < len; ++i) {
+      if (i > 0) builder.append(' ');
+      final int b = buf[off + i] & 0xff;
+      for (int k = 7; k >= 0; --k) {
+        builder.append((b & (1 << k)) != 0 ? '1' : '0');
+      }
+    }
+    return builder.toString();
+  }
+
+  // ====================================================================================================
+  //  chars[] helpers
+  // ====================================================================================================
+  public static char[] toChars(final byte[] bdata) {
+    final char[] cdata = new char[bdata.length];
+    for (int i = 0; i < bdata.length; ++i) {
+      cdata[i] = (char)bdata[i];
+    }
+    return cdata;
+  }
+
+  public static byte[] fromChars(final char[] cdata) {
+    final byte[] bdata = new byte[cdata.length];
+    for (int i = 0; i < bdata.length; ++i) {
+      bdata[i] = (byte)(cdata[i] & 0xff);
+    }
+    return bdata;
+  }
+
+  // ================================================================================
   //  Bytes to hex
   // ================================================================================
+  public static byte[] fromHexString(final String data) {
+    if(StringUtil.isEmpty(data)) return null;
+
+    final int length = data.length();
+    final byte[] buffer = new byte[length / 2];
+    for (int i = 0; i < length; i += 2) {
+      buffer[i / 2] = (byte) ((Character.digit(data.charAt(i), 16) << 4) + Character.digit(data.charAt(i+1), 16));
+    }
+    return buffer;
+  }
+
   public static byte[] toHexBytes(final byte[] buf) {
-    return toHexBytes(buf, 0, buf.length);
+    return toHexBytes(buf, 0, length(buf));
   }
 
   public static byte[] toHexBytes(final byte[] buf, final int off, final int len) {

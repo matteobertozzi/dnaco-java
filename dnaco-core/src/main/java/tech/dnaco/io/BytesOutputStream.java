@@ -45,11 +45,11 @@ public abstract class BytesOutputStream extends OutputStream {
   public abstract void write(byte[] buf, int off, int len);
 
   public void write(final BytesSlice slice) {
-    slice.forEach((buf, off, len) -> write(buf, off, len));
+    slice.forEach(this::write);
   }
 
   public void write(final BytesSlice slice, final int offset, final int length) {
-    slice.forEach(offset, length, (buf, off, len) -> write(buf, off, len));
+    slice.forEach(offset, length, this::write);
   }
 
   public abstract int writeTo(BytesOutputStream stream);

@@ -17,25 +17,33 @@
 
 package tech.dnaco.storage.block;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 
+import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.logging.Logger;
+import tech.dnaco.strings.HumansUtil;
+
 public class BlockEntryMergeIterator {
   private final PriorityQueue<NextIterator> queue;
+  private final BlockEntryMergeOptions options;
 
-  public BlockEntryMergeIterator(final List<BlockEntryIterator> iterators) throws IOException {
-    queue = new PriorityQueue<>(iterators.size(), BLOCK_ENTRY_ITERATOR_COMPARATOR);
+  public BlockEntryMergeIterator(final BlockEntryMergeOptions options, final BlockStats stats,
+      final List<BlockEntryIterator> iterators) throws IOException {
+    this.options = options;
+    this.queue = new PriorityQueue<>(iterators.size(), BLOCK_ENTRY_ITERATOR_COMPARATOR);
+
+    final long startTime = System.nanoTime();
     for (final BlockEntryIterator iterator : iterators) {
       final NextIterator nextIterator = new NextIterator(iterator);
-      if (nextIterator.fetchNext()) {
-        //System.out.println("-> " + nextIterator.nextEntry);
+      if (nextIterator.fetchNext(options)) {
         queue.add(nextIterator);
       }
     }
+    final long elapsed = System.nanoTime() - startTime;
+    Logger.debug("iterator prepare time: {}", HumansUtil.humanTimeNanos(elapsed));
   }
 
   public boolean hasMore() {
@@ -48,7 +56,7 @@ public class BlockEntryMergeIterator {
 
   public void next() throws IOException {
     final NextIterator nextIter = queue.remove();
-    if (nextIter.fetchNext()) queue.add(nextIter);
+    if (nextIter.fetchNext(options)) queue.add(nextIter);
   }
 
   private static final Comparator<NextIterator> BLOCK_ENTRY_ITERATOR_COMPARATOR = new Comparator<>() {
@@ -57,6 +65,34 @@ public class BlockEntryMergeIterator {
       return BlockEntry.compare(a.getBlockEntry(), b.getBlockEntry());
     }
   };
+
+  public static final class BlockEntryMergeOptions {
+    private boolean removeDeleted = false;
+    private long minSeqId = Long.MIN_VALUE;
+    private long minTimestamp = Long.MIN_VALUE;
+
+    public BlockEntryMergeOptions setRemoveDeleted(final boolean removeDeleted) {
+      this.removeDeleted = removeDeleted;
+      return this;
+    }
+
+    public BlockEntryMergeOptions setMinSeqId(final long seqId) {
+      this.minSeqId = seqId;
+      return this;
+    }
+
+    public BlockEntryMergeOptions setMinTimestamp(final long timestamp) {
+      this.minTimestamp = timestamp;
+      return this;
+    }
+
+    public boolean isVisible(final BlockEntry entry) {
+      if (removeDeleted && entry.isDeleted()) return false;
+      if (entry.getSeqId() < minSeqId) return false;
+      if (entry.getTimestamp() < minTimestamp) return false;
+      return true;
+    }
+  }
 
   private static final class NextIterator {
     private final BlockEntryIterator iterator;
@@ -70,41 +106,20 @@ public class BlockEntryMergeIterator {
       return nextEntry;
     }
 
-    private boolean fetchNext() throws IOException {
-      if (iterator.hasMoreEntries()) {
+    private boolean fetchNext(final BlockEntryMergeOptions options) throws IOException {
+      while (iterator.hasMoreEntries()) {
         this.nextEntry = iterator.nextEntry();
-        return true;
+        if (options.isVisible(this.nextEntry)) {
+          return true;
+        }
       }
+      this.nextEntry = null;
       return false;
     }
 
     @Override
     public String toString() {
-      return "NextIterator [iterator=" + iterator + "]";
-    }
-  }
-
-  public static void main(final String[] args) throws Exception {
-    final File[] walFiles = new File("DNAdb").listFiles();
-    final ArrayList<BlockEntryIterator> dataReaders = new ArrayList<>();
-    for (int i = 0; i < walFiles.length; ++i) {
-      dataReaders.add(new DataBlocksReader(walFiles[i]));
-    }
-
-    // 74, 85, 119, 158
-    int rowCount = 0;
-    final BlockEntryMergeIterator iter = new BlockEntryMergeIterator(dataReaders);
-    while (iter.hasMore()) {
-      final BlockEntry entry = iter.readEntry();
-      System.out.println(" -> MAIN -> " + entry);
-      iter.next();
-      rowCount++;
-      if (rowCount >= 10) break;
-    }
-    System.out.println("-> rowCount=" + rowCount);
-
-    for (final BlockEntryIterator reader: dataReaders) {
-      ((AutoCloseable)reader).close();
+      return "BlockNextIterator [iterator=" + iterator + "]";
     }
   }
 }

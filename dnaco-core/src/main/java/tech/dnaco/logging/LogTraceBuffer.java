@@ -21,14 +21,19 @@ import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.strings.StringUtil;
 
 public final class LogTraceBuffer {
-  private static ThreadLocal<LogTraceBufferData> traceBuffer = new ThreadLocal<>();
+  private static final ThreadLocal<LogTraceBufferData> traceBuffer = new ThreadLocal<>();
 
   private LogTraceBuffer() {
     // no-op
   }
 
   public static void add(final String projectId, final LogEntry entry) {
-    traceBuffer.get().add(projectId, entry);
+    LogTraceBufferData data = traceBuffer.get();
+    if (data == null) {
+      data = new LogTraceBufferData();
+      traceBuffer.set(data);
+    }
+    data.add(projectId, entry);
   }
 
   private static final class LogTraceBufferData {
@@ -61,10 +66,20 @@ public final class LogTraceBuffer {
       final StringBuilder builder = new StringBuilder(1024);
       builder.append("--- ").append(projectId).append(" ---\n");
       for (int i = entriesCount; i > 0; --i) {
-        entries[Math.toIntExact(nextEntries - i)].printEntry(null, builder);
+        entries[Math.toIntExact(nextEntries - i) & ENTRIES_MASK].printEntry(null, builder);
       }
       builder.append('\n');
       traces[index] = builder.toString();
+    }
+  }
+
+  public static void main(String[] args) {
+    for (int i = 0; i < 1000; ++i) {
+      LogTraceBuffer.add("foo", new LogEntry()
+        .setGroupId("groupId")
+        .setModuleId("moduleId")
+        .setFormat("foo {}", new Object[] { i })
+        .setLevel(LogLevel.ERROR));
     }
   }
 }

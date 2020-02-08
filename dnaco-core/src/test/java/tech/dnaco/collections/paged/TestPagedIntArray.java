@@ -65,9 +65,7 @@ public class TestPagedIntArray {
     assertEquals(64, array.size());
 
     AtomicLong counter = new AtomicLong(0);
-    array.forEach((buf, off, len) -> {
-      counter.addAndGet(ArrayUtil.sum(buf, off, len));
-    });
+    array.forEach((buf, off, len) -> counter.addAndGet(ArrayUtil.sum(buf, off, len)));
     assertEquals(2016, counter.get());
 
     counter.set(0);

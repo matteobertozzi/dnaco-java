@@ -17,11 +17,185 @@
 
 package tech.dnaco.collections;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 
+import tech.dnaco.bytes.BytesUtil;
+
 public final class ArrayUtil {
+  public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+
   private ArrayUtil() {
     // no-op
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> T getItemAt(final Object[] array, final int index) {
+    return (T) array[index];
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> T[] newArray(final int size, final Class<?> clazz) {
+    return (T[]) Array.newInstance(clazz, size);
+  }
+
+  public static <T> T[] addAll(final T[] array1, final T... array2) {
+    if (array1 == null) return clone(array2);
+    if (array2 == null) return clone(array1);
+
+    final Class<?> type1 = array1.getClass().getComponentType();
+    final T[] joinedArray = newArray(array1.length + array2.length, type1);
+    System.arraycopy(array1, 0, joinedArray, 0, array1.length);
+
+    try {
+      System.arraycopy(array2, 0, joinedArray, array1.length, array2.length);
+      return joinedArray;
+    } catch (final ArrayStoreException e) {
+      final Class<?> type2 = array2.getClass().getComponentType();
+      if (!type1.isAssignableFrom(type2)) {
+        throw new IllegalArgumentException("Cannot store " + type2.getName() + " in an array of " + type1.getName(), e);
+      }
+      throw e;
+    }
+  }
+
+  public static <T> T[] clone(final T[] array) {
+    return array == null ? null : array.clone();
+  }
+
+
+  public static <T> T[] subarray(final T[] array, int startIndexInclusive, int endIndexExclusive) {
+    if (array == null) return null;
+
+    if (startIndexInclusive < 0) startIndexInclusive = 0;
+    if (endIndexExclusive > array.length) endIndexExclusive = array.length;
+
+    if (startIndexInclusive == 0 && endIndexExclusive == array.length) {
+      return array;
+    }
+
+    final int newSize = endIndexExclusive - startIndexInclusive;
+    final Class<?> type = array.getClass().getComponentType();
+    if (newSize <= 0) {
+      final T[] subarray = newArray(0, type);
+      return subarray;
+    }
+
+    final T[] subarray = newArray(newSize, type);
+    System.arraycopy(array, startIndexInclusive, subarray, 0, newSize);
+    return subarray;
+  }
+
+  public static int[] subarray(final int[] array, int startIndexInclusive, int endIndexExclusive) {
+    if (array == null) return null;
+
+    if (startIndexInclusive < 0) startIndexInclusive = 0;
+    if (endIndexExclusive > array.length) endIndexExclusive = array.length;
+
+    if (startIndexInclusive == 0 && endIndexExclusive == array.length) {
+      return array;
+    }
+
+    final int newSize = endIndexExclusive - startIndexInclusive;
+    if (newSize <= 0) return new int[0];
+
+    final int[] subarray = new int[newSize];
+    System.arraycopy(array, startIndexInclusive, subarray, 0, newSize);
+    return subarray;
+  }
+
+  public static void removeElementWithShift(final int[] arr, final int index){
+    System.arraycopy(arr, index + 1, arr, index, arr.length - (1 + index));
+  }
+
+  public static void removeElementWithShift(final long[] arr, final int index){
+    System.arraycopy(arr, index + 1, arr, index, arr.length - (1 + index));
+  }
+
+  public static <T> void removeElementWithShift(final T[] arr, final int index){
+    System.arraycopy(arr, index + 1, arr, index, arr.length - (1 + index));
+  }
+
+  // ======================================================================
+  //  Clear Helpers
+  // ======================================================================
+  public static void clear(final byte[] data) {
+    if (isEmpty(data)) return;
+    for (int i = 0; i < data.length; ++i) {
+      data[i] = Byte.MAX_VALUE;
+    }
+  }
+
+  public static void clear(final char[] data) {
+    if (isEmpty(data)) return;
+    for (int i = 0; i < data.length; ++i) {
+      data[i] = Character.MAX_VALUE;
+    }
+  }
+
+  public static void clear(final int[] data) {
+    if (isEmpty(data)) return;
+    for (int i = 0; i < data.length; ++i) {
+      data[i] = Integer.MAX_VALUE;
+    }
+  }
+
+  public static void clear(final long[] data) {
+    if (isEmpty(data)) return;
+    for (int i = 0; i < data.length; ++i) {
+      data[i] = Long.MAX_VALUE;
+    }
+  }
+
+  public static void clear(final Object[] data) {
+    if (isEmpty(data)) return;
+    for (int i = 0; i < data.length; ++i) {
+      data[i] = null;
+    }
+  }
+
+  // ======================================================================
+  //  Count Helpers
+  // ======================================================================
+  public static <T> int countNotNull(final T[] data) {
+    if (data == null) return 0;
+
+    int notNull = 0;
+    for (int i = 0; i < data.length; ++i) {
+      notNull += (data[i] != null) ? 1 : 0;
+    }
+    return notNull;
+  }
+
+  public static <T> T[] copyNotNull(final Object[] src) {
+    return copyNotNull(src, countNotNull(src));
+  }
+
+  public static <T> T[] copyNotNull(final Object[] src, final int notNullCount) {
+    if (src == null) return null;
+    return copyNotNull(src.getClass().getComponentType(), src, notNullCount);
+  }
+
+  public static <T> T[] copyNotNull(final Class<?> clazz, final Object[] src, final int notNullCount) {
+    if (src == null) return null;
+
+    final Class<?> itemType = (clazz == Object.class) ? getElementType(src, clazz) : clazz;
+    final T[] notNull = newArray(notNullCount, itemType);
+    for (int i = 0, count = 0; i < src.length; ++i) {
+      if (src[i] != null) {
+        notNull[count++] = getItemAt(src, i);
+      }
+    }
+    return notNull;
+  }
+
+  private static Class<?> getElementType(final Object[] src, final Class<?> defaultType) {
+    for (int i = 0; i < src.length; ++i) {
+      if (src[i] != null) {
+        return src[i].getClass();
+      }
+    }
+    return defaultType;
   }
 
   // ================================================================================
@@ -66,6 +240,10 @@ public final class ArrayUtil {
     return (input == null) || (input.length == 0);
   }
 
+  public static boolean isEmpty(final char[] input) {
+    return (input == null) || (input.length == 0);
+  }
+
   public static boolean isEmpty(final int[] input) {
     return (input == null) || (input.length == 0);
   }
@@ -79,6 +257,10 @@ public final class ArrayUtil {
   }
 
   public static boolean isNotEmpty(final byte[] input) {
+    return (input != null) && input.length > 0;
+  }
+
+  public static boolean isNotEmpty(final char[] input) {
     return (input != null) && input.length > 0;
   }
 
@@ -180,6 +362,21 @@ public final class ArrayUtil {
     return sb;
   }
 
+  public static String toStringWithoutNull(final Object[] a) {
+    if (a == null) return "null";
+    if (a.length == 0) return "[]";
+
+    final StringBuilder b = new StringBuilder(a.length * 4);
+    b.append('[');
+    for (int i = 0, count = 0; i < a.length; i++) {
+      if (a[i] == null) continue;
+
+      if (count++ > 0) b.append(", ");
+      b.append(a[i]);
+    }
+    return b.append(']').toString();
+  }
+
   // ================================================================================
   //  PUBLIC Array resize helpers
   // ================================================================================
@@ -254,6 +451,24 @@ public final class ArrayUtil {
   public static int indexOf(final long[] buf, final int off, final int len, final long value) {
     for (int i = 0; i < len; ++i) {
       if (buf[off + i] == value) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public static int indexOf(final int value, final int[] items) {
+    for (int i = 0; i < items.length; ++i) {
+      if (items[i] == value) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public static int indexOf(final byte[] value, final byte[][] items) {
+    for (int i = 0; i < items.length; ++i) {
+      if (BytesUtil.equals(items[i], value)) {
         return i;
       }
     }

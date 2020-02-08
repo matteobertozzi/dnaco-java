@@ -40,7 +40,13 @@ public class BlockReader implements BlockEntryIterator {
     .setLabel("Storage Block Load Time")
     .setUnit(HumansUtil.HUMAN_TIME_NANOS)
     .register(new Histogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
-    
+
+  private static final Histogram blockSeekTime = new TelemetryCollector.Builder()
+    .setName("storage.block_seek_time")
+    .setLabel("Storage Block Seek Time")
+    .setUnit(HumansUtil.HUMAN_TIME_NANOS)
+    .register(new Histogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
+
   private static final IntDecoder INT_DECODER = IntDecoder.BIG_ENDIAN;
 
   private final HashIndexReader hashIndex = new HashIndexReader();
@@ -52,7 +58,6 @@ public class BlockReader implements BlockEntryIterator {
   private DeltaByteDecoder keyDeltaDecoder;
   private ByteArrayReader block;
   private int[] restartsIndex;
-  private int rowIndex;
   private byte[] value;
   private byte[] key;
 
@@ -62,55 +67,16 @@ public class BlockReader implements BlockEntryIterator {
 
   @Override
   public boolean hasMoreEntries() {
-    return rowIndex < stats.getRowCount();
+    return block.readOffset() < block.length();
   }
 
   @Override
   public BlockEntry nextEntry() throws IOException {
-    readEntry(rowIndex++);
+    readEntry();
     return entry;
   }
 
-  public int seekTo(final int offset, int length, final BytesSlice key) throws IOException {
-    block.seekTo(offset);
-    keyDeltaDecoder.reset();
-    int cmp = 1;
-    while (length > 0) {
-      readEntry(0);
-
-      cmp = entry.getKey().compareTo(key);
-      if (cmp < 0) {
-        System.out.println("SEEK TO " + offset + " -> " + key + " -> " + entry);
-        return cmp;
-      }
-      length -= block.readOffset() - offset;
-    }
-    return cmp;
-  }
-
-  public int seekTo(final BytesSlice key) throws IOException {
-    int low = 0;
-    int high = restartsIndex.length - 1;
-
-    while (low <= high) {
-        final int mid = (low + high) >>> 1;
-        final int midVal = restartsIndex[mid];
-        final int cmp = seekTo(midVal, (mid + 1) < restartsIndex.length ? restartsIndex[mid + 1] - midVal : block.length() - midVal, key);
-        System.out.println("MID " + mid + " " + restartsIndex.length + " CMP " + cmp);
-
-        if (cmp < 0)
-            low = mid + 1;
-        else if (cmp > 0)
-            high = mid - 1;
-        else
-            return mid; // key found
-    }
-    //return -(low + 1);  // key not found.
-    System.out.println("LOW " + low + " HIGH " + high);
-    return high;
-  }
-
-  private void readEntry(final int rowIndex) throws IOException {
+  private void readEntry() throws IOException {
     entry.setSeqId(INT_DECODER.readUnsignedVarLong(block));
     entry.setTimestamp(INT_DECODER.readUnsignedVarLong(block));
     entry.setFlags(INT_DECODER.readUnsignedVarLong(block));
@@ -142,14 +108,13 @@ public class BlockReader implements BlockEntryIterator {
     this.keyDeltaDecoder = new DeltaByteDecoder(stats.getKeyMaxLength());
     this.key = ArrayUtil.newIfNotAtSize(this.key, stats.getKeyMaxLength());
     this.value = ArrayUtil.newIfNotAtSize(this.value, stats.getValueMaxLength());
-    this.rowIndex = 0;
 
     // read block data
     final byte[] blockData = BlockEncoding.decode(stream);
     this.block = new ByteArrayReader(blockData);
 
-    // read indexes
-    restartsIndex = IntArrayDecoder.decodeSequence(stream);
+    // read indexes ([0] was not stored)
+    restartsIndex = IntArrayDecoder.decodeSequence(stream, 1);
     hashIndex.readIndex(stream);
 
     final long loadTime = System.nanoTime() - startTime;
@@ -157,6 +122,59 @@ public class BlockReader implements BlockEntryIterator {
     return true;
   }
 
+  // ===============================================================================================
+  //  Seek helpers
+  // ===============================================================================================
+  private int seekTo(final int offset, int length, final BytesSlice key) throws IOException {
+    //System.out.println(" -> SEEK TO " + offset + " " + length);
+    block.seekTo(offset);
+    keyDeltaDecoder.reset();
+    while (length > 0) {
+      final int entryOff = block.readOffset();
+      readEntry();
+      final int entryLen = block.readOffset() - entryOff;
+
+      final int cmp = entry.getKey().compareTo(key);
+      //System.out.println(" ---> READ ENTRY " + entry);
+      if (cmp >= 0) {
+        //System.out.println(" ------> SEEK TO " + offset + " -> " + key + " -> " + entry);
+        return cmp;
+      }
+      length -= entryLen;
+    }
+    return -1;
+  }
+
+  public int seekTo(final BytesSlice key) throws IOException {
+    final long startTime = System.nanoTime();
+
+    int low = 0;
+    int high = restartsIndex.length - 1;
+
+    while (low <= high) {
+      final int mid = (low + high) >>> 1;
+      final int midVal = restartsIndex[mid];
+      //Logger.debug(" === MID [" + mid + "] ===");
+      final int cmp = seekTo(midVal, ((mid + 1) < restartsIndex.length ? restartsIndex[mid + 1] : block.length()) - midVal, key);
+      if (cmp < 0) {
+        low = mid + 1;
+      } else if (cmp > 0) {
+        high = mid - 1;
+      } else {
+        blockSeekTime.add(System.nanoTime() - startTime);
+        return mid; // key found
+      }
+    }
+    //return -(low + 1);  // key not found.
+    //Logger.debug("LOW " + low + " HIGH " + high);
+    seekTo(restartsIndex[high], ((high + 1) < restartsIndex.length ? restartsIndex[high + 1] : block.length()) - restartsIndex[high], key);
+    blockSeekTime.add(System.nanoTime() - startTime);
+    return high;
+  }
+
+  // ===============================================================================================
+  //  Hash Index reader
+  // ===============================================================================================
   private static final class HashIndexReader {
     private int[] buckets;
 
@@ -167,14 +185,14 @@ public class BlockReader implements BlockEntryIterator {
       final int valueLength = bucketsLen - zeroCount;
 
       buckets = ArrayUtil.newIfNotAtSize(buckets, bucketsLen);
-      final BitDecoder bitmap = new BitDecoder(stream, 2);
+      final BitDecoder bitmap = new BitDecoder(stream, 2, bucketsLen);
       for (int i = 0; i < bucketsLen; ++i) {
         final long v = bitmap.read();
         buckets[i] = (v < 2) ? (int) v : -1;
       }
 
       int index = 0;
-      final BitDecoder data = new BitDecoder(stream, maxWidth);
+      final BitDecoder data = new BitDecoder(stream, maxWidth, valueLength);
       for (int i = 0; i < valueLength; ++i) {
         index = ArrayUtil.indexOf(buckets, index, buckets.length - index, -1);
         buckets[index] = (int)(2 + data.read());
