@@ -23,7 +23,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -31,10 +35,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
 
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.collections.ArrayUtil;
@@ -44,10 +51,15 @@ public final class JsonUtil {
   private static final Gson GSON = new GsonBuilder()
       .registerTypeAdapter(byte[].class, new BytesTypeAdapter())
       .setDateFormat(JSON_DATE_FORMAT_PATTERN)
+      .disableHtmlEscaping()
       .create();
 
   private JsonUtil() {
     // no-op
+  }
+
+  public static Gson getGson() {
+    return GSON;
   }
 
   // ================================================================================
@@ -81,6 +93,30 @@ public final class JsonUtil {
     }
   }
 
+  public static <T> T fromJson(final InputStreamReader stream, final Class<T> classOfT)
+      throws IOException {
+    try (JsonReader reader = new JsonReader(stream)) {
+      return GSON.fromJson(reader, classOfT);
+    }
+  }
+
+  public static <K,V> Map<K,V> hashMapFromJson(final String json,
+      final Class<K> kClass, final Class<V> vClass) {
+    final Type type = TypeToken.getParameterized(HashMap.class, kClass, vClass).getType();
+    return GSON.fromJson(json, type);
+  }
+
+  public static <K,V> Map<K,V> hashMapFromJson(final JsonObject json,
+      final Class<K> kClass, final Class<V> vClass) {
+    final Type type = TypeToken.getParameterized(HashMap.class, kClass, vClass).getType();
+    return GSON.fromJson(json, type);
+  }
+
+  public static <T> List<T> listFromJson(final String json, final Class<T> clazz) {
+    final Type type = TypeToken.getParameterized(ArrayList.class, clazz).getType();
+    return GSON.fromJson(json, type);
+  }
+
   // ================================================================================
   //  To Json helpers
   // ================================================================================
@@ -93,8 +129,27 @@ public final class JsonUtil {
   }
 
   // ================================================================================
+  //  Json Element helpers
+  // ================================================================================
+  public static boolean isNull(final JsonElement elem) {
+    return elem == null || elem.isJsonNull();
+  }
+
+  // ================================================================================
   //  Json Array helpers
   // ================================================================================
+  public static JsonArray newJsonArray(final int[] buf) {
+    return newJsonArray(buf, 0, ArrayUtil.length(buf));
+  }
+
+  public static JsonArray newJsonArray(final int[] buf, final int off, final int len) {
+    final JsonArray json = new JsonArray();
+    for (int i = 0; i < len; ++i) {
+      json.add(buf[off + i]);
+    }
+    return json;
+  }
+
   public static JsonArray newJsonArray(final long[] buf) {
     return newJsonArray(buf, 0, ArrayUtil.length(buf));
   }
@@ -105,6 +160,98 @@ public final class JsonUtil {
       json.add(buf[off + i]);
     }
     return json;
+  }
+
+  public static JsonArray newJsonArray(final String[] buf) {
+    return newJsonArray(buf, 0, ArrayUtil.length(buf));
+  }
+
+  public static JsonArray newJsonArray(final String[] buf, final int off, final int len) {
+    final JsonArray json = new JsonArray();
+    for (int i = 0; i < len; ++i) {
+      json.add(buf[off + i]);
+    }
+    return json;
+  }
+
+  // ================================================================================
+  //  Json Object helpers
+  // ================================================================================
+  public static JsonObject newJsonObject(final String key, final String value) {
+    final JsonObject json = new JsonObject();
+    json.addProperty(key, value);
+    return json;
+  }
+
+  public static JsonObject newJsonObject(final String key, final Object value) {
+    return newJsonObject(key, JsonUtil.toJsonTree(value));
+  }
+
+  public static JsonObject newJsonObject(final String key, final JsonElement value) {
+    final JsonObject json = new JsonObject();
+    json.add(key, value);
+    return json;
+  }
+
+  // ================================================================================
+  //  Json Object helpers
+  // ================================================================================
+  public static boolean isEmpty(final JsonObject obj) {
+    return obj == null || obj.size() == 0;
+  }
+
+  public static boolean isNotEmpty(final JsonObject obj) {
+    return obj != null && obj.size() > 0;
+  }
+
+  public static boolean getBoolean(final JsonObject json, final String memberName, final boolean defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsBoolean();
+  }
+
+  public static int getInt(final JsonObject json, final String memberName, final int defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsInt();
+  }
+
+  public static long getLong(final JsonObject json, final String memberName, final long defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsLong();
+  }
+
+  public static float getFloat(final JsonObject json, final String memberName, final float defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsFloat();
+  }
+
+  public static double getDouble(final JsonObject json, final String memberName, final double defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsDouble();
+  }
+
+  public static String getString(final JsonObject json, final String memberName, final String defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsString();
+  }
+
+  public static JsonElement getJsonElement(final JsonObject json, final String memberName, final JsonElement defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element;
+  }
+
+  public static JsonObject getJsonObject(final JsonObject json, final String memberName, final JsonObject defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsJsonObject();
+  }
+
+  public static JsonArray getJsonArray(final JsonObject json, final String memberName, final JsonArray defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsJsonArray();
+  }
+
+  public static JsonPrimitive getJsonPrimitive(final JsonObject json, final String memberName, final JsonPrimitive defaultValue) {
+    final JsonElement element = json.get(memberName);
+    return (element == null || element.isJsonNull()) ? defaultValue : element.getAsJsonPrimitive();
   }
 
   // ================================================================================

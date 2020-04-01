@@ -22,11 +22,18 @@ import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.telemetry.ConcurrentHistogram;
+import tech.dnaco.telemetry.ConcurrentTimeRangeGauge;
 import tech.dnaco.telemetry.TelemetryCollector;
 import tech.dnaco.telemetry.TelemetryCollectorGroup;
 import tech.dnaco.telemetry.TimeRangeGauge;
 
 public class ServiceStats extends TelemetryCollectorGroup {
+  private final ConcurrentTimeRangeGauge registeredChannels = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_COUNT)
+      .setName("connected_channels")
+      .setLabel("Registered Channels")
+      .register(this, new ConcurrentTimeRangeGauge(60, 1, TimeUnit.MINUTES));
+
   private final TimeRangeGauge queueHourly = new TelemetryCollector.Builder()
       .setUnit(HumansUtil.HUMAN_COUNT)
       .setName("queue_hourly")
@@ -58,8 +65,10 @@ public class ServiceStats extends TelemetryCollectorGroup {
   }
 
   public void addChannel(SocketAddress remoteAddress) {
+    registeredChannels.inc();
   }
 
   public void removeChannel() {
+    registeredChannels.dec();
   }
 }

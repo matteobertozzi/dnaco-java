@@ -75,7 +75,7 @@ public class BinaryService extends AbstractService {
     @Override
     public void channelRead0(final ChannelHandlerContext ctx, final BinaryPacket packet) {
       final BinaryServiceSession session = ctx.channel().attr(ATTR_KEY_SESSION).get();
-      for (BinaryServiceListener listener: service.listeners) {
+      for (final BinaryServiceListener listener: service.listeners) {
         listener.packetReceived(session, packet);
       }
     }
@@ -91,7 +91,7 @@ public class BinaryService extends AbstractService {
 
       final BinaryServiceSession session = new BinaryServiceSession(ctx);
       ctx.channel().attr(ATTR_KEY_SESSION).set(session);
-      for (BinaryServiceListener listener: service.listeners) {
+      for (final BinaryServiceListener listener: service.listeners) {
         listener.connect(session);
       }
 
@@ -103,7 +103,7 @@ public class BinaryService extends AbstractService {
       Logger.debug("channel unregistered: {}", ctx.channel().remoteAddress());
 
       final BinaryServiceSession session = ctx.channel().attr(ATTR_KEY_SESSION).getAndSet(null);
-      for (BinaryServiceListener listener: service.listeners) {
+      for (final BinaryServiceListener listener: service.listeners) {
         listener.disconnect(session);
       }
 

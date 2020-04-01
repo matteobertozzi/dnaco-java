@@ -15,27 +15,27 @@
  * limitations under the License.
  */
 
-package tech.dnaco.server.binary;
+package tech.dnaco.telemetry;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.MessageToByteEncoder;
+public class ConcurrentTopK extends TopK {
+	public ConcurrentTopK(final TopType type, final int k) {
+		super(type, k);
+  }
 
-@Sharable
-public final class BinaryEncoder extends MessageToByteEncoder<BinaryPacket> {
-  public static final BinaryEncoder INSTANCE = new BinaryEncoder();
+  public void add(final String key, final long value) {
+    add(key, value, null);
+  }
 
-  private BinaryEncoder() {
-    // no-op
+  public void add(final String key, final long value, final String traceId) {
+    synchronized (this) {
+      super.add(key, value, traceId);
+    }
   }
 
   @Override
-  protected void encode(final ChannelHandlerContext ctx, final BinaryPacket msg, final ByteBuf out) throws Exception {
-    out.writeInt(BinaryPacket.MAGIC);
-    out.writeLong(msg.getPkgId());
-    out.writeInt(msg.getCommand());
-    out.writeInt(msg.getDataLength());
-    out.writeBytes(msg.getData());
+  public TopKData getSnapshot() {
+    synchronized (this) {
+      return super.getSnapshot();
+    }
   }
 }

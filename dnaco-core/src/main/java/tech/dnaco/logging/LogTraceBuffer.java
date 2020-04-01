@@ -47,6 +47,10 @@ public final class LogTraceBuffer {
     private long nextTraces = 0;
 
     public void add(final String projectId, final LogEntry entry) {
+      // non posso tenere la log entry, perche' i parametri possono avere weak ref
+    }
+
+    public void addBad(final String projectId, final LogEntry entry) {
       if (!StringUtil.equals(currentProjectId, projectId)) {
         flushTraces(currentProjectId);
         this.currentProjectId = projectId;

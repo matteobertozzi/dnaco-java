@@ -18,6 +18,8 @@
 package tech.dnaco.server;
 
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.Attribute;
+import io.netty.util.AttributeKey;
 
 public class AbstractServiceSession {
   private final ChannelHandlerContext ctx;
@@ -36,5 +38,9 @@ public class AbstractServiceSession {
 
   protected void disconnect() {
     ctx.close();
+  }
+
+  protected <T> Attribute<T> attr(final AttributeKey<T> key) {
+    return ctx.channel().attr(key);
   }
 }

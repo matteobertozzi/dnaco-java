@@ -106,6 +106,7 @@ public class StringObjectMap extends HashMap<String, Object> {
     return value != null ? value.booleanValue() : defaultValue;
   }
 
+  @SuppressWarnings("unchecked")
   public <T extends Enum<T>> T getEnumValue(final String key, final T defaultValue) {
     final T value = (T) this.get(key);
     return value != null ? value : defaultValue;

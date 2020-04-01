@@ -81,20 +81,26 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
 
   @Override
   public TelemetryCollectorData getSnapshot() {
-    return new GroupData();
+    return new GroupData(toJson(), humanReport());
   }
 
   private static final class GroupData implements TelemetryCollectorData {
+    private final JsonObject json;
+    private final String report;
+
+    private GroupData(JsonObject json, String report) {
+      this.json = json;
+      this.report = report;
+    }
+
     @Override
     public JsonElement toJson() {
-      // TODO Auto-generated method stub
-      return null;
+      return json;
     }
 
     @Override
     public StringBuilder toHumanReport(StringBuilder report, HumanLongValueConverter humanConverter) {
-      // TODO Auto-generated method stub
-      return null;
+      return report.append(this.report);
     }
   }
 

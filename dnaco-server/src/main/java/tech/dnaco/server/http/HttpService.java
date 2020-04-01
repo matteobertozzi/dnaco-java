@@ -47,7 +47,10 @@ import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.LoggerSession;
 import tech.dnaco.server.AbstractService;
 import tech.dnaco.server.ServiceEventLoop;
+import tech.dnaco.server.stats.ServiceStats;
+import tech.dnaco.server.stats.ServiceStatsHandler;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.telemetry.TelemetryCollector;
 
 public class HttpService extends AbstractService {
   private static final AttributeKey<WebSocketSession> ATTR_KEY_WS_SESSION = AttributeKey.valueOf("wsId");
@@ -59,6 +62,10 @@ public class HttpService extends AbstractService {
 
   private final CopyOnWriteArrayList<WebSocketListener> webSocketListeners = new CopyOnWriteArrayList<>();
   private final CopyOnWriteArrayList<HttpListener> httpListeners = new CopyOnWriteArrayList<>();
+
+  private final ServiceStats stats = new TelemetryCollector.Builder()
+    .setName("http_service")
+    .register(new ServiceStats("http_service"));
 
   public HttpService(final ServiceEventLoop eventLoop) {
     this(eventLoop, null);
@@ -73,10 +80,12 @@ public class HttpService extends AbstractService {
     setBootstrap(newTcpServerBootstrap(eventLoop, new ChannelInitializer<SocketChannel>() {
       private final WebSocketFrameHandler wsHandler = new WebSocketFrameHandler(HttpService.this);
       private final HttpRequestHandler httpHandler = new HttpRequestHandler(HttpService.this);
+      private final ServiceStatsHandler statsHandler = new ServiceStatsHandler(stats);
 
       @Override
       public void initChannel(final SocketChannel channel) throws Exception {
         final ChannelPipeline pipeline = channel.pipeline();
+        pipeline.addLast(statsHandler);
 
         // setup http pipeline
         pipeline.addLast(new HttpServerCodec());
@@ -111,11 +120,11 @@ public class HttpService extends AbstractService {
     this.httpListeners.remove(listener);
   }
 
-  public void registerHttpListener(final WebSocketListener listener) {
+  public void registerWebSocketListener(final WebSocketListener listener) {
     this.webSocketListeners.add(listener);
   }
 
-  public void unregisterHttpListener(final WebSocketListener listener) {
+  public void unregisterWebSocketListener(final WebSocketListener listener) {
     this.webSocketListeners.remove(listener);
   }
 

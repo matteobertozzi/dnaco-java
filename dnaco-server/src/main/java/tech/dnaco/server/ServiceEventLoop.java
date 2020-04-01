@@ -34,9 +34,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.concurrent.ScheduledFuture;
-import io.netty.util.concurrent.UnorderedThreadPoolEventExecutor;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.util.NamedThreadFactory;
 
@@ -80,7 +80,7 @@ public class ServiceEventLoop implements AutoCloseable {
       Logger.info("Using NIO event loop - bossGroup={} workerGroup={}", bossGroups, workerGroups);
     }
 
-    this.scheduledGroup = new UnorderedThreadPoolEventExecutor(scheduledGroups, new NamedThreadFactory("serverScheduledGroup"));
+    this.scheduledGroup = new DefaultEventExecutorGroup(scheduledGroups, new NamedThreadFactory("serverScheduledGroup"));
   }
 
   public Class<? extends ServerChannel> getServerChannelClass() {

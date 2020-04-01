@@ -129,15 +129,12 @@ public final class BaseN {
     long remaining = value < 0 ? -value : value;
 
     final StringBuilder result = new StringBuilder();
-    while (true) {
+    do {
       final int d = (int) (remaining % base);
       remaining /= base;
 
       result.append(dictionary[d]);
-      if (remaining == 0) {
-        break;
-      }
-    }
+    } while (remaining != 0);
     return result.reverse().toString();
   }
 
@@ -150,15 +147,12 @@ public final class BaseN {
     }
 
     final StringBuilder result = new StringBuilder();
-    while (true) {
+    do {
       final int d = remaining.remainder(base).intValue();
       remaining = remaining.divide(base);
 
       result.append(dictionary[d]);
-      if (remaining.equals(BigInteger.ZERO)) {
-        break;
-      }
-    }
+    } while (!remaining.equals(BigInteger.ZERO));
     return result.reverse().toString();
   }
 

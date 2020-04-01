@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
- package tech.dnaco.tracing;
+package tech.dnaco.tracing;
 
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicLong;

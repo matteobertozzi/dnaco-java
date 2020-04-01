@@ -27,7 +27,7 @@ public class BinaryDecoder extends ByteToMessageDecoder {
   private static final int MIN_BYTES = 4 + 8 + 4 + 4;
 
   @Override
-  protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+  protected void decode(final ChannelHandlerContext ctx, final ByteBuf in, final List<Object> out) throws Exception {
     while (true) {
       if (in.readableBytes() < MIN_BYTES) break;
       if (in.readableBytes() < (MIN_BYTES + in.getInt(16))) break;
@@ -42,9 +42,8 @@ public class BinaryDecoder extends ByteToMessageDecoder {
       final long pkgId = in.readLong();
       final int command = in.readInt();
       final int dataLength = in.readInt();
-      final byte[] data = new byte[dataLength];
-      in.readBytes(data);
-      out.add(new BinaryPacket(pkgId, command, data));
+      final ByteBuf data = in.readRetainedSlice(dataLength);
+      out.add(BinaryPacket.alloc(pkgId, command, data));
     }
   }
 }

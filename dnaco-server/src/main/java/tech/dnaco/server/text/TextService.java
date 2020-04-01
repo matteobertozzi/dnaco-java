@@ -39,12 +39,15 @@ import tech.dnaco.server.stats.ServiceStats;
 import tech.dnaco.server.stats.ServiceStatsHandler;
 import tech.dnaco.server.stats.ServiceStatsHandler.ChannelStats;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.TelemetryCollector;
 
 public class TextService extends AbstractService {
   private static final AttributeKey<TextServiceSession> ATTR_KEY_SESSION = AttributeKey.valueOf("sid");
 
   private final CopyOnWriteArrayList<TextServiceListener> listeners = new CopyOnWriteArrayList<>();
-  private final ServiceStats stats = new ServiceStats("text_service");
+  private final ServiceStats stats = new TelemetryCollector.Builder()
+    .setName("text_service")
+    .register(new ServiceStats("text_service"));
 
   public TextService(final ServiceEventLoop eventLoop) {
     this(eventLoop, 1 << 10);

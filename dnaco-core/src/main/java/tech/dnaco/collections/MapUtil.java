@@ -80,7 +80,7 @@ public final class MapUtil {
     return vList;
   }
 
-  public static <K, V> Set<V> addToOrderedSet(final Map<K, Set<V>> map, final K key, final V newValue) {
+  public static <K, V extends Comparable<V>> Set<V> addToOrderedSet(final Map<K, Set<V>> map, final K key, final V newValue) {
     final Set<V> values = map.get(key);
     if (values != null) {
       values.add(newValue);

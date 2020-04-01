@@ -73,12 +73,11 @@ public class CounterMapData implements TelemetryCollectorData {
     if (humanConverter == null) humanConverter = HumansUtil.HUMAN_COUNT;
 
     report.append("\n");
-    final double dtotal = total;
     try (Formatter formatter = new Formatter(report)) {
       for (int i = 0; i < keys.length; ++i) {
         final long value = events[i];
         report.append(" - ");
-        formatter.format("%5.2f", 100 * (value / dtotal));
+        formatter.format("%5.2f", 100 * (value / (double) total));
         report.append(" (");
         formatter.format("%7s", humanConverter.toHuman(value));
         report.append(") - ");

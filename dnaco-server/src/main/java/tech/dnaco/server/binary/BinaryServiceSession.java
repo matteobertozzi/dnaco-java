@@ -24,4 +24,8 @@ public class BinaryServiceSession extends AbstractServiceSession {
   protected BinaryServiceSession(final ChannelHandlerContext ctx) {
     super(ctx);
   }
+
+  public void write(final BinaryPacket packet) {
+    super.writeAndFlush(packet);
+  }
 }

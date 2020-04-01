@@ -56,7 +56,6 @@ public class Jwt {
   // Get claim related
   // ------------------------------------------------------------------------------------------
   public String getIssuer() {
-    System.out.println("----------> " + dat);
     return getClaimAsString(CLAIM_ISSUER);
   }
 

@@ -15,27 +15,22 @@
  * limitations under the License.
  */
 
-package tech.dnaco.server.binary;
+package tech.dnaco.telemetry;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.MessageToByteEncoder;
+import java.util.concurrent.TimeUnit;
 
-@Sharable
-public final class BinaryEncoder extends MessageToByteEncoder<BinaryPacket> {
-  public static final BinaryEncoder INSTANCE = new BinaryEncoder();
-
-  private BinaryEncoder() {
-    // no-op
+public class ConcurrentTimeRangeGauge extends ConcurrentTimeRangeCounter {
+	public ConcurrentTimeRangeGauge(final long maxInterval, final long window, final TimeUnit unit) {
+		super(maxInterval, window, unit);
   }
 
   @Override
-  protected void encode(final ChannelHandlerContext ctx, final BinaryPacket msg, final ByteBuf out) throws Exception {
-    out.writeInt(BinaryPacket.MAGIC);
-    out.writeLong(msg.getPkgId());
-    out.writeInt(msg.getCommand());
-    out.writeInt(msg.getDataLength());
-    out.writeBytes(msg.getData());
+  protected long computeNewValue(final long newValue) {
+    return getPrevValue() + newValue;
+  }
+
+  @Override
+  protected void injectZeros(final long now) {
+    injectZeros(now, true);
   }
 }

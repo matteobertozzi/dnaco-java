@@ -19,47 +19,58 @@ package tech.dnaco.server.binary;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import tech.dnaco.logging.Logger;
+import tech.dnaco.logging.LoggerSession;
+import tech.dnaco.server.ClientEventLoop;
 import tech.dnaco.server.ServiceEventLoop;
 
 public class BinaryClient {
   private final AtomicLong seqId = new AtomicLong(0);
 
+  private final AtomicBoolean connected = new AtomicBoolean(false);
   private final Bootstrap bootstrap;
   private SocketAddress address;
   private ChannelFuture channel;
 
   public BinaryClient(final ServiceEventLoop eventLoop) {
-    final BinaryClientHandler handler = new BinaryClientHandler(this);
+    this(eventLoop.getWorkerGroup(), eventLoop.getClientChannelClass());
+  }
+
+  public BinaryClient(final ClientEventLoop eventLoop) {
+    this(eventLoop.getWorkerGroup(), eventLoop.getChannelClass());
+  }
+
+  private BinaryClient(final EventLoopGroup workerGroup, final Class<? extends Channel> channelClass) {
     this.bootstrap = new Bootstrap()
-      .group(eventLoop.getWorkerGroup())
-      .channel(eventLoop.getClientChannelClass())
+      .group(workerGroup)
+      .channel(channelClass)
       .option(ChannelOption.TCP_NODELAY, true)
       .handler(new ChannelInitializer<SocketChannel>() {
-          @Override
-          public void initChannel(SocketChannel ch) throws Exception {
-              ch.pipeline().addLast(new LoggingHandler(LogLevel.TRACE));
-              ch.pipeline().addLast(BinaryEncoder.INSTANCE);
-              ch.pipeline().addLast(new BinaryDecoder());
-              ch.pipeline().addLast(handler);
-          }
+        @Override
+        public void initChannel(final SocketChannel ch) throws Exception {
+          ch.pipeline().addLast(new LoggingHandler(LogLevel.TRACE));
+          ch.pipeline().addLast(BinaryEncoder.INSTANCE);
+          ch.pipeline().addLast(new BinaryDecoder());
+          ch.pipeline().addLast(new BinaryClientHandler(BinaryClient.this));
+        }
       });
   }
 
@@ -68,60 +79,98 @@ public class BinaryClient {
   }
 
   public void connect(final SocketAddress address) throws InterruptedException {
+    if (connected.get()) disconnect();
+
     this.address = address;
     this.channel = this.bootstrap.connect(address).sync();
+    this.connected.set(true);
   }
 
   public void disconnect() throws InterruptedException {
-    this.channel.channel().closeFuture().sync();
+    if (!connected.get()) return;
+
+    final ChannelFuture future = channel.channel().close();
+    this.channel = null;
+    future.sync();
   }
 
-  public void send(final int command, final byte[] data, BinaryPacketReceiver receiver) {
-    writePacket(new BinaryPacket(seqId.incrementAndGet(), command, data), receiver);
+  private final ConcurrentHashMap<Long, BinaryPacketReceiver> subscriptionPackets = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Long, InFlightPacket> pendingPackets = new ConcurrentHashMap<>();
+
+  public CompletableFuture<BinaryPacket> send(final int command, final byte[] data) {
+    return send(command, Unpooled.wrappedBuffer(data));
   }
 
-  public byte[] send(final int command, final byte[] data, final int timeout, final TimeUnit unit) throws InterruptedException {
-    final AtomicReference<byte[]> result = new AtomicReference<>();
-    final CountDownLatch latch = new CountDownLatch(1);
-    send(command, data, (resp) -> {
-      result.set(resp.getData());
-      latch.countDown();
-    });
-    latch.await(timeout, unit);
-    return result.get();
+  public CompletableFuture<BinaryPacket> send(final int command, final ByteBuf data) {
+    final long pkgId = seqId.incrementAndGet();
+    final InFlightPacket future = new InFlightPacket(pkgId);
+    future.whenComplete((result, exception) -> pendingPackets.remove(pkgId));
+    pendingPackets.put(pkgId, future);
+    channel.channel().writeAndFlush(BinaryPacket.alloc(pkgId, command, data));
+    return future;
+  }
+
+  public void subscribe(final long pkgId, final BinaryPacketReceiver receiver) {
+    subscriptionPackets.put(pkgId, receiver);
+  }
+
+  public void unsubscribe(final long pkgId) {
+    subscriptionPackets.remove(pkgId);
   }
 
   private void reconnect() throws InterruptedException {
-    this.channel.channel().close();
-    this.seqId.set(0);
+    if (!connected.get() || this.channel == null) {
+      //System.out.println("TRYING TO RECONNECT a DISCONNECTED client");
+      return;
+    }
+
+    this.channel.channel().close().sync();
+    //this.seqId.set(0);
     this.channel = this.bootstrap.connect(address);
-    System.out.println("RECONNECT");
+    //System.out.println("RECONNECT");
+    try {
+      this.channel.sync();
+      //System.out.println(" ---> RECONNECT DONE");
+    } catch (Exception e) {
+      //System.out.println(" ---> RECONNECT FAILED: " + e.getMessage());
+    }
   }
 
-  private final HashMap<BinaryPacket, BinaryPacketReceiver> pendingPackets = new HashMap<>();
-  private void writePacket(final BinaryPacket packet, final BinaryPacketReceiver receiver) {
-    pendingPackets.put(packet, receiver);
-    channel.channel().writeAndFlush(packet);
+  private final class InFlightPacket extends CompletableFuture<BinaryPacket> {
+    private final long pkgId;
+
+    private InFlightPacket(final long pkgId) {
+      this.pkgId = pkgId;
+    }
+
+    private void received(final BinaryPacket respPacket) {
+      this.complete(respPacket);
+    }
   }
 
   private void packetReceived(final BinaryPacket packet) {
-    System.out.println(" ---> PACKET RECEIVED " + pendingPackets.size());
-    final Iterator<Entry<BinaryPacket, BinaryPacketReceiver>> it = pendingPackets.entrySet().iterator();
-    while (it.hasNext()) {
-      final Entry<BinaryPacket, BinaryPacketReceiver> entry = it.next();
-      if (entry.getKey().getPkgId() == packet.getPkgId()) {
-        entry.getValue().packetReceived(packet);
-        it.remove();
-        break;
-      }
+    // TODO: add a flag to indicate response vs push
+
+    //System.out.println(" ---> PACKET RECEIVED " + pendingPackets.size());
+    final InFlightPacket inFlightPacket = pendingPackets.remove(packet.getPkgId());
+    if (inFlightPacket != null) {
+      inFlightPacket.received(packet);
+      return;
     }
+
+    final BinaryPacketReceiver subReceiver = subscriptionPackets.get(packet.getPkgId());
+    if (subReceiver != null) {
+      subReceiver.packetReceived(packet);
+      return;
+    }
+
+    Logger.warn("no receiver for packet: {}", packet);
   }
 
   public interface BinaryPacketReceiver {
     void packetReceived(final BinaryPacket packet);
   }
 
-  @Sharable
   private static final class BinaryClientHandler extends SimpleChannelInboundHandler<BinaryPacket> {
     private final BinaryClient client;
     private long lastAck = -1;
@@ -131,32 +180,43 @@ public class BinaryClient {
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, BinaryPacket msg) throws Exception {
-      System.out.println("CLIENT RECEIVED: " + msg);
+    protected void channelRead0(final ChannelHandlerContext ctx, final BinaryPacket msg) throws Exception {
+      //System.out.println("CLIENT RECEIVED: " + msg);
       lastAck = Math.max(lastAck, msg.getPkgId());
       client.packetReceived(msg);
     }
 
     @Override
-    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+    public void channelUnregistered(final ChannelHandlerContext ctx) throws Exception {
+      //System.out.println("UNREGISTERED");
       client.reconnect();
-      System.out.println("UNREGISTERED");
-        ctx.fireChannelUnregistered();
+      ctx.fireChannelUnregistered();
     }
+
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(final ChannelHandlerContext ctx) throws Exception {
+      client.connected.set(true);
+      System.out.println("ACTIVE");
+      ctx.fireChannelInactive();
+    }
+
+    @Override
+    public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
       System.out.println("INACTIVE");
-        ctx.fireChannelInactive();
+      ctx.fireChannelInactive();
     }
+
     @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+    public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
       System.out.println("EVENT " + evt);
-        ctx.fireUserEventTriggered(evt);
+      ctx.fireUserEventTriggered(evt);
     }
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
+
+    public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause)
             throws Exception {
-              System.out.println("EXCEPTION " + cause.getMessage());
-        ctx.fireExceptionCaught(cause);
+      Logger.setSession(LoggerSession.newSystemGeneralSession());
+      Logger.error(cause, "uncaught exception");
+      ctx.fireExceptionCaught(cause);
     }
   }
 }

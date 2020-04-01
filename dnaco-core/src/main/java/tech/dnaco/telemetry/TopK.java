@@ -47,7 +47,7 @@ public class TopK implements TelemetryCollector {
     add(key, value, null);
   }
 
-  public synchronized void add(final String key, final long value, final String traceId) {
+  public void add(final String key, final long value, final String traceId) {
     final int keyHash = hash(key);
     final int entryIndex = findEntry(key, keyHash);
     final MinMaxEntry entry;

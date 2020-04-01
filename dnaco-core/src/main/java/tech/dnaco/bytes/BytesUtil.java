@@ -49,7 +49,7 @@ public final class BytesUtil {
   //  Bytes equals/compare util
   // ================================================================================
   public static boolean equals(final byte[] a, final byte[] b) {
-    return (isEmpty(a) && isEmpty(b)) ? true : Arrays.equals(a, b);
+    return (isEmpty(a) && isEmpty(b)) || Arrays.equals(a, b);
   }
 
   public static boolean equals(final byte[] a, final int aOff, final int aLen,

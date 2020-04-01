@@ -457,6 +457,10 @@ public final class ArrayUtil {
     return -1;
   }
 
+  public static boolean contains(final int value, final int[] items) {
+    return indexOf(value, items) >= 0;
+  }
+
   public static int indexOf(final int value, final int[] items) {
     for (int i = 0; i < items.length; ++i) {
       if (items[i] == value) {
