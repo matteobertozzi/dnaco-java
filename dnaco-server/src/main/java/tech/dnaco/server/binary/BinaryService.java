@@ -25,6 +25,8 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.compression.ZlibCodecFactory;
+import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.util.AttributeKey;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.LoggerSession;
@@ -43,6 +45,8 @@ public class BinaryService extends AbstractService {
       @Override
       public void initChannel(final SocketChannel channel) throws Exception {
         final ChannelPipeline pipeline = channel.pipeline();
+        pipeline.addLast(ZlibCodecFactory.newZlibEncoder(ZlibWrapper.GZIP));
+        pipeline.addLast(ZlibCodecFactory.newZlibDecoder(ZlibWrapper.GZIP));
         pipeline.addLast(BinaryEncoder.INSTANCE);
         pipeline.addLast(new BinaryDecoder());
         pipeline.addLast(handler);

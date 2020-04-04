@@ -138,7 +138,7 @@ public class BinaryPacket extends AbstractReferenceCounted {
   public static int writeByteString(final ByteBuf buf, final ByteBuf value) {
     final int len = value.readableBytes();
     buf.writeShort(len);
-    buf.writeBytes(value);
+    buf.writeBytes(value.slice());
     return 2 + len;
   }
 }

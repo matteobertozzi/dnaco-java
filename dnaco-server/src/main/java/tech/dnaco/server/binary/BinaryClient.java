@@ -32,9 +32,12 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.compression.ZlibCodecFactory;
+import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import tech.dnaco.logging.Logger;
@@ -65,25 +68,29 @@ public class BinaryClient {
       .option(ChannelOption.TCP_NODELAY, true)
       .handler(new ChannelInitializer<SocketChannel>() {
         @Override
-        public void initChannel(final SocketChannel ch) throws Exception {
-          ch.pipeline().addLast(new LoggingHandler(LogLevel.TRACE));
-          ch.pipeline().addLast(BinaryEncoder.INSTANCE);
-          ch.pipeline().addLast(new BinaryDecoder());
-          ch.pipeline().addLast(new BinaryClientHandler(BinaryClient.this));
+        public void initChannel(final SocketChannel channel) throws Exception {
+          final ChannelPipeline pipeline = channel.pipeline();
+          pipeline.addLast(ZlibCodecFactory.newZlibEncoder(ZlibWrapper.GZIP));
+          pipeline.addLast(ZlibCodecFactory.newZlibDecoder(ZlibWrapper.GZIP));
+          pipeline.addLast(new LoggingHandler(LogLevel.TRACE));
+          pipeline.addLast(BinaryEncoder.INSTANCE);
+          pipeline.addLast(new BinaryDecoder());
+          pipeline.addLast(new BinaryClientHandler(BinaryClient.this));
         }
       });
   }
 
-  public void connect(final String host, final int port) throws InterruptedException {
-    connect(InetSocketAddress.createUnresolved(host, port));
+  public BinaryClient connect(final String host, final int port) throws InterruptedException {
+    return connect(InetSocketAddress.createUnresolved(host, port));
   }
 
-  public void connect(final SocketAddress address) throws InterruptedException {
+  public BinaryClient connect(final SocketAddress address) throws InterruptedException {
     if (connected.get()) disconnect();
 
     this.address = address;
     this.channel = this.bootstrap.connect(address).sync();
     this.connected.set(true);
+    return this;
   }
 
   public void disconnect() throws InterruptedException {
