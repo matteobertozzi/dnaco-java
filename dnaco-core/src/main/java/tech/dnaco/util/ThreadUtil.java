@@ -108,6 +108,28 @@ public final class ThreadUtil {
     }
   }
 
+  public static boolean conditionAwait(final Condition waitCond) {
+    try {
+      waitCond.await();
+      return true;
+    } catch (final InterruptedException e) {
+      Thread.interrupted();
+      System.err.println("wait-cond got interrupted");
+      return false;
+    }
+  }
+
+  public static boolean conditionAwait(final Condition waitCond, final Lock lock) {
+    if (lock.tryLock()) {
+      try {
+        return conditionAwait(waitCond);
+      } finally {
+        lock.unlock();
+      }
+    }
+    return false;
+  }
+
   public static boolean conditionAwait(final Condition waitCond, final long time, final TimeUnit unit) {
     try {
       return waitCond.await(time, unit);

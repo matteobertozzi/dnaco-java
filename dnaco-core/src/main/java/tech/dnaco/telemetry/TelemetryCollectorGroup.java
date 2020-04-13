@@ -17,9 +17,8 @@
 
 package tech.dnaco.telemetry;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -28,7 +27,7 @@ import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.strings.StringUtil;
 
 public class TelemetryCollectorGroup implements TelemetryCollector {
-  private final HashMap<String, CollectorInfo> collectorMap = new HashMap<>();
+  private final ConcurrentSkipListMap<String, CollectorInfo> collectorMap = new ConcurrentSkipListMap<>();
   private final String name;
 
   public TelemetryCollectorGroup(final String name) {
@@ -39,39 +38,83 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     return name;
   }
 
+  @SuppressWarnings("unchecked")
+  public <T extends TelemetryCollector> T get(final String name) {
+    final CollectorInfo info = collectorMap.get(name);
+    return (info != null) ? (T) info.collector : null;
+  }
+
   public String humanReport() {
     return humanReport(new StringBuilder());
   }
 
-  public String humanReport(final StringBuilder report) {
-    final ArrayList<String> keys = new ArrayList<>(collectorMap.keySet());
-    Collections.sort(keys);
+  public String humanReport(final String key) {
+    return humanReport(new StringBuilder(), key);
+  }
 
-    for (String key: keys) {
-      final CollectorInfo collectorInfo = collectorMap.get(key);
+  public String humanReport(final StringBuilder report) {
+    for (Entry<String, CollectorInfo> entry: collectorMap.entrySet()) {
+      humanReport(report, entry.getValue());
+    }
+    return report.toString();
+  }
+
+  public String humanReport(final StringBuilder report, final String key) {
+    if (StringUtil.isEmpty(key)) return humanReport(report);
+
+    for (Entry<String, CollectorInfo> entry: collectorMap.tailMap(key).entrySet()) {
+      if (!entry.getKey().startsWith(key)) continue;
+      humanReport(report, entry.getValue());
+    }
+    return report.toString();
+  }
+
+  private void humanReport(final StringBuilder report, final CollectorInfo collectorInfo) {
+    if (collectorInfo.isGroup()) {
+      report.append("======================================================================\n");
+      report.append(" ").append(collectorInfo.getLabel()).append(" (").append(collectorInfo.getName()).append(")").append("\n");
+      if (collectorInfo.hasHelp()) report.append(" ").append(collectorInfo.getHelp()).append("\n");
+      report.append("======================================================================\n");
+    } else {
       report.append("--- ").append(collectorInfo.label).append(" ---\n");
       report.append(collectorInfo.name).append(": ");
-      collectorInfo.getSnapshot().toHumanReport(report, collectorInfo.humanConverter);
-      report.append('\n');
     }
-    System.out.println(report);
-    return report.toString();
+    collectorInfo.getSnapshot().toHumanReport(report, collectorInfo.humanConverter);
+    report.append('\n');
   }
 
   public JsonObject toJson() {
     final JsonObject json = new JsonObject();
     for (CollectorInfo collectorInfo: collectorMap.values()) {
-      JsonElement snapshot = collectorInfo.getSnapshot().toJson();
-      json.add(collectorInfo.name, snapshot);
+      final TelemetryCollectorData snapshot = collectorInfo.getSnapshot();
+      json.add(collectorInfo.name, collectorInfo.toJson(snapshot));
     }
     return json;
   }
 
+  public JsonObject toJson(final String key) {
+    if (StringUtil.isEmpty(key)) return toJson();
+
+    final JsonObject json = new JsonObject();
+    for (Entry<String, CollectorInfo> entry: collectorMap.tailMap(key).entrySet()) {
+      if (!entry.getKey().startsWith(key)) continue;
+      final CollectorInfo collectorInfo = entry.getValue();
+      final TelemetryCollectorData snapshot = collectorInfo.getSnapshot();
+      json.add(collectorInfo.name, collectorInfo.toJson(snapshot));
+    }
+    return json;
+  }
+
+  public <T extends TelemetryCollectorGroup> T register(final String name, final String label, final String help, final T collector) {
+    return register(name, label, help, null, collector);
+  }
+
+  @SuppressWarnings("unchecked")
   public <T extends TelemetryCollector> T register(final String name, final String label, final String help,
       final HumanLongValueConverter humanConverter, final T collector) {
-    final CollectorInfo info = new CollectorInfo(name, label, help, humanConverter, collector);
-    collectorMap.put(info.name, info);
-    return collector;
+    final CollectorInfo newInfo = new CollectorInfo(name, label, help, humanConverter, collector);
+    final CollectorInfo oldInfo = collectorMap.putIfAbsent(newInfo.name, newInfo);
+    return oldInfo != null ? (T) oldInfo.collector : collector;
   }
 
   @Override
@@ -100,6 +143,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
 
     @Override
     public StringBuilder toHumanReport(StringBuilder report, HumanLongValueConverter humanConverter) {
+      report.append('\n');
       return report.append(this.report);
     }
   }
@@ -124,10 +168,32 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
       final JsonObject json = new JsonObject();
       json.addProperty("label", label);
       json.addProperty("type", collector.getType());
-      json.addProperty("unit", humanConverter.getHumanType());
       json.addProperty("help", help);
       json.add("data", snapshot.toJson());
+      if (humanConverter != null) {
+        json.addProperty("unit", humanConverter.getHumanType());
+      }
       return json;
+    }
+
+    public boolean isGroup() {
+      return collector instanceof TelemetryCollectorGroup;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public String getLabel() {
+      return label;
+    }
+
+    public boolean hasHelp() {
+      return StringUtil.isNotEmpty(help);
+    }
+
+    public String getHelp() {
+      return help;
     }
 
     public TelemetryCollectorData getSnapshot() {

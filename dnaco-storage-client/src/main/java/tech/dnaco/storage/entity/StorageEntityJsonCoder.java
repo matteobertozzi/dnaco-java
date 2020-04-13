@@ -20,13 +20,22 @@ public class StorageEntityJsonCoder implements StorageEntityEncoder, StorageEnti
   }
 
   public void reset() {
-    for (String key: new HashSet<>(json.keySet())) {
+    for (final String key: new HashSet<>(json.keySet())) {
       json.remove(key);
     }
   }
 
   @Override
-  public void addField(String name, Class<?> classType, Object value) {
+  public void addKeyField(final String name, final int index, final Class<?> classType, final Object value) {
+    addField(name, classType, value);
+  }
+
+  @Override
+  public void addValueField(final String name, final Class<?> classType, final Object value) {
+    addField(name, classType, value);
+  }
+
+  private void addField(final String name, final Class<?> classType, final Object value) {
     if (classType == boolean.class) {
       json.addProperty(name, (boolean)value);
     } else if (classType == int.class) {
@@ -47,7 +56,16 @@ public class StorageEntityJsonCoder implements StorageEntityEncoder, StorageEnti
   }
 
   @Override
-  public Object getField(String name, Class<?> classType) {
+  public Object getKeyField(final String name, final int index, final Class<?> classType) {
+    return getField(name, classType);
+  }
+
+  @Override
+  public Object getValueField(final String name, final Class<?> classType) {
+    return getField(name, classType);
+  }
+
+  private Object getField(final String name, final Class<?> classType) {
     if (classType == boolean.class) {
       return JsonUtil.getBoolean(json, name, false);
     } else if (classType == int.class) {

@@ -17,45 +17,122 @@
 
 package tech.dnaco.strings;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
-public class StringMap extends HashMap<String, String> {
-  private static final long serialVersionUID = 8330625977658465233L;
-
+public class StringMap implements Map<String, String> {
   private static final StringMap EMPTY_MAP = new StringMap(Collections.emptyMap());
 
+  private transient final Map<String, String> map;
+
   public StringMap() {
-    super();
+    this(new HashMap<>());
   }
 
   public StringMap(final int initialCapacity) {
-    super(initialCapacity);
+    this(new HashMap<>(initialCapacity));
   }
 
   public StringMap(final int initialCapacity, final float loadFactor) {
-    super(initialCapacity, loadFactor);
+    this(new HashMap<>(initialCapacity, loadFactor));
   }
 
-  public StringMap(final Map<String, String> properties) {
-    super(properties);
-  }
-
-  public StringMap(final List<Entry<String, String>> entries) {
-    super(entries.size());
-    for (final Entry<String, String> entry: entries) {
-      put(entry.getKey(), entry.getValue());
-    }
-  }
-
-  public static StringMap emptyMap() {
+  private static StringMap emptyMap() {
     return EMPTY_MAP;
   }
 
-  public static StringMap singletonMap(final String key, final String value) {
-    return new StringMap(Collections.singletonMap(key, value));
+  public static StringMap caseInsensitiveMap(final String key, final String value) {
+    return caseInsensitiveMap(Collections.singletonMap(key, value));
+  }
+
+  public static StringMap caseInsensitiveMap() {
+    return new StringMap(new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
+  }
+
+  public static StringMap caseInsensitiveMap(final Map<String, String> properties) {
+    final StringMap map = new StringMap(new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
+    map.putAll(properties);
+    return map;
+  }
+
+  public static StringMap caseInsensitiveMap(final List<Entry<String, String>> entries) {
+    final TreeMap<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    for (Entry<String, String> entry: entries) {
+      map.put(entry.getKey(), entry.getValue());
+    }
+    return new StringMap(map);
+  }
+
+  protected StringMap(final Map<String, String> properties) {
+    this.map = properties;
+  }
+
+  // --------------------------------------------------------------------------------
+  //  Map methods
+  // --------------------------------------------------------------------------------
+  @Override
+  public int size() {
+    return map.size();
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return map.isEmpty();
+  }
+
+  @Override
+  public boolean containsKey(Object key) {
+    return map.containsKey(key);
+  }
+
+  @Override
+  public boolean containsValue(Object value) {
+    return map.containsValue(value);
+  }
+
+  @Override
+  public String get(Object key) {
+    return map.get(key);
+  }
+
+  @Override
+  public String put(String key, String value) {
+    return map.put(key, value);
+  }
+
+  @Override
+  public String remove(Object key) {
+    return map.remove(key);
+  }
+
+  @Override
+  public void putAll(Map<? extends String, ? extends String> m) {
+    map.putAll(m);
+  }
+
+  @Override
+  public void clear() {
+    map.clear();
+  }
+
+  @Override
+  public Set<String> keySet() {
+    return map.keySet();
+  }
+
+  @Override
+  public Collection<String> values() {
+    return map.values();
+  }
+
+  @Override
+  public Set<Entry<String, String>> entrySet() {
+    return map.entrySet();
   }
 
   // --------------------------------------------------------------------------------
@@ -99,5 +176,10 @@ public class StringMap extends HashMap<String, String> {
 
   public int[] getIntList(final String key, final int[] defaultValue) {
     return StringConverter.toIntList(key, this.get(key), defaultValue);
+  }
+
+  @Override
+  public String toString() {
+    return map.toString();
   }
 }

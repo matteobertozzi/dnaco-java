@@ -21,6 +21,8 @@ import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.security.MessageDigest;
 
 import tech.dnaco.collections.ArrayUtil;
 import tech.dnaco.logging.Logger;
@@ -52,5 +54,21 @@ public final class IOUtil {
       throw new EOFException("unable to read " + len + ", got only " + ArrayUtil.length(buf));
     }
     return buf;
+  }
+
+  public static void readNBytes(final InputStream stream, final byte[] buf, final int off, final int len) throws IOException {
+    final int n = stream.readNBytes(buf, off, len);
+    if (n != len) {
+      throw new EOFException("unable to read " + len + ", got only " + len);
+    }
+  }
+
+  public static void write(OutputStream stream, MessageDigest digest, final byte[] buf) throws IOException {
+    write(stream, digest, buf, 0, buf.length);
+  }
+
+  public static void write(OutputStream stream, MessageDigest digest, final byte[] buf, final int off, final int len) throws IOException {
+    stream.write(buf, off, len);
+    digest.update(buf, off, len);
   }
 }

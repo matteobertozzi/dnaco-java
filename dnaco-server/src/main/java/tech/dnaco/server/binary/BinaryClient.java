@@ -138,7 +138,7 @@ public class BinaryClient {
     try {
       this.channel.sync();
       //System.out.println(" ---> RECONNECT DONE");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       //System.out.println(" ---> RECONNECT FAILED: " + e.getMessage());
     }
   }

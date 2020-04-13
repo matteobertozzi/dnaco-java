@@ -52,8 +52,12 @@ public class BinaryDispatcher implements BinaryServiceListener {
 
 	@Override
 	public void packetReceived(final BinaryServiceSession session, final BinaryPacket packet) {
+    if (BinaryCommands.isWriteRequest(packet)) {
+      // TODO
+    }
+
 		//Logger.debug("packet received {} {}", session, packet);
-		final BinaryServiceListener handler = handlers[(packet.getCommand() >> 20) & 0xfff];
+		final BinaryServiceListener handler = handlers[BinaryCommands.getCmdType(packet)];
 		if (handler != null) {
 			handler.packetReceived(session, packet);
 			return;

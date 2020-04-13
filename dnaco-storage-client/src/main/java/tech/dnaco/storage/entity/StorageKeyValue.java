@@ -17,22 +17,50 @@
 
 package tech.dnaco.storage.entity;
 
-import io.netty.buffer.ByteBuf;
+import java.nio.charset.StandardCharsets;
 
-public class StorageKeyValue {
+import io.netty.buffer.ByteBuf;
+import io.netty.util.AbstractReferenceCounted;
+import io.netty.util.ReferenceCounted;
+
+public class StorageKeyValue extends AbstractReferenceCounted {
   private ByteBuf key;
   private ByteBuf value;
+
+  public StorageKeyValue(final ByteBuf key, final ByteBuf value) {
+    this.key = key;
+    this.value = value;
+  }
+
+  @Override
+  public ReferenceCounted touch(final Object hint) {
+    return this;
+  }
+
+  @Override
+  protected void deallocate() {
+    key.release();
+    value.release();
+  }
 
   public ByteBuf getKey() {
     return key;
   }
-  public void setKey(ByteBuf key) {
+
+  public void setKey(final ByteBuf key) {
     this.key = key;
   }
+
   public ByteBuf getValue() {
     return value;
   }
-  public void setValue(ByteBuf value) {
+
+  public void setValue(final ByteBuf value) {
     this.value = value;
+  }
+
+  @Override
+  public String toString() {
+    return "StorageKeyValue [key=" + key.toString(StandardCharsets.UTF_8) + ", value=" + value.toString(StandardCharsets.UTF_8) + "]";
   }
 }

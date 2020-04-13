@@ -17,6 +17,7 @@
 
 package tech.dnaco.telemetry;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -88,14 +89,36 @@ public class CounterMap implements TelemetryCollector {
 
   @Override
   public TelemetryCollectorData getSnapshot() {
-    final String[] keys = new String[counters.size()];
-    final long[] events = new long[keys.length];
+    final CounterEntry[] entries = new CounterEntry[counters.size()];
     final Iterator<Entry<String, LongAdder>> it = counters.entrySet().iterator();
-    for (int i = 0; i < keys.length; ++i) {
+    for (int i = 0; i < entries.length; ++i) {
       final Entry<String, LongAdder> entry = it.next();
-      keys[i] = entry.getKey();
-      events[i] = entry.getValue().sum();
+      entries[i] = new CounterEntry(entry.getKey(), entry.getValue().sum());
+    }
+
+    Arrays.sort(entries);
+    final String[] keys = new String[entries.length];
+    final long[] events = new long[entries.length];
+    for (int i = 0; i < entries.length; ++i) {
+      keys[i] = entries[i].key;
+      events[i] = entries[i].event;
     }
     return new CounterMapData(keys, events);
+  }
+
+  private static final class CounterEntry implements Comparable<CounterEntry> {
+    private final String key;
+    private final long event;
+
+    private CounterEntry(final String key, final long event) {
+      this.key = key;
+      this.event = event;
+    }
+
+    @Override
+    public int compareTo(final CounterEntry other) {
+      final int cmp = Long.compare(other.event, event);
+      return cmp != 0 ? cmp : key.compareTo(other.key);
+    }
   }
 }

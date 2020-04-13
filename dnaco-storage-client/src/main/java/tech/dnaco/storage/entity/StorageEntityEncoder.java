@@ -18,5 +18,6 @@
 package tech.dnaco.storage.entity;
 
 public interface StorageEntityEncoder {
-  void addField(final String name, final Class<?> classType, final Object value);
+  void addKeyField(String name, int index, Class<?> classType, Object value);
+  void addValueField(String name, Class<?> classType, Object value);
 }

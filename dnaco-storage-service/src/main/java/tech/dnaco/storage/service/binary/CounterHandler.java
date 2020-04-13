@@ -31,7 +31,7 @@ import tech.dnaco.server.binary.BinaryServiceSession;
 public final class CounterHandler implements BinaryServiceListener {
   private static final ConcurrentHashMap<ByteBuf, AtomicLong> counters = new ConcurrentHashMap<>();
 
-  public CounterHandler(ServiceEventLoop eventLoop) {
+  public CounterHandler(final ServiceEventLoop eventLoop) {
     // no-op
   }
 

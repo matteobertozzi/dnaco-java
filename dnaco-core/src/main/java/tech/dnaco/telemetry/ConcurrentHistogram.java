@@ -78,7 +78,7 @@ public class ConcurrentHistogram implements TelemetryCollector {
 
     final long snapshotMaxValue = this.maxValue.get();
     final long[] snapshotBounds = new long[snapshotEvents.length];
-    System.arraycopy(bounds, 0, snapshotBounds, 0, snapshotEvents.length);
+    System.arraycopy(bounds, 0, snapshotBounds, 0, snapshotEvents.length - 1);
     snapshotBounds[snapshotEvents.length - 1] = snapshotMaxValue;
     return new HistogramData(snapshotBounds, snapshotEvents);
 	}

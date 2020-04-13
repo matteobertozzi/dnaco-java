@@ -78,7 +78,7 @@ public class TopKData implements TelemetryCollectorData {
         humanConverter.toHuman(entry.vSum / entry.freq), HumansUtil.humanCount(entry.freq),
         ArrayUtil.isNotEmpty(entry.traceIds) ? Arrays.toString(entry.traceIds) : ""));
     }
-    return table.addHumanView(report);
+    return table.addHumanView(report.append('\n'));
   }
 
   public static final class TopEntry {

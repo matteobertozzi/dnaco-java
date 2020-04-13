@@ -17,10 +17,14 @@
 
 package tech.dnaco.storage;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import tech.dnaco.storage.entity.StorageEntity;
+import tech.dnaco.storage.entity.StorageEntityKeyValueCoder.StorageEntityKeyValueDecoder;
+import tech.dnaco.storage.entity.StorageEntityKeyValueCoder.StorageEntityKeyValueEncoder;
+import tech.dnaco.storage.entity.StorageEntityType;
+import tech.dnaco.storage.entity.StorageKeyValue;
 
 
 public class TestEntity implements StorageEntity {
@@ -28,6 +32,9 @@ public class TestEntity implements StorageEntity {
     BOOL_FIELD, INT_FIELD, LONG_FIELD, FLOAT_FIELD, DOUBLE_FIELD, STRING_FIELD,
     INT_ARRAY_FIELD, STIRNG_ARRAY_FIELD
   }
+
+  @StorageKeyField(index = 0) private String key1;
+  @StorageKeyField(index = 1) private int key2;
 
   private boolean bool_field;
   private int int_field;
@@ -39,9 +46,6 @@ public class TestEntity implements StorageEntity {
   private int[] int_array_field;
   private String[] string_array_field;
 
-  public static EnumSet<?> getPrimaryKey() {
-    return EnumSet.of(TestEntityFields.BOOL_FIELD, TestEntityFields.INT_FIELD);
-  }
 
   public boolean getBoolField() {
     return bool_field;
@@ -104,5 +108,43 @@ public class TestEntity implements StorageEntity {
         + double_field + ", float_field=" + float_field + ", int_array_field=" + Arrays.toString(int_array_field)
         + ", int_field=" + int_field + ", long_field=" + long_field + ", string_array_field="
         + Arrays.toString(string_array_field) + ", string_field=" + string_field + "]";
+  }
+
+  public String getKey1() {
+    return key1;
+  }
+  public void setKey1(String key1) {
+    this.key1 = key1;
+  }
+  public int getKey2() {
+    return key2;
+  }
+  public void setKey2(int key2) {
+    this.key2 = key2;
+  }
+
+  public static void main(String[] args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    TestEntity entity = new TestEntity();
+    entity.setKey1("k1");
+    entity.setKey2(10);
+    entity.setBoolField(true);
+    entity.setByteField("foo".getBytes());
+    entity.setDoubleField(10.1);
+    entity.setFloatField(11.2f);
+    entity.setIntField(2);
+    entity.setLongField(3);
+    entity.setStringField("bar");
+
+    StorageEntityType entityType = StorageEntityType.getStorageEntityType(TestEntity.class);
+    StorageEntityKeyValueEncoder encoder = new StorageEntityKeyValueEncoder();
+    entityType.encode(entity, encoder);
+    for (StorageKeyValue kv: encoder.getKeyValues()) {
+      System.out.println(" -> " + kv);
+    }
+
+    TestEntity entityNew = new TestEntity();
+    StorageEntityKeyValueDecoder decoder = new StorageEntityKeyValueDecoder(encoder.getKeyValues());
+    entityType.decode(entityNew, decoder);
+    System.out.println(entityNew);
   }
 }

@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.google.gson.JsonObject;
 
 import tech.dnaco.storage.entity.StorageEntity.StorageKeyField;
+import tech.dnaco.strings.StringConverter;
 
 public class StorageEntityType {
   private final Class<? extends StorageEntity> entityClass;
@@ -82,14 +83,14 @@ public class StorageEntityType {
 
     for (int i = 0, n = keyFields.size(); i < n; ++i) {
       final KeyInfo keyInfo = keyFields.get(i);
-      final String name = normalizeName(keyInfo.name);
+      final String name = StringConverter.snakeToCamelCase(keyInfo.name);
       keyNames[i] = name;
       keyGetMethods[i] = methodMap.get("get" + name);
       keySetMethods[i] = methodMap.get("set" + name);
     }
 
     for (int i = 0, n = dataFields.size(); i < n; ++i) {
-      final String name = normalizeName(dataFields.get(i));
+      final String name = StringConverter.snakeToCamelCase(dataFields.get(i));
       fieldNames[i] = name;
       fieldGetMethods[i] = methodMap.get("get" + name);
       fieldSetMethods[i] = methodMap.get("set" + name);
@@ -107,7 +108,7 @@ public class StorageEntityType {
       throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
     for (int i = 0; i < keyNames.length; ++i) {
       final Method getter = keyGetMethods[i];
-      encoder.addField(keyNames[i], getter.getReturnType(), getter.invoke(entity));
+      encoder.addKeyField(keyNames[i], i, getter.getReturnType(), getter.invoke(entity));
     }
   }
 
@@ -115,7 +116,7 @@ public class StorageEntityType {
       throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
     for (int i = 0; i < fieldNames.length; ++i) {
       final Method getter = fieldGetMethods[i];
-      encoder.addField(fieldNames[i], getter.getReturnType(), getter.invoke(entity));
+      encoder.addValueField(fieldNames[i], getter.getReturnType(), getter.invoke(entity));
     }
   }
 
@@ -128,7 +129,7 @@ public class StorageEntityType {
   public <T extends StorageEntity> void decodeKey(final T entity, final StorageEntityDecoder decoder)
       throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
     for (int i = 0; i < keyNames.length; ++i) {
-      final Object v = decoder.getField(keyNames[i], keyGetMethods[i].getReturnType());
+      final Object v = decoder.getKeyField(keyNames[i], i, keyGetMethods[i].getReturnType());
       keySetMethods[i].invoke(entity, v);
     }
   }
@@ -136,7 +137,7 @@ public class StorageEntityType {
   public <T extends StorageEntity> void decodeFields(final T entity, final StorageEntityDecoder decoder)
       throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
     for (int i = 0; i < fieldNames.length; ++i) {
-      final Object v = decoder.getField(fieldNames[i], fieldGetMethods[i].getReturnType());
+      final Object v = decoder.getValueField(fieldNames[i], fieldGetMethods[i].getReturnType());
       fieldSetMethods[i].invoke(entity, v);
     }
   }
@@ -155,21 +156,6 @@ public class StorageEntityType {
       final int cmp = Integer.compare(index, other.index);
       return cmp != 0 ? cmp : name.compareTo(other.name);
     }
-  }
-
-  private static String normalizeName(final String name) {
-    final StringBuilder builder = new StringBuilder(name.length());
-    builder.append(Character.toUpperCase(name.charAt(0)));
-    for (int i = 1, n = name.length(); i < n; ++i) {
-      final char c = name.charAt(i);
-      if (c == '_') {
-        final char nextC = name.charAt(++i);
-        builder.append(Character.toUpperCase(nextC));
-      } else {
-        builder.append(Character.toLowerCase(c));
-      }
-    }
-    return builder.toString();
   }
 
   // ================================================================================

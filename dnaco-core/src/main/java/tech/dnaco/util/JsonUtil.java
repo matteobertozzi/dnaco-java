@@ -22,6 +22,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -53,6 +57,11 @@ public final class JsonUtil {
       .setDateFormat(JSON_DATE_FORMAT_PATTERN)
       .disableHtmlEscaping()
       .create();
+
+  @Retention(RetentionPolicy.SOURCE)
+  @Target(ElementType.TYPE)
+  @interface JsonEntityModel {
+  }
 
   private JsonUtil() {
     // no-op
@@ -196,6 +205,13 @@ public final class JsonUtil {
   // ================================================================================
   //  Json Object helpers
   // ================================================================================
+  public static boolean isEmpty(final JsonElement elem) {
+    if (elem == null || elem.isJsonNull()) return true;
+    if (elem.isJsonObject() && elem.getAsJsonObject().size() == 0) return true;
+    if (elem.isJsonArray() && elem.getAsJsonArray().size() == 0) return true;
+    return false;
+  }
+
   public static boolean isEmpty(final JsonObject obj) {
     return obj == null || obj.size() == 0;
   }

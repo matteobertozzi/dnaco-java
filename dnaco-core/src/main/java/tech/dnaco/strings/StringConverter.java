@@ -30,6 +30,57 @@ public final class StringConverter {
     // no-op
   }
 
+  // --------------------------------------------------------------------------------
+  //  String helpers
+  // --------------------------------------------------------------------------------
+  public static String snakeToCamelCase(final String name) {
+    final StringBuilder builder = new StringBuilder(name.length());
+    builder.append(Character.toUpperCase(name.charAt(0)));
+    for (int i = 1, n = name.length(); i < n; ++i) {
+      final char c = name.charAt(i);
+      if (c == '_') {
+        if (++i < n) {
+          final char nextC = name.charAt(i);
+          builder.append(Character.toUpperCase(nextC));
+        }
+      } else {
+        builder.append(Character.toLowerCase(c));
+      }
+    }
+    return builder.toString();
+  }
+
+  public static String camelToSnakeUpperCase(final String name) {
+    final StringBuilder builder = new StringBuilder(8 + name.length());
+    builder.append(Character.toUpperCase(name.charAt(0)));
+    for (int i = 1, n = name.length(); i < n; ++i) {
+      final char c = name.charAt(i);
+      if (Character.isUpperCase(c)) {
+        builder.append('_').append(c);
+      } else {
+        builder.append(Character.toUpperCase(c));
+      }
+    }
+    return builder.toString();
+  }
+
+  public static String camelToSnakeLowerCase(final String name) {
+    final StringBuilder builder = new StringBuilder(8 + name.length());
+    builder.append(Character.toLowerCase(name.charAt(0)));
+    for (int i = 1, n = name.length(); i < n; ++i) {
+      final char c = name.charAt(i);
+      if (Character.isUpperCase(c)) {
+        builder.append('_').append(Character.toLowerCase(c));
+      } else {
+        builder.append(c);
+      }
+    }
+    return builder.toString();
+  }
+
+  // --------------------------------------------------------------------------------
+  //  To Int
+  // --------------------------------------------------------------------------------
   public static int toInt(final String inputValue, final int defaultValue) {
     return toInt(DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -56,6 +107,9 @@ public final class StringConverter {
     }
   }
 
+  // --------------------------------------------------------------------------------
+  //  To Long
+  // --------------------------------------------------------------------------------
   public static long toLong(final String inputValue, final long defaultValue) {
     return toLong(DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -82,6 +136,9 @@ public final class StringConverter {
     }
   }
 
+  // --------------------------------------------------------------------------------
+  //  To Short
+  // --------------------------------------------------------------------------------
   public static short toShort(final String inputValue, final short defaultValue) {
     return toShort(DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -108,6 +165,9 @@ public final class StringConverter {
     }
   }
 
+  // --------------------------------------------------------------------------------
+  //  To Float
+  // --------------------------------------------------------------------------------
   public static float toFloat(final String inputValue, final float defaultValue) {
     return toFloat(DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -142,6 +202,9 @@ public final class StringConverter {
     }
   }
 
+  // --------------------------------------------------------------------------------
+  //  To Double
+  // --------------------------------------------------------------------------------
   public static double toDouble(final String inputValue, final double defaultValue) {
     return toDouble(DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -176,6 +239,9 @@ public final class StringConverter {
     }
   }
 
+  // --------------------------------------------------------------------------------
+  //  To Decimal
+  // --------------------------------------------------------------------------------
   public static BigDecimal toDecimal(final String inputValue, final BigDecimal defaultValue) {
     return toDecimal(DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -210,6 +276,9 @@ public final class StringConverter {
     }
   }
 
+  // --------------------------------------------------------------------------------
+  //  To Boolean
+  // --------------------------------------------------------------------------------
   public static boolean toBoolean(final String inputValue, final boolean defaultValue) {
     return toBoolean(DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -251,6 +320,9 @@ public final class StringConverter {
     return null;
   }
 
+  // --------------------------------------------------------------------------------
+  //  To Enum
+  // --------------------------------------------------------------------------------
   public static <T extends Enum<T>> T toEnumValue(final Class<T> enumType, final String inputValue, final T defaultValue) {
     return toEnumValue(enumType, DEFAULT_KEY, inputValue, defaultValue);
   }
@@ -269,7 +341,7 @@ public final class StringConverter {
   }
 
   // --------------------------------------------------------------------------------
-  // List lookup helpers
+  //  List lookup helpers
   // --------------------------------------------------------------------------------
   public static String[] toStringList(final String inputValue, final String[] defaultValue) {
     return toStringList(DEFAULT_KEY, inputValue, defaultValue);

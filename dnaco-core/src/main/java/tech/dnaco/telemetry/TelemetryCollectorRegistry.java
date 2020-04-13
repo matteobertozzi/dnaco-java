@@ -17,16 +17,54 @@
 
 package tech.dnaco.telemetry;
 
+import java.util.concurrent.ConcurrentHashMap;
+
+import tech.dnaco.strings.StringUtil;
+
 public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
   public static final TelemetryCollectorRegistry INSTANCE = new TelemetryCollectorRegistry();
+
+  private final ConcurrentHashMap<String, TelemetryCollectorGroup> tenantMap = new ConcurrentHashMap<>();
 
   private TelemetryCollectorRegistry() {
     super("telemetry_registry");
   }
 
-  public static void main(final String[] args) {
-    final Histogram histo = new TelemetryCollector.Builder()
-        .setName("")
-        .register(new Histogram(Histogram.DEFAULT_DURATION_BOUNDS_MS));
+  public void updateMemoryUsage() {
+    JvmGcMetrics.INSTANCE.collect();
+  }
+
+  public TelemetryCollectorGroup getTenantGroup(final String tenantId) {
+    final TelemetryCollectorGroup group = tenantMap.get(tenantId);
+    if (group != null) return group;
+
+    final TelemetryCollectorGroup newGroup = new TelemetryCollectorGroup(tenantId);
+    final TelemetryCollectorGroup oldGroup = tenantMap.putIfAbsent(tenantId, newGroup);
+    return oldGroup != null ? oldGroup : newGroup;
+  }
+
+  public String humanReport(final StringBuilder report) {
+    jvmHumanReport(report);
+    return super.humanReport(report);
+  }
+
+  public String humanReport(final StringBuilder report, final String key) {
+    if (StringUtil.isEmpty(key)) return humanReport(report);
+
+    jvmHumanReport(report);
+
+    final TelemetryCollectorGroup tenantGroup = tenantMap.get(key);
+    if (tenantGroup != null) return tenantGroup.humanReport(report);
+
+    return super.humanReport(report, key);
+  }
+
+  private void jvmHumanReport(final StringBuilder report) {
+    JvmMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
+    report.append('\n');
+    JvmGcMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
+    report.append('\n');
+    JvmThreadsMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
+    report.append('\n');
   }
 }

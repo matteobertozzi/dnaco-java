@@ -92,7 +92,7 @@ public final class PubSubHandler implements BinaryServiceListener {
     }
 
     subs.put(session, packet.getPkgId());
-    session.write(BinaryPacket.alloc(packet.getPkgId(), BinaryCommands.CMD_ACK));
+    session.write(BinaryCommands.newOkResponse(packet));
   }
 
   private void unsubscribe(final BinaryServiceSession session, final BinaryPacket packet) {
@@ -105,7 +105,7 @@ public final class PubSubHandler implements BinaryServiceListener {
     }
 
     subs.remove(session, packet.getPkgId());
-    session.write(BinaryPacket.alloc(packet.getPkgId(), BinaryCommands.CMD_ACK));
+    session.write(BinaryCommands.newOkResponse(packet));
   }
 
   private void publish(final BinaryServiceSession session, final BinaryPacket packet) {
@@ -117,6 +117,6 @@ public final class PubSubHandler implements BinaryServiceListener {
     Logger.info(" -> PUBLISH: {} {} {} {}", tenantId.toString(StandardCharsets.UTF_8), txnId, topic.toString(StandardCharsets.UTF_8), msg.toString(StandardCharsets.UTF_8));
 
     subs.remove(session, packet.getPkgId());
-    session.write(BinaryPacket.alloc(packet.getPkgId(), BinaryCommands.CMD_ACK));
+    session.write(BinaryCommands.newOkResponse(packet));
   }
 }

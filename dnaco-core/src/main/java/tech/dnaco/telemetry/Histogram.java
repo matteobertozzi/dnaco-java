@@ -27,7 +27,7 @@ public class Histogram implements TelemetryCollector {
   };
 
   public static final long[] DEFAULT_DURATION_BOUNDS_NS = new long[] {
-    25, 50, 100, 1_000, 10_000, 100_000,   // nsec
+    25, 50, 100, 1_000, 10_000, 100_000, 250_000, 500_000, 750_000,           // nsec
     1_000_000, 5000000L, 10000000L, 25000000L, 50000000L, 75000000L,          // msec
     100000000L, 150000000L, 250000000L, 350000000L, 500000000L, 750000000L,   // msec
     1000000000L, 2500000000L, 5000000000L, 10000000000L, 25000000000L,        // sec

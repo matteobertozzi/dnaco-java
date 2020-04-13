@@ -18,5 +18,6 @@
 package tech.dnaco.storage.entity;
 
 public interface StorageEntityDecoder {
-  Object getField(final String name, final Class<?> classType);
+  Object getKeyField(String name, int index, Class<?> classType);
+  Object getValueField(String name, Class<?> classType);
 }

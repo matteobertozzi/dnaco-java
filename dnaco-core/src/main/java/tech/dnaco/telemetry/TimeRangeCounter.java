@@ -87,7 +87,6 @@ public class TimeRangeCounter implements TelemetryCollector {
     for (int i = 0, n = data.length; i < n; ++i) {
       data[data.length - (i + 1)] = counters[Math.toIntExact((next - i) % counters.length)];
     }
-    System.out.println(" -> " + Arrays.toString(data));
     return new TimeRangeCounterData(lastInterval, window, data);
   }
 
