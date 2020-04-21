@@ -232,6 +232,14 @@ public final class ArrayUtil {
     return input == null ? 0 : input.length;
   }
 
+  public static int length(final float[] input) {
+    return input == null ? 0 : input.length;
+  }
+
+  public static int length(final double[] input) {
+    return input == null ? 0 : input.length;
+  }
+
   public static <T> int length(final T[] input) {
     return input == null ? 0 : input.length;
   }

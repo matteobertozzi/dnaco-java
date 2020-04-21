@@ -72,7 +72,8 @@ public class Jwt {
   }
 
   public String getClaimAsString(final String key) {
-    return dat.get(key).getAsString();
+    System.out.println(" -> GET CLAIM " + key + " -> " + dat.keySet());
+    return JsonUtil.getString(dat, key, null);
   }
 
   public <T> T getClaim(final String key, final Class<T> classOfT) {
@@ -145,6 +146,11 @@ public class Jwt {
     final JwtParts parts = decode(jwt);
     parts.verify(key, verifier);
     return parts.getBody();
+  }
+
+  @Override
+  public String toString() {
+    return "Jwt [claims=" + dat + "]";
   }
 
   // ------------------------------------------------------------------------------------------
