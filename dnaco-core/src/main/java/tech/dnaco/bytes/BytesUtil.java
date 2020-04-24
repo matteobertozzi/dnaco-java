@@ -74,6 +74,27 @@ public final class BytesUtil {
   }
 
   // ================================================================================
+  //  Bytes concatenation
+  // ================================================================================
+  public static byte[] concat(final byte[]... data) {
+    final byte[] fullData = new byte[length(data)];
+    int offset = 0;
+    for (int i = 0; i < data.length; ++i) {
+      System.arraycopy(data[i], 0, fullData, offset, data[i].length);
+      offset += data[i].length;
+    }
+    return fullData;
+  }
+
+  public static int length(final byte[]... data) {
+    int length = 0;
+    for (int i = 0; i < data.length; ++i) {
+      length += data[i].length;
+    }
+    return length;
+  }
+
+  // ================================================================================
   //  Bytes to binary
   // ================================================================================
   public static String toBinaryString(final byte[] buf) {

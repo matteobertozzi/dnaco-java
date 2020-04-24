@@ -478,6 +478,15 @@ public final class ArrayUtil {
     return -1;
   }
 
+  public static int indexOf(final char value, final char[] items) {
+    for (int i = 0; i < items.length; ++i) {
+      if (items[i] == value) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   public static int indexOf(final byte[] value, final byte[][] items) {
     for (int i = 0; i < items.length; ++i) {
       if (BytesUtil.equals(items[i], value)) {
