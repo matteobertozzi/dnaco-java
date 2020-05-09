@@ -23,6 +23,7 @@ import com.google.gson.JsonObject;
 import tech.dnaco.collections.ArrayUtil;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.JsonUtil;
 
 public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
@@ -81,5 +82,52 @@ public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
     report.append(HumansUtil.localFromEpochMillis(getLastInterval()));
     report.append('\n');
     return report;
+  }
+
+  public StringBuilder toHumanChartReport(final StringBuilder report, final HumanLongValueConverter humanConverter) {
+    final int numEvents = ArrayUtil.length(vMax);
+    long avgSum = 0;
+    long maxValue = 0;
+
+    for (int i = 0; i < numEvents; ++i) {
+      avgSum += vAvg[i];
+      maxValue = Math.max(maxValue, vMax[i]);
+    }
+    final double mult = 100.0 / maxValue;
+
+    report.append("window ").append(HumansUtil.humanTimeMillis(window));
+    report.append(" - Max Latency ").append(humanConverter.toHuman(maxValue));
+    report.append(" - Avg Latency ").append(humanConverter.toHuman(avgSum / numEvents));
+    report.append('\n');
+    report.append("---------------------------------------------------------------------------\n");
+    long interval = getLastInterval();
+    for (int i = numEvents - 1; i >= 0; --i) {
+      final long avgMarks = Math.round(mult * vAvg[i] / 5 + 0.5);
+      final long maxMarks = Math.round(mult * (vMax[i] - vAvg[i]) / 5 + 0.5);
+
+      report.append(HumansUtil.humanDate(interval));
+      report.append(String.format(" %7s/%-7s %6.2f%% |",
+        humanConverter.toHuman(vAvg[i]),
+        humanConverter.toHuman(vMax[i]),
+        ((double) vMax[i] / maxValue) * 100.0f));
+      StringUtil.append(report, '=', avgMarks);
+      StringUtil.append(report, '#', maxMarks);
+      report.append('\n');
+
+      interval -= window;
+    }
+    return report;
+  }
+
+  public static void main(String[] args) {
+    long[] vAvg = new long[100];
+    long[] vMax = new long[100];
+    for (int i = 0; i < vMax.length; ++i) {
+      vAvg[i] = Math.round(Math.random() * 100);
+      vMax[i] = Math.round(vAvg[i] + Math.random() * 50);
+    }
+
+    MaxAndAvgTimeRangeGaugeData data = new MaxAndAvgTimeRangeGaugeData(System.currentTimeMillis(), 5000, vAvg, vMax);
+    System.out.println(data.toHumanChartReport(new StringBuilder(), HumansUtil.HUMAN_TIME_NANOS));
   }
 }

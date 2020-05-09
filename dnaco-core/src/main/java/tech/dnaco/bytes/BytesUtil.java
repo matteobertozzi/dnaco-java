@@ -154,7 +154,7 @@ public final class BytesUtil {
     final byte[] hex = new byte[len * 2];
     for (int i = 0, j = 0; i < len; ++i, j += 2) {
       final int val = buf[off + i] & 0xff;
-      hex[j + 0] = (byte) StringUtil.HEX_DIGITS[(val >> 4) & 0xf];
+      hex[j] = (byte) StringUtil.HEX_DIGITS[(val >> 4) & 0xf];
       hex[j + 1] = (byte) StringUtil.HEX_DIGITS[val & 0xf];
     }
     return hex;

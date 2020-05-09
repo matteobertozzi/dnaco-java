@@ -380,14 +380,17 @@ public final class StringUtil {
   // ================================================================================
   //  String comparison related
   // ================================================================================
+  @SuppressWarnings({ "StringEquality", "EqualsReplaceableByObjectsCall" })
   public static boolean equals(final String a, final String b) {
     return (a == b) || (a != null && a.equals(b));
   }
 
+  @SuppressWarnings("StringEquality")
   public static boolean equalsIgnoreCase(final String a, final String b) {
     return (a == b) || (a != null && a.equalsIgnoreCase(b));
   }
 
+  @SuppressWarnings("StringEquality")
   public static int compareTo(final String a, final String b) {
     if (a == b) return 0;
     if (a == null) return -1;
@@ -395,6 +398,7 @@ public final class StringUtil {
     return a.compareTo(b);
   }
 
+  @SuppressWarnings("StringEquality")
   public static int compareToIgnoreCase(final String a, final String b) {
     if (a == b) return 0;
     if (a == null) return -1;
@@ -402,9 +406,8 @@ public final class StringUtil {
     return a.compareToIgnoreCase(b);
   }
 
-  public static final Comparator<String> STRING_REVERSE_COMPARATOR = new Comparator<String>() {
-    @Override
-    public int compare(final String a, final String b) {
+  public static final Comparator<String> STRING_REVERSE_COMPARATOR = new Comparator<>() {
+    @Override public int compare(final String a, final String b) {
       return StringUtil.compareTo(b, a);
     }
   };

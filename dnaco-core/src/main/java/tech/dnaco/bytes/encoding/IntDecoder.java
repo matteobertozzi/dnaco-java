@@ -107,7 +107,7 @@ public abstract class IntDecoder {
         case 4: result += (((long)buf[off++] & 0xff) << 24);
         case 3: result += (((long)buf[off++] & 0xff) << 16);
         case 2: result += (((long)buf[off++] & 0xff) <<  8);
-        case 1: result += (((long) buf[off++] & 0xff));
+        case 1: result += (((long)buf[off++] & 0xff));
       }
       return result;
     }

@@ -84,9 +84,8 @@ public class TraceSession {
     return "TraceSession [sessionId=" + sessionId + ", traces=" + tracers.size() + "]";
   }
 
-  public static final Comparator<TraceSession> DURATION_COMPARATOR = new Comparator<TraceSession>() {
-    @Override
-    public int compare(final TraceSession a, final TraceSession b) {
+  public static final Comparator<TraceSession> DURATION_COMPARATOR = new Comparator<>() {
+    @Override public int compare(final TraceSession a, final TraceSession b) {
       return Long.compare(a.getElapsedTime(), b.getElapsedTime());
     }
   };

@@ -17,9 +17,9 @@
 
 package tech.dnaco.collections;
 
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -28,24 +28,16 @@ import tech.dnaco.util.BitUtil;
 import tech.dnaco.util.ThreadUtil;
 
 public class LruCache<TKey, TValue> {
-  interface CacheItemSizeEstimator<TKey, TValue> {
-    long itemSizeEstimate (TKey key, TValue value);
-  }
-
-  private final CacheItemSizeEstimator<TKey, TValue> estimator;
   private final long maxSize;
 
   private final ReentrantLock lock = new ReentrantLock();
 
-  private CacheItemNode[] entries = null;
-  private int[] buckets = null;
+  private int[] buckets;
+  private CacheItemNode[] entries;
+  private CacheItemNode lruHead;
   private int count = 0;
 
-  private CacheItemNode lruHead;
-  private long estimateSize = 0;
-
-  public LruCache(final int initialCapacity, final int maxSize, final CacheItemSizeEstimator<TKey, TValue> estimator) {
-    this.estimator = estimator;
+  public LruCache(final int initialCapacity, final int maxSize) {
     this.maxSize = maxSize;
 
     final int capacity = BitUtil.nextPow2(Math.max(8, initialCapacity));
@@ -55,9 +47,8 @@ public class LruCache<TKey, TValue> {
 
     lruHead = entries[0] = new CacheItemNode(0);
     for (int i = 1; i < entries.length; ++i) {
-      final CacheItemNode node = new CacheItemNode(i);
+      final CacheItemNode node = entries[i] = new CacheItemNode(i);
       moveToLruTail(node);
-      entries[i] = node;
     }
   }
 
@@ -66,15 +57,15 @@ public class LruCache<TKey, TValue> {
     CacheItemNode node = lruHead;
     do {
       System.out.print(node.index + " ");
-      node = node.lruNext;
+      node = entries[node.lruNext];
     } while (node != lruHead);
     System.out.println();
 
-    node = lruHead.lruPrev;
+    node = entries[lruHead.lruPrev];
     do {
       System.out.print(node.index + " ");
-      node = node.lruPrev;
-    } while (node != lruHead.lruPrev);
+      node = entries[node.lruPrev];
+    } while (node != entries[lruHead.lruPrev]);
     System.out.println();
   }
 
@@ -107,14 +98,11 @@ public class LruCache<TKey, TValue> {
       final CacheItemNode node = findEntry(key, keyHash);
       if (node == null) {
         insertNewEntry(keyHash, key, value);
-        estimateSize += estimator.itemSizeEstimate(key, value);
         return null;
       }
 
       final TValue oldValue = node.getValue();
-      estimateSize -= estimator.itemSizeEstimate(key, oldValue);
       node.set(value);
-      estimateSize += estimator.itemSizeEstimate(key, value);
       moveToLruFront(node);
       return oldValue;
     } finally {
@@ -159,20 +147,22 @@ public class LruCache<TKey, TValue> {
 
   private void insertNewEntry(int keyHash, TKey key, TValue value) {
     // try to use an evicted item or if we are already at threshold we should evict a node
-    if (lruHead.lruPrev.isEmpty()) {
+    if (entries[lruHead.lruPrev].isEmpty()) {
       // no-op
       newFromFreeSlot++;
-    } else if (estimateSize >= maxSize) {
-      remove(lruHead.lruPrev.getKey());
+    } else if (count >= maxSize) {
+      remove(entries[lruHead.lruPrev].getKey());
       newFromEviction++;
     } else {
+      final long startTime = System.nanoTime();
       final int newCapacity = entries.length << 1;
       if (newCapacity < 0) throw new IllegalStateException("HashMap too big size=" + entries.length);
       resize(newCapacity);
       newFromResize++;
+      System.out.println("RESIZE " + newCapacity + " -> " + HumansUtil.humanTimeNanos(System.nanoTime() - startTime));
     }
 
-    final CacheItemNode node = lruHead.lruPrev;
+    final CacheItemNode node = entries[lruHead.lruPrev];
     node.set(keyHash, key, value);
     moveToLruFront(node);
 
@@ -184,29 +174,28 @@ public class LruCache<TKey, TValue> {
 
   private void resize(final int newSize) {
     // reset buckets
-    if (newSize >= 8192) buckets = new int[newSize];
+    if (newSize < 8192) buckets = new int[newSize];
     Arrays.fill(buckets, -1);
 
     // reassign entries
     final int entriesIndex = entries.length;
-    final CacheItemNode[] newEntries = Arrays.copyOf(entries, newSize);
+    entries = Arrays.copyOf(entries, newSize);
     for (int i = 0; i < entriesIndex; ++i) {
-      if (newEntries[i].keyHash < 0) continue;
-      final int bucket = targetBucket(newEntries[i].keyHash);
-      newEntries[i].hashNext = buckets[bucket];
+      final CacheItemNode node = entries[i];
+      if (node.keyHash < 0) continue;
+      final int bucket = targetBucket(node.keyHash);
+      node.hashNext = buckets[bucket];
       buckets[bucket] = i;
     }
-    this.entries = newEntries;
 
     // pre-alloc nodes
-    for (int i = entriesIndex; i < entries.length; ++i) {
-      final CacheItemNode node = new CacheItemNode(i);
+    for (int i = entriesIndex; i < newSize; ++i) {
+      final CacheItemNode node = entries[i] = new CacheItemNode(i);
       moveToLruTail(node);
-      entries[i] = node;
     }
   }
 
-  public TValue remove(final TKey key) {
+  private TValue remove(final TKey key) {
     final int hashCode = hashCode(key);
     final int bucket = targetBucket(hashCode);
     int last = -1;
@@ -219,7 +208,6 @@ public class LruCache<TKey, TValue> {
           entries[last].hashNext = node.hashNext;
         }
         final TValue oldValue = node.getValue();
-        estimateSize -= estimator.itemSizeEstimate(key, oldValue);
         node.clear();
         moveToLruTail(node);
         count--;
@@ -235,25 +223,25 @@ public class LruCache<TKey, TValue> {
   private void moveToLruFront(final CacheItemNode node) {
     if (node == lruHead) return;
 
-    node.unlink();
+    node.unlink(entries);
 
-    final CacheItemNode tail = lruHead.lruPrev;
-    node.lruNext = lruHead;
-    node.lruPrev = tail;
-    tail.lruNext = node;
-    lruHead.lruPrev = node;
+    final CacheItemNode tail = entries[lruHead.lruPrev];
+    node.lruNext = lruHead.index;
+    node.lruPrev = tail.index;
+    tail.lruNext = node.index;
+    lruHead.lruPrev = node.index;
     lruHead = node;
   }
 
   private void moveToLruTail(final CacheItemNode node) {
-    final CacheItemNode tail = lruHead.lruPrev;
+    final CacheItemNode tail = entries[lruHead.lruPrev];
     if (node == tail) return;
 
-    node.unlink();
-    node.lruNext = lruHead;
-    node.lruPrev = tail;
-    lruHead.lruPrev = node;
-    tail.lruNext = node;
+    node.unlink(entries);
+    node.lruNext = lruHead.index;
+    node.lruPrev = tail.index;
+    lruHead.lruPrev = node.index;
+    tail.lruNext = node.index;
   }
 
   // ====================================================================================================
@@ -264,16 +252,16 @@ public class LruCache<TKey, TValue> {
 
     private int keyHash;
     private int hashNext;
-    private CacheItemNode lruPrev;
-    private CacheItemNode lruNext;
+    private int lruPrev;
+    private int lruNext;
 
     private Object key;
     private Object value;
 
     CacheItemNode(final int index) {
       this.index = index;
-      this.lruPrev = this;
-      this.lruNext = this;
+      this.lruPrev = index;
+      this.lruNext = index;
     }
 
     void set(final int keyHash, final Object key, final Object value) {
@@ -297,9 +285,9 @@ public class LruCache<TKey, TValue> {
       return key == null;
     }
 
-    void unlink() {
-      lruPrev.lruNext = lruNext;
-      lruNext.lruPrev = lruPrev;
+    void unlink(final CacheItemNode[] entries) {
+      entries[lruPrev].lruNext = lruNext;
+      entries[lruNext].lruPrev = lruPrev;
     }
 
     @SuppressWarnings("unchecked")
@@ -315,25 +303,29 @@ public class LruCache<TKey, TValue> {
 
   public static void main(String[] args) {
     final int NLOOKUPS = 1000_000;
-    final LruCache<String, String> lru = new LruCache<>(4, 32, (k, v) -> 1);
-    Thread[] thread = new Thread[16];
-    for (int i = 0; i < thread.length; ++i) {
-      thread[i] = new Thread(() -> {
-        final Random rand = new Random();
-        for (int k = 0; k < NLOOKUPS; ++k) {
-          final String key = "key-" + rand.nextInt(32 + 16);
-          if (lru.get(key) == null) lru.put(key, key);
-        }
-      });
-    }
 
-    final long startTime = System.nanoTime();
-    for (int i = 0; i < thread.length; ++i) thread[i].start();
-    for (int i = 0; i < thread.length; ++i) ThreadUtil.shutdown(thread[i]);
-    final long elapsed = System.nanoTime() - startTime;
-    System.out.println("[T] " + HumansUtil.humanTimeNanos(elapsed)
-      + " -> " + HumansUtil.humanRate((thread.length * NLOOKUPS) / (double)TimeUnit.NANOSECONDS.toSeconds(elapsed)));
-    lru.dump();
-    System.out.println(lru.estimateSize);
+    final SecureRandom rand = new SecureRandom();
+
+    for (int z = 0; z < 1024; ++z) {
+      final int maxSize = BitUtil.nextPow2(rand.nextInt(1 << 20));
+      final LruCache<String, String> lru = new LruCache<>(4, maxSize);
+      final Thread[] thread = new Thread[16];
+      for (int i = 0; i < thread.length; ++i) {
+        thread[i] = new Thread(() -> {
+          final SecureRandom localRand = new SecureRandom();
+          for (int k = 0; k < NLOOKUPS; ++k) {
+            final String key = "key-" + localRand.nextInt(4096 + 2048);
+            if (lru.get(key) == null) lru.put(key, key);
+          }
+        });
+      }
+
+      final long startTime = System.nanoTime();
+      for (int i = 0; i < thread.length; ++i) thread[i].start();
+      for (int i = 0; i < thread.length; ++i) ThreadUtil.shutdown(thread[i]);
+      final long elapsed = System.nanoTime() - startTime;
+      System.out.println("[T] " + lru.size() + " -> " + HumansUtil.humanTimeNanos(elapsed)
+        + " -> " + HumansUtil.humanRate((thread.length * NLOOKUPS) / (double)TimeUnit.NANOSECONDS.toSeconds(elapsed)));
+    }
   }
 }

@@ -62,7 +62,7 @@ public final class HumansUtil {
   //  Date related
   // ================================================================================
   public static String humanDate(final long millis) {
-    final SimpleDateFormat dfrmt = new SimpleDateFormat("dd-MM-YYYY HH:mm:ss");
+    final SimpleDateFormat dfrmt = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
     return dfrmt.format(new Date(millis));
   }
 
@@ -84,7 +84,9 @@ public final class HumansUtil {
   public static String humanTime(final long timeDiff, final TimeUnit unit) {
     final long msec = unit.toMillis(timeDiff);
     if (msec == 0) {
-      return String.format("%dus", unit.toMicros(timeDiff));
+      final long micros = unit.toMicros(timeDiff);
+      if (micros > 0) return String.format("%dus", micros);
+      return String.format("%dns", unit.toNanos(timeDiff));
     }
 
     if (msec < 1000) {

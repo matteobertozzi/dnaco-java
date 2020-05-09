@@ -121,37 +121,27 @@ public final class ArrayUtil {
   // ======================================================================
   public static void clear(final byte[] data) {
     if (isEmpty(data)) return;
-    for (int i = 0; i < data.length; ++i) {
-      data[i] = Byte.MAX_VALUE;
-    }
+    Arrays.fill(data, Byte.MAX_VALUE);
   }
 
   public static void clear(final char[] data) {
     if (isEmpty(data)) return;
-    for (int i = 0; i < data.length; ++i) {
-      data[i] = Character.MAX_VALUE;
-    }
+    Arrays.fill(data, Character.MAX_VALUE);
   }
 
   public static void clear(final int[] data) {
     if (isEmpty(data)) return;
-    for (int i = 0; i < data.length; ++i) {
-      data[i] = Integer.MAX_VALUE;
-    }
+    Arrays.fill(data, Integer.MAX_VALUE);
   }
 
   public static void clear(final long[] data) {
     if (isEmpty(data)) return;
-    for (int i = 0; i < data.length; ++i) {
-      data[i] = Long.MAX_VALUE;
-    }
+    Arrays.fill(data, Long.MAX_VALUE);
   }
 
   public static void clear(final Object[] data) {
     if (isEmpty(data)) return;
-    for (int i = 0; i < data.length; ++i) {
-      data[i] = null;
-    }
+    Arrays.fill(data, null);
   }
 
   // ======================================================================

@@ -61,7 +61,7 @@ public final class MapUtil {
       return values;
     }
 
-    final List<V> vList = new ArrayList<V>();
+    final List<V> vList = new ArrayList<>();
     vList.add(newValue);
     map.put(key, vList);
     return vList;
@@ -74,7 +74,7 @@ public final class MapUtil {
       return values;
     }
 
-    final Set<V> vList = new HashSet<V>();
+    final Set<V> vList = new HashSet<>();
     vList.add(newValue);
     map.put(key, vList);
     return vList;
@@ -87,7 +87,7 @@ public final class MapUtil {
       return values;
     }
 
-    final Set<V> vList = new TreeSet<V>();
+    final Set<V> vList = new TreeSet<>();
     vList.add(newValue);
     map.put(key, vList);
     return vList;

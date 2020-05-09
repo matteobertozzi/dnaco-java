@@ -78,9 +78,8 @@ public class LogReader implements AutoCloseable {
       }
     }
 
-    final Predicate<LogEntry> headerPredicate = new Predicate<LogEntry>() {
-      @Override
-      public boolean test(final LogEntry entry) {
+    final Predicate<LogEntry> headerPredicate = new Predicate<>() {
+      @Override public boolean test(final LogEntry entry) {
         if (filterTraceIds.isNotEmpty() && filterTraceIds.indexOf(0, entry.getTraceId()) < 0) {
           return false;
         }

@@ -29,11 +29,11 @@ public final class ListUtil {
   }
 
   public static <T> List<T> emptyIfNull(final List<T> input) {
-    return input == null ? Collections.<T>emptyList() : input;
+    return input == null ? Collections.emptyList() : input;
   }
 
   public static <T> Set<T> emptyIfNull(final Set<T> input) {
-    return input == null ? Collections.<T>emptySet() : input;
+    return input == null ? Collections.emptySet() : input;
   }
 
   public static <T> boolean isEmpty(final Collection<T> input) {
@@ -49,7 +49,7 @@ public final class ListUtil {
   }
 
   public static <T> List<T> newArrayListIfNull(final List<T> input) {
-    return input != null ? input : new ArrayList<T>();
+    return input != null ? input : new ArrayList<>();
   }
 
   public static <T> List<T> subList(final List<T> records, final int offset, final int length) {

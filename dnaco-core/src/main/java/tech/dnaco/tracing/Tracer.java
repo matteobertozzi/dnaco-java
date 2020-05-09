@@ -92,9 +92,8 @@ public class Tracer implements AutoCloseable {
     throw new UnsupportedOperationException();
   }
 
-  public static final Comparator<Tracer> SORT_COMPARATOR = new Comparator<Tracer>() {
-    @Override
-    public int compare(final Tracer a, final Tracer b) {
+  public static final Comparator<Tracer> SORT_COMPARATOR = new Comparator<>() {
+    @Override public int compare(final Tracer a, final Tracer b) {
       int cmp;
       if ((cmp = a.threadName.compareTo(b.threadName)) != 0) return cmp;
       if ((cmp = Long.compare(a.startTime, b.startTime)) != 0) return cmp;

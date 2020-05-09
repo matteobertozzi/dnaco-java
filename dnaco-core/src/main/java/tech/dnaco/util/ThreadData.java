@@ -47,7 +47,7 @@ public class ThreadData<T> {
     while (true) {
       ThreadLocalData<T> data = threadData.get(thread);
       if (data == null) {
-        data = new ThreadLocalData<T>(supplier.get());
+        data = new ThreadLocalData<>(supplier.get());
         if (threadData.putIfAbsent(thread, data) != null) {
           data.acquire();
           return data;
