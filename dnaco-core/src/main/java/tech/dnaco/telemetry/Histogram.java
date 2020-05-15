@@ -53,6 +53,16 @@ public class Histogram implements TelemetryCollector {
     50_000, 75_000, 100_000, 250_000, 500_000, 1_000_000
   };
 
+  public static void main(String[] args) {
+    final long[][] foo = new long[][] {
+      DEFAULT_DURATION_BOUNDS_MS, DEFAULT_DURATION_BOUNDS_NS,
+      DEFAULT_SIZE_BOUNDS, DEFAULT_SMALL_SIZE_BOUNDS, DEFAULT_COUNT_BOUNDS
+    };
+    for (int i = 0; i < foo.length; ++i) {
+      System.out.println(foo[i].length);
+    }
+  }
+
   private final long[] bounds;
   private final long[] events;
   private long maxValue;

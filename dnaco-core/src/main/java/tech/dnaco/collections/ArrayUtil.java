@@ -21,6 +21,7 @@ import java.lang.reflect.Array;
 import java.util.Arrays;
 
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.strings.StringUtil;
 
 public final class ArrayUtil {
   public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
@@ -302,14 +303,14 @@ public final class ArrayUtil {
   // ================================================================================
   public static String toString(final int[] buf, final int off, final int len) {
     if (buf == null) return "null";
-    if (len == 0) return "[]";
+    if (len == 0 || off >= len) return "[]";
     return toString(new StringBuilder(len * 5), buf, off, len).toString();
   }
 
   public static StringBuilder toString(final StringBuilder sb,
       final int[] buf, final int off, final int len) {
     if (buf == null) return sb.append("null");
-    if (len == 0) return sb.append("[]");
+    if (len == 0 || off >= len) return sb.append("[]");
 
     sb.append('[');
     for (int i = 0; i < len; ++i) {
@@ -322,14 +323,14 @@ public final class ArrayUtil {
 
   public static String toString(final long[] buf, final int off, final int len) {
     if (buf == null) return "null";
-    if (len == 0) return "[]";
+    if (len == 0 || off >= len) return "[]";
     return toString(new StringBuilder(len * 8), buf, off, len).toString();
   }
 
   public static StringBuilder toString(final StringBuilder sb,
       final long[] buf, final int off, final int len) {
     if (buf == null) return sb.append("null");
-    if (len == 0) return sb.append("[]");
+    if (len == 0 || off >= len) return sb.append("[]");
 
     sb.append('[');
     for (int i = 0; i < len; ++i) {
@@ -342,14 +343,14 @@ public final class ArrayUtil {
 
   public static <T> String toString(final T[] buf, final int off, final int len) {
     if (buf == null) return "null";
-    if (len == 0) return "[]";
+    if (len == 0 || off >= len) return "[]";
     return toString(new StringBuilder(len * 8), buf, off, len).toString();
   }
 
   public static <T> StringBuilder toString(final StringBuilder sb,
       final T[] buf, final int off, final int len) {
     if (buf == null) return sb.append("null");
-    if (len == 0) return sb.append("[]");
+    if (len == 0 || off >= len) return sb.append("[]");
 
     sb.append('[');
     for (int i = 0; i < len; ++i) {
@@ -425,6 +426,18 @@ public final class ArrayUtil {
     array[index] = value;
   }
 
+  public static void insert(final String[] array, final int off, final int len,
+      final int index, final String value) {
+    System.arraycopy(array, off + index, array, off + index + 1, len - index);
+    array[index] = value;
+  }
+
+  public static <T> void insert(final T[] array, final int off, final int len,
+      final int index, final T value) {
+    System.arraycopy(array, off + index, array, off + index + 1, len - index);
+    array[index] = value;
+  }
+
   // ================================================================================
   //  PUBLIC Array indexOf helpers
   // ================================================================================
@@ -459,6 +472,18 @@ public final class ArrayUtil {
     return indexOf(value, items) >= 0;
   }
 
+  public static boolean contains(final char value, final char[] items) {
+    return indexOf(value, items) >= 0;
+  }
+
+  public static boolean contains(final String value, final String[] items) {
+    return indexOf(value, items) >= 0;
+  }
+
+  public static boolean contains(final byte[] value, final byte[][] items) {
+    return indexOf(value, items) >= 0;
+  }
+
   public static int indexOf(final int value, final int[] items) {
     for (int i = 0; i < items.length; ++i) {
       if (items[i] == value) {
@@ -471,6 +496,15 @@ public final class ArrayUtil {
   public static int indexOf(final char value, final char[] items) {
     for (int i = 0; i < items.length; ++i) {
       if (items[i] == value) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public static int indexOf(final String value, final String[] items) {
+    for (int i = 0; i < items.length; ++i) {
+      if (StringUtil.equals(items[i], value)) {
         return i;
       }
     }
