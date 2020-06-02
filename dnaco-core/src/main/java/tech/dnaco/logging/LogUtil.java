@@ -17,6 +17,9 @@
 
 package tech.dnaco.logging;
 
+import java.lang.System.Logger.Level;
+import java.text.MessageFormat;
+import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicLong;
 
 import tech.dnaco.strings.BaseN;
@@ -60,5 +63,64 @@ public final class LogUtil {
     INFO,       // informational
     DEBUG,      // debug-level messages
     TRACE,      // very verbose debug level messages
+  }
+
+  // ===============================================================================================
+  //  System.Logger related
+  // ===============================================================================================
+  private static LogLevel fromJavaLevel(final Level level) {
+    switch (level) {
+      case ALL:     return LogLevel.ALWAYS;
+      case DEBUG:   return LogLevel.DEBUG;
+      case ERROR:   return LogLevel.ERROR;
+      case INFO:    return LogLevel.INFO;
+      case OFF:     return LogLevel.FATAL;
+      case TRACE:   return LogLevel.TRACE;
+      case WARNING: return LogLevel.WARNING;
+    }
+    throw new UnsupportedOperationException("unsupported log level " + level);
+  }
+
+  public static final class SystemLogger implements System.Logger {
+    static {
+      Logger.EXCLUDE_CLASSES.add(System.Logger.class.getName());
+      Logger.EXCLUDE_CLASSES.add(SystemLogger.class.getName());
+      Logger.EXCLUDE_CLASSES.add("jdk.internal.logger.AbstractLoggerWrapper");
+      Logger.EXCLUDE_CLASSES.add("jdk.internal.net.http.common.DebugLogger");
+      Logger.EXCLUDE_CLASSES.add("jdk.internal.net.http.common.Logger");
+    }
+
+    @Override
+    public String getName() {
+      return "dnaco-logger";
+    }
+
+    @Override
+    public boolean isLoggable(Level level) {
+      return Logger.isEnabled(fromJavaLevel(level));
+    }
+
+    @Override
+    public void log(Level level, ResourceBundle bundle, String msg, Throwable thrown) {
+      if (level.compareTo(Level.WARNING) >= 0) {
+        final String text = bundle != null ? bundle.getString(msg) : msg;
+        Logger.log(fromJavaLevel(level), thrown, text, null);
+      }
+    }
+
+    @Override
+    public void log(Level level, ResourceBundle bundle, String format, Object... params) {
+      if (level.compareTo(Level.WARNING) >= 0) {
+        final String text = bundle != null ? bundle.getString(format) : format;
+        Logger.log(fromJavaLevel(level), null, MessageFormat.format(text, params), null);
+      }
+    }
+  }
+
+  public static final class SystemLoggerFinder extends System.LoggerFinder {
+    @Override
+    public System.Logger getLogger(String name, Module module) {
+      return new SystemLogger();
+    }
   }
 }

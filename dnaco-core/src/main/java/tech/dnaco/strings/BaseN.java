@@ -52,6 +52,10 @@ public final class BaseN {
     return Base32.encode(Base32.HUMAN_ENCODING, buf, off, len);
   }
 
+  public static byte[] decodeHumanBase32(final String data) {
+    return Base32.decode(data);
+  }
+
   // --------------------------------------------------------------------------------
   //  Base36 related
   // --------------------------------------------------------------------------------

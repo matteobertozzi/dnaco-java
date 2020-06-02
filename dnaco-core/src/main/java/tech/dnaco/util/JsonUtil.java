@@ -88,6 +88,7 @@ public final class JsonUtil {
 
   public static <T> T fromJson(final byte[] json, final int jsonOff, final int jsonLen, final Class<T> classOfT)
       throws IOException {
+    if (jsonLen == 0) return null;
     try (ByteArrayInputStream stream = new ByteArrayInputStream(json, jsonOff, jsonLen)) {
       try (InputStreamReader reader = new InputStreamReader(stream)) {
         return GSON.fromJson(reader, classOfT);

@@ -91,9 +91,10 @@ public class TopK implements TelemetryCollector {
     }
 
     Arrays.fill(buckets, -1);
+    final int mask = (buckets.length - 1);
     for (int i = 0, n = entryCount; i < n; ++i) {
       final MinMaxEntry entry = entries[i];
-      final int targetBucket = entry.keyHash & (buckets.length - 1);
+      final int targetBucket = entry.keyHash & mask;
       entry.next = buckets[targetBucket];
       buckets[targetBucket] = i;
     }
@@ -116,7 +117,7 @@ public class TopK implements TelemetryCollector {
   public TopKData getSnapshot() {
     if (entryCount == 0) return TopKData.EMPTY;
 
-    Arrays.sort(entries, 0, entryCount, comparatorByType());
+    sortAndRebuild(entryCount);
 
     final TopEntry[] topEntries = new TopEntry[Math.min(entryCount, k)];
     for (int i = 0; i < topEntries.length; ++i) {
@@ -198,7 +199,8 @@ public class TopK implements TelemetryCollector {
     final long startTime = System.nanoTime();
     final TopK topK  = new TopK(TopType.MIN_MAX, 10);
     for (int i = 0; i < 1_000_000; ++i) {
-      topK.add("foo-" + (i % 6), i);
+      topK.add("foo-" + (i % 2), i);
+      topK.getSnapshot();
     }
     System.out.println(HumansUtil.humanTimeSince(startTime));
     System.out.println(topK.getSnapshot().toHumanReport(new StringBuilder(), HumansUtil.HUMAN_COUNT));

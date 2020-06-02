@@ -27,6 +27,8 @@ public final class StringUtil {
   public static final char[] ASCII_LOWERCASE = "abcdefghijklmnopqrstuvwxyz".toCharArray();
   public static final char[] HEX_DIGITS = "0123456789abcdefABCDEF".toCharArray();
 
+  public static final String[] EMPTY_ARRAY = new String[0];
+
   private StringUtil() {
     // no-op
   }
@@ -404,6 +406,18 @@ public final class StringUtil {
     if (a == null) return -1;
     if (b == null) return 1;
     return a.compareToIgnoreCase(b);
+  }
+
+  public static boolean equals(final String a, final int aOff, final int aLen,
+      final String b, final int bOff, final int bLen) {
+    if (aLen != bLen) return false;
+
+    for (int i = 0; i < aLen; ++i) {
+      if (a.charAt(aOff + i) != b.charAt(bOff + i)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public static final Comparator<String> STRING_REVERSE_COMPARATOR = new Comparator<>() {

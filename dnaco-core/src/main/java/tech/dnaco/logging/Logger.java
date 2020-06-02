@@ -20,15 +20,17 @@ package tech.dnaco.logging;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.StackWalker.StackFrame;
 import java.util.HashSet;
 import java.util.function.Supplier;
 
 import tech.dnaco.logging.LogUtil.LogLevel;
+import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringFormat;
 
 // checkout System.logger in java 9
 public final class Logger {
-  public static final HashSet<String> EXCLUDE_CLASSES = new HashSet<>();
+  public static final HashSet<String> EXCLUDE_CLASSES = new HashSet<>(128);
   static {
     EXCLUDE_CLASSES.add(Logger.class.getName());
   }
@@ -203,7 +205,7 @@ public final class Logger {
     logRaw(level, exception, format, params);
   }
 
-  private static void log(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
+  static void log(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
     if (isEnabled(level)) logRaw(level, exception, format, args);
   }
 
@@ -218,7 +220,7 @@ public final class Logger {
         .setModuleId(session.getModuleId())
         .setGroupId(session.getGroupId())
         .setThreadName(thread.getName())
-        .setClassAndMethod(buildMethodLine(thread))
+        .setClassAndMethod(buildMethodLine())
         .setStackTrace(exception != null ? stackTraceToString(exception) : null)
         .setTraceId(session.getTraceId())
         .setLevel(level)
@@ -279,7 +281,10 @@ public final class Logger {
   }
 
   private static String getClassName(final StackTraceElement st) {
-    final String cname = st.getClassName();
+    return getClassName(st.getClassName());
+  }
+
+  private static String getClassName(final String cname) {
     int index = cname.length();
     for (int i = 0; i < 2; i++) {
       final int tmp = cname.lastIndexOf('.', index - 1);
@@ -289,12 +294,26 @@ public final class Logger {
     return cname.substring(index + 1);
   }
 
-  private static String buildMethodLine(final Thread thread) {
+  private static String buildMethodLine() {
     // Get the stack trace: this is expensive... but really useful
     // NOTE: i should be set to the first public method
-    // i = 4 -> [0: getStackTrace(), 1: buildFullTraceMessage(), 2: log(level, ...), 3: info(), 4:userFunc()]
+    // i = 4 -> [0: buildMethodLine(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
+    final StackFrame frame = StackWalker.getInstance().walk(s ->
+      s.skip(4)
+      .filter(x -> !EXCLUDE_CLASSES.contains(x.getClassName()))
+      .findFirst()
+    ).get();
+
+    // com.foo.Bar.m1():11
+    return getClassName(frame.getClassName()) + "." + frame.getMethodName() + "():" + frame.getLineNumber();
+  }
+
+  private static String buildMethodLineB(final Thread thread) {
+    // Get the stack trace: this is expensive... but really useful
+    // NOTE: i should be set to the first public method
+    // i = 4 -> [0: buildMethodLine(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
     final StackTraceElement[] stackTrace = thread.getStackTrace();
-    for (int i = 3; i < stackTrace.length; ++i) {
+    for (int i = 4; i < stackTrace.length; ++i) {
       final StackTraceElement st = stackTrace[i];
 
       // skip helper classes that contains a log indirection
@@ -304,5 +323,26 @@ public final class Logger {
       return getClassName(st) + "." + st.getMethodName() + "():" + st.getLineNumber();
     }
     return null;
+  }
+
+  static class Foo {
+    static long frame(Thread thread) {
+      Logger.info("FOO");
+      return 1;
+    }
+  }
+
+  public static void main(String[] args) {
+    Logger.setWriter(new LogAsyncWriter(true) {
+      public void addToLogQueue(final Thread thread, final String projectId, final LogEntry entry) {
+        //System.out.println(entry.getClassAndMethod());
+      }
+    });
+    final Thread thread = Thread.currentThread();
+    long startTime = System.nanoTime();
+    long x = 0;
+    for (int i = 0; i < 1_000_000; ++i) x += Foo.frame(thread);
+    long elapsed = System.nanoTime() - startTime;
+    System.out.println(x + " -> " + HumansUtil.humanTimeNanos(elapsed));
   }
 }
