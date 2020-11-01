@@ -18,19 +18,35 @@
 package tech.dnaco.telemetry;
 
 import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
+import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.strings.BaseN;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.BuildInfo;
+import tech.dnaco.util.RandData;
 
 public final class JvmMetrics implements TelemetryCollector {
   public static final JvmMetrics INSTANCE = new JvmMetrics();
 
+  private final ConcurrentMaxAndAvgTimeRangeGauge cpuUsage = new ConcurrentMaxAndAvgTimeRangeGauge(60, 1, TimeUnit.MINUTES);
+
   private BuildInfo buildInfo = null;
 
   private JvmMetrics() {
-    // no-op
+    collect(System.currentTimeMillis());
   }
 
+  public void collect(final long now) {
+    cpuUsage.set(now, getCpuUsage());
+  }
 
   // ================================================================================
   //  BuildInfo related
@@ -88,6 +104,18 @@ public final class JvmMetrics implements TelemetryCollector {
   // ================================================================================
   //  Threads Related
   // ================================================================================
+  public long getCpuUsage() {
+    final OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
+    if (bean instanceof com.sun.management.OperatingSystemMXBean) {
+      return Math.round(((com.sun.management.OperatingSystemMXBean)bean).getProcessCpuLoad() * 100);
+    }
+    return -1;
+  }
+
+  protected MaxAndAvgTimeRangeGaugeData getCpuUsageSnapshot() {
+    return cpuUsage.getSnapshot();
+  }
+
   public int availableProcessors() {
     return Runtime.getRuntime().availableProcessors();
   }
@@ -116,6 +144,36 @@ public final class JvmMetrics implements TelemetryCollector {
     return vendor + " " + vendorVersion;
   }
 
+  public String getOsName() {
+    return System.getProperty("os.name");
+  }
+
+  public String getOsVersion() {
+    return System.getProperty("os.version");
+  }
+
+  public String getOsArch() {
+    return System.getProperty("os.arch");
+  }
+
+  public String getDeviceId() {
+    try {
+      final ArrayList<NetworkInterface> networkIfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+      networkIfaces.sort((a, b) -> a.getName().compareTo(b.getName()));
+
+      final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
+      for (NetworkInterface iface: networkIfaces) {
+        final byte[] hwAddr = iface.getHardwareAddress();
+        if (BytesUtil.isEmpty(hwAddr)) continue;
+        digest.update(iface.getName().getBytes());
+        digest.update(iface.getHardwareAddress());
+      }
+      return "jVm" + BaseN.encodeBase62(digest.digest());
+    } catch (SocketException | NoSuchAlgorithmException e) {
+      return "jRd-" + BaseN.encodeBase62(RandData.generateBytes(32));
+    }
+  }
+
 	@Override
 	public String getType() {
 		return "JVM_METRICS";
@@ -124,5 +182,10 @@ public final class JvmMetrics implements TelemetryCollector {
 	@Override
 	public TelemetryCollectorData getSnapshot() {
 		return new JvmMetricsData(this);
-	}
+  }
+
+  public static void main(String[] args) {
+    //System.getProperty("os.arch")
+    System.out.println(JvmMetrics.INSTANCE.getSnapshot().toHumanReport(new StringBuilder(), null));
+  }
 }

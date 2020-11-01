@@ -20,6 +20,7 @@ public class JvmMetricsData implements TelemetryCollectorData {
   private final long usedMemory;
   private final long maxMemory;
   private final int threadCount;
+  private final MaxAndAvgTimeRangeGaugeData cpuUsage;
 
   public JvmMetricsData(final JvmMetrics metrics) {
     this.uptime = metrics.getUptime();
@@ -29,6 +30,7 @@ public class JvmMetricsData implements TelemetryCollectorData {
     this.usedMemory = metrics.getUsedMemory();
     this.maxMemory = metrics.getMaxMemory();
     this.threadCount = metrics.getThreadCount();
+    this.cpuUsage = metrics.getCpuUsageSnapshot();
   }
 
 	public long getUptime() {
@@ -59,7 +61,6 @@ public class JvmMetricsData implements TelemetryCollectorData {
 		return threadCount;
   }
 
-
 	@Override
 	public JsonElement toJson() {
 		// Memory
@@ -80,12 +81,20 @@ public class JvmMetricsData implements TelemetryCollectorData {
     jvmJson.addProperty("version", JvmMetrics.INSTANCE.getJavaVersionNumber());
     jvmJson.addProperty("vendor", JvmMetrics.INSTANCE.getJavaVendor());
 
+    // CPU
+    final JsonObject cpuJson = new JsonObject();
+    cpuJson.addProperty("label", "JVM CPU Usage");
+    cpuJson.addProperty("type", "MAX_AND_AVG_TIME_RANGE_GAUGE");
+    cpuJson.addProperty("unit", "percent");
+    cpuJson.add("data", cpuUsage.toJson());
+
     // Metrics
     final JsonObject json = new JsonObject();
     json.add("buildInfo", JsonUtil.toJsonTree(JvmMetrics.INSTANCE.getBuildInfo()));
     json.add("jvm", jvmJson);
     json.add("memory", memJson);
     json.add("threads", threadsJson);
+    json.add("cpu_usage", cpuJson);
     json.addProperty("uptime", uptime);
     return json;
 	}
@@ -102,6 +111,12 @@ public class JvmMetricsData implements TelemetryCollectorData {
       report.append(buildInfo.getName()).append(" ").append(buildInfo.getVersion());
       report.append(" (").append(buildInfo.getBuildDate()).append(")\n");
     }
+
+    // OS
+    report.append(" - OS: ");
+    report.append(JvmMetrics.INSTANCE.getOsName()).append(" ");
+    report.append(JvmMetrics.INSTANCE.getOsVersion()).append(" (");
+    report.append(JvmMetrics.INSTANCE.getOsArch()).append(")\n");
 
     // JVM Memory
     report.append(" - Memory:");
@@ -134,6 +149,11 @@ public class JvmMetricsData implements TelemetryCollectorData {
     } catch (final Throwable e) {
       Logger.error(e, "unable to fetch number of open fds");
     }
+
+    // CPU Usage
+    report.append(" - CPU Usage: ");
+    cpuUsage.toHumanReport(report, HumansUtil.HUMAN_COUNT);
+    report.append("\n");
 
     return report;
 	}

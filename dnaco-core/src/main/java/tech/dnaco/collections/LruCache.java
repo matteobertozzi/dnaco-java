@@ -18,10 +18,12 @@
 package tech.dnaco.collections;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiPredicate;
 
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.util.BitUtil;
@@ -38,6 +40,10 @@ public class LruCache<TKey, TValue> {
   private int count = 0;
 
   public LruCache(final int initialCapacity, final int maxSize) {
+    this(initialCapacity, maxSize, null);
+  }
+
+  public LruCache(final int initialCapacity, final int maxSize, final Duration expiration) {
     this.maxSize = maxSize;
 
     final int capacity = BitUtil.nextPow2(Math.max(8, initialCapacity));
@@ -110,10 +116,36 @@ public class LruCache<TKey, TValue> {
     }
   }
 
+  public void clear() {
+    lock.lock();
+    try {
+      for (int i = 0; i < entries.length; ++i) {
+        entries[i].clear();
+      }
+      Arrays.fill(buckets, -1);
+    } finally {
+      lock.unlock();
+    }
+  }
+
   public TValue evict(final TKey key) {
     lock.lock();
     try {
       return remove(key);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public void scanEvict(BiPredicate<TKey, TValue> predicate) {
+    lock.lock();
+    try {
+      for (int i = 0; i < entries.length; ++i) {
+        final CacheItemNode node = entries[i];
+        if (node != null && predicate.test(node.getKey(), node.getValue())) {
+          remove(node.getKey());
+        }
+      }
     } finally {
       lock.unlock();
     }

@@ -32,6 +32,12 @@ public class ConcurrentTopK extends TopK {
     }
   }
 
+  public void clear() {
+    synchronized (this) {
+      super.clear();
+    }
+  }
+
   @Override
   public TopKData getSnapshot() {
     synchronized (this) {

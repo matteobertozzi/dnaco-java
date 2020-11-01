@@ -17,6 +17,7 @@
 
 package tech.dnaco.strings;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -117,6 +118,21 @@ public final class StringUtil {
       items[i] = items[i].trim();
     }
     return items;
+  }
+
+  public static String[] splitAndTrimSkipEmptyLines(final String input, final String delimiter) {
+    final String itrim = input != null ? input.trim() : null;
+    if (isEmpty(itrim)) return null;
+
+    final String[] rawItems = itrim.split(delimiter);
+    final ArrayList<String> items = new ArrayList<>(rawItems.length);
+    for (int i = 0; i < rawItems.length; ++i) {
+      final String row = StringUtil.trim(rawItems[i]);
+      if (StringUtil.isNotEmpty(row)) {
+        items.add(row);
+      }
+    }
+    return items.toArray(new String[0]);
   }
 
   public static String collapseSpaces(final String input) {
@@ -238,6 +254,22 @@ public final class StringUtil {
       if (index++ > 0) builder.append(delimiter);
       builder.append(item.toString());
     }
+    return builder.toString();
+  }
+
+  public static <T> String join(final String delimiter, final Collection<T> items, final boolean preAndPostDelimiter) {
+    if (items.isEmpty()) return "";
+
+    int index = 0;
+    final StringBuilder builder = new StringBuilder();
+    if (preAndPostDelimiter) builder.append(delimiter);
+    for (final T item: items) {
+      if (item == null) continue;
+
+      if (index++ > 0) builder.append(delimiter);
+      builder.append(item.toString());
+    }
+    if (preAndPostDelimiter) builder.append(delimiter);
     return builder.toString();
   }
 
@@ -410,9 +442,12 @@ public final class StringUtil {
 
   public static boolean equals(final String a, final int aOff, final int aLen,
       final String b, final int bOff, final int bLen) {
+    //System.out.println("A-OFF: " + aOff + " A-LEN:" + aLen);
+    //System.out.println("A-OFF: " + bOff + " B-LEN:" + bLen);
     if (aLen != bLen) return false;
 
     for (int i = 0; i < aLen; ++i) {
+      //System.out.println(" -> [" + (aOff + i) + "/" + (bOff + i) + "] -> " + a.charAt(aOff + i) + " -> " + b.charAt(bOff + i));
       if (a.charAt(aOff + i) != b.charAt(bOff + i)) {
         return false;
       }

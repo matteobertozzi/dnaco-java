@@ -17,23 +17,50 @@
 
 package tech.dnaco.logging;
 
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.strings.StringUtil;
 
 public final class LogTraceBuffer {
-  private static final ThreadLocal<LogTraceBufferData> traceBuffer = new ThreadLocal<>();
+  public static final LogTraceBuffer INSTANCE = new LogTraceBuffer();
+
+  private final CopyOnWriteArrayList<LogCollector> collectors = new CopyOnWriteArrayList<>();
 
   private LogTraceBuffer() {
-    // no-op
+    addCollector(new LogTraceBuffersCollector());
   }
 
-  public static void add(final String projectId, final LogEntry entry) {
-    LogTraceBufferData data = traceBuffer.get();
-    if (data == null) {
-      data = new LogTraceBufferData();
-      traceBuffer.set(data);
+  public void addCollector(final LogCollector collector) {
+    this.collectors.add(collector);
+  }
+
+  public void removeCollector(final LogCollector collector) {
+    this.collectors.remove(collector);
+  }
+
+  public void addToLogQueue(final Thread thread, final String projectId, final LogEntry entry) {
+    for (final LogCollector collector: collectors) {
+      collector.addToLogQueue(thread, projectId, entry);
     }
-    data.add(projectId, entry);
+  }
+
+  public interface LogCollector {
+    void addToLogQueue(Thread thread, String projectId, LogEntry entry);
+  }
+
+  private static final class LogTraceBuffersCollector implements LogCollector {
+    private final ThreadLocal<LogTraceBufferData> traceBuffer = new ThreadLocal<>();
+
+    @Override
+    public void addToLogQueue(final Thread thread, final String projectId, final LogEntry entry) {
+      LogTraceBufferData data = traceBuffer.get();
+      if (data == null) {
+        data = new LogTraceBufferData();
+        traceBuffer.set(data);
+      }
+      data.add(projectId, entry);
+    }
   }
 
   private static final class LogTraceBufferData {
@@ -77,9 +104,9 @@ public final class LogTraceBuffer {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(final String[] args) {
     for (int i = 0; i < 1000; ++i) {
-      LogTraceBuffer.add("foo", new LogEntry()
+      LogTraceBuffer.INSTANCE.addToLogQueue(Thread.currentThread(), "foo", new LogEntry()
         .setGroupId("groupId")
         .setModuleId("moduleId")
         .setFormat("foo {}", new Object[] { i })

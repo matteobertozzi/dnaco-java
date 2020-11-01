@@ -73,8 +73,14 @@ public final class HumansUtil {
     return humanTime(System.nanoTime() - timeNano, TimeUnit.NANOSECONDS);
   }
 
-  public static String humanTimeNanos(final long timeDiff) {
-    return humanTime(timeDiff, TimeUnit.NANOSECONDS);
+  public static String humanTimeNanos(final long timeNs) {
+    if (timeNs < 1000) return (timeNs < 0) ? "unkown" : timeNs + "ns";
+    return humanTimeMicros(timeNs / 1000);
+  }
+
+  public static String humanTimeMicros(final long timeUs) {
+    if (timeUs < 1000) return (timeUs < 0) ? "unkown" : timeUs + "us";
+    return humanTimeMillis(timeUs / 1000);
   }
 
   public static String humanTimeMillis(final long timeDiff) {
@@ -85,8 +91,8 @@ public final class HumansUtil {
     final long msec = unit.toMillis(timeDiff);
     if (msec == 0) {
       final long micros = unit.toMicros(timeDiff);
-      if (micros > 0) return String.format("%dus", micros);
-      return String.format("%dns", unit.toNanos(timeDiff));
+      if (micros > 0) return micros + "us";
+      return unit.toNanos(timeDiff) + "ns";
     }
 
     if (msec < 1000) {
@@ -151,9 +157,11 @@ public final class HumansUtil {
   // ================================================================================
   public static final HumanLongValueConverter HUMAN_TIME_MILLIS = new HumanTimeConverter(TimeUnit.MILLISECONDS);
   public static final HumanLongValueConverter HUMAN_TIME_NANOS = new HumanTimeConverter(TimeUnit.NANOSECONDS);
+  public static final HumanLongValueConverter HUMAN_PERCENT = new HumanPercentConverter();
   public static final HumanLongValueConverter HUMAN_COUNT = new HumanCountConverter();
   public static final HumanLongValueConverter HUMAN_SIZE = new HumanSizeConverter();
   public static final HumanLongValueConverter HUMAN_RATE = new HumanRateConverter();
+  public static final HumanLongValueConverter HUMAN_DATE = new HumanDateConverter();
 
   public interface HumanLongValueConverter {
     String getHumanType();
@@ -169,6 +177,18 @@ public final class HumansUtil {
     @Override
     public String getHumanType() {
       return "size";
+    }
+  }
+
+  public static final class HumanPercentConverter implements HumanLongValueConverter {
+    @Override
+    public String toHuman(final long value) {
+      return value + "%";
+    }
+
+    @Override
+    public String getHumanType() {
+      return "percent";
     }
   }
 
@@ -193,6 +213,18 @@ public final class HumansUtil {
     @Override
     public String getHumanType() {
       return "rate";
+    }
+  }
+
+  public static final class HumanDateConverter implements HumanLongValueConverter {
+    @Override
+    public String toHuman(final long value) {
+      return HumansUtil.humanDate(value);
+    }
+
+    @Override
+    public String getHumanType() {
+      return "date";
     }
   }
 

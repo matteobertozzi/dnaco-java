@@ -251,7 +251,7 @@ public final class ArrayUtil {
     return (input == null) || (input.length == 0);
   }
 
-  public static <T> boolean isEmpty(final T[] input) {
+  public static boolean isEmpty(final Object[] input) {
     return (input == null) || (input.length == 0);
   }
 
@@ -271,7 +271,7 @@ public final class ArrayUtil {
     return (input != null) && input.length > 0;
   }
 
-  public static <T> boolean isNotEmpty(final T[] input) {
+  public static boolean isNotEmpty(final Object[] input) {
     return (input != null) && input.length > 0;
   }
 
@@ -310,7 +310,7 @@ public final class ArrayUtil {
   public static StringBuilder toString(final StringBuilder sb,
       final int[] buf, final int off, final int len) {
     if (buf == null) return sb.append("null");
-    if (len == 0 || off >= len) return sb.append("[]");
+    if (len == 0 || off >= buf.length) return sb.append("[]");
 
     sb.append('[');
     for (int i = 0; i < len; ++i) {
@@ -323,14 +323,14 @@ public final class ArrayUtil {
 
   public static String toString(final long[] buf, final int off, final int len) {
     if (buf == null) return "null";
-    if (len == 0 || off >= len) return "[]";
+    if (len == 0 || off >= buf.length) return "[]";
     return toString(new StringBuilder(len * 8), buf, off, len).toString();
   }
 
   public static StringBuilder toString(final StringBuilder sb,
       final long[] buf, final int off, final int len) {
     if (buf == null) return sb.append("null");
-    if (len == 0 || off >= len) return sb.append("[]");
+    if (len == 0 || off >= buf.length) return sb.append("[]");
 
     sb.append('[');
     for (int i = 0; i < len; ++i) {
@@ -343,14 +343,14 @@ public final class ArrayUtil {
 
   public static <T> String toString(final T[] buf, final int off, final int len) {
     if (buf == null) return "null";
-    if (len == 0 || off >= len) return "[]";
+    if (len == 0 || off >= buf.length) return "[]";
     return toString(new StringBuilder(len * 8), buf, off, len).toString();
   }
 
   public static <T> StringBuilder toString(final StringBuilder sb,
       final T[] buf, final int off, final int len) {
     if (buf == null) return sb.append("null");
-    if (len == 0 || off >= len) return sb.append("[]");
+    if (len == 0 || off >= buf.length) return sb.append("[]");
 
     sb.append('[');
     for (int i = 0; i < len; ++i) {
@@ -496,6 +496,19 @@ public final class ArrayUtil {
   public static int indexOf(final char value, final char[] items) {
     for (int i = 0; i < items.length; ++i) {
       if (items[i] == value) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public static boolean contains(final String[] items, final String value) {
+    return indexOf(items, value) >= 0;
+  }
+
+  public static int indexOf(final String[] items, final String value) {
+    for (int i = 0; i < items.length; ++i) {
+      if (StringUtil.equals(items[i], value)) {
         return i;
       }
     }

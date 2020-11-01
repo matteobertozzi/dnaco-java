@@ -28,6 +28,10 @@ public class LongArrayList {
     this.count = 0;
   }
 
+  public long[] toArray() {
+    return Arrays.copyOf(items, count);
+  }
+
   public long[] rawBuffer() {
     return items;
   }

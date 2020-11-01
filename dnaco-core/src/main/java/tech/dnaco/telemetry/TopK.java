@@ -40,7 +40,13 @@ public class TopK implements TelemetryCollector {
     this.type = type;
     this.buckets = new int[BitUtil.nextPow2(k)];
     this.entries = new MinMaxEntry[k * 2];
+    this.clear();
+  }
+
+  public void clear() {
+    Arrays.fill(entries, null);
     Arrays.fill(buckets, -1);
+    entryCount = 0;
   }
 
   public void add(final String key, final long value) {

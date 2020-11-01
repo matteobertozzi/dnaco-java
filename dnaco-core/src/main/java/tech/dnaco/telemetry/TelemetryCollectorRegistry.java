@@ -17,7 +17,10 @@
 
 package tech.dnaco.telemetry;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.google.gson.JsonObject;
 
 import tech.dnaco.strings.StringUtil;
 
@@ -30,8 +33,15 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
     super("telemetry_registry");
   }
 
-  public void updateMemoryUsage() {
-    JvmGcMetrics.INSTANCE.collect();
+  public void updateSystemUsage() {
+    final long now = System.currentTimeMillis();
+    SystemMetrics.INSTANCE.collect(now);
+    JvmGcMetrics.INSTANCE.collect(now);
+    JvmMetrics.INSTANCE.collect(now);
+  }
+
+  public Set<String> getTenants() {
+    return tenantMap.keySet();
   }
 
   public TelemetryCollectorGroup getTenantGroup(final String tenantId) {
@@ -59,10 +69,20 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
     return super.humanReport(report, key);
   }
 
+  public JsonObject toJson(final JsonObject json) {
+    json.add("jvm_metrics", JvmMetrics.INSTANCE.getSnapshot().toJson());
+    json.add("jvm_gc_metrics", JvmGcMetrics.INSTANCE.getSnapshot().toJson());
+    json.add("system_metrics", SystemMetrics.INSTANCE.getSnapshot().toJson());
+    json.add("jvm_threads_metrics", JvmThreadsMetrics.INSTANCE.getSnapshot().toJson());
+    return super.toJson(json);
+  }
+
   private void jvmHumanReport(final StringBuilder report) {
     JvmMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
     report.append('\n');
     JvmGcMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
+    report.append('\n');
+    SystemMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
     report.append('\n');
     JvmThreadsMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
     report.append('\n');

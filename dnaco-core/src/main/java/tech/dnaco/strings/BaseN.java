@@ -27,6 +27,7 @@ import tech.dnaco.util.RandData;
 public final class BaseN {
   public static final char[] BASE_58 = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".toCharArray();
   public static final char[] BASE_62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+  public static final char[] BASE_90 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&()*+,-./:;<=>?@[]^_{|}~".toCharArray();
 
   private BaseN() {
     // no-op

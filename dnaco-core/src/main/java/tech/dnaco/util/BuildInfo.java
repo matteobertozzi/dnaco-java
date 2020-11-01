@@ -44,6 +44,8 @@ public class BuildInfo {
   private String version = UNKNOWN;
   private String buildDate = UNKNOWN;
   private String createdBy = UNKNOWN;
+  private String gitBranch = UNKNOWN;
+  private String gitHash = UNKNOWN;
 
   public BuildInfo(final String name) {
     this.name = name;
@@ -66,6 +68,14 @@ public class BuildInfo {
 
   public String getCreatedBy() {
     return createdBy;
+  }
+
+  public String getGitBranch() {
+    return gitBranch;
+  }
+
+  public String getGitHash() {
+    return gitHash;
   }
 
   public static BuildInfo loadInfoFromManifest(final String name) throws IOException, ParseException {
@@ -96,6 +106,8 @@ public class BuildInfo {
       this.buildDate = localBuildDate.format(localDateFormatter);
       this.version = attributes.getValue("Implementation-Version");
       this.createdBy = StringUtil.defaultIfEmpty(attributes.getValue("Built-By"), attributes.getValue("builtBy"));
+      this.gitBranch = attributes.getValue("gitBranch");
+      this.gitHash = attributes.getValue("gitHash");
 
       Logger.trace("Loading manifest:\n -> entries: {}\n -> attributes: {}",
         manifest.getEntries(), manifest.getMainAttributes().entrySet());
@@ -110,6 +122,8 @@ public class BuildInfo {
 
   @Override
   public String toString() {
-    return "BuildInfo [name=" + name + ", version=" + version + ", buildDate=" + buildDate + ", createdBy=" + createdBy + "]";
+    return "BuildInfo [name=" + name + ", version=" + version +
+        ", buildDate=" + buildDate + ", createdBy=" + createdBy +
+        ", gitBranch=" + gitBranch + ", gitHash=" + gitHash + "]";
   }
 }

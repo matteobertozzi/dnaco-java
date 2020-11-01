@@ -59,7 +59,7 @@ public final class IOUtil {
   public static void readNBytes(final InputStream stream, final byte[] buf, final int off, final int len) throws IOException {
     final int n = stream.readNBytes(buf, off, len);
     if (n != len) {
-      throw new EOFException("unable to read " + len + ", got only " + len);
+      throw new EOFException("unable to read " + len + ", got only " + n);
     }
   }
 

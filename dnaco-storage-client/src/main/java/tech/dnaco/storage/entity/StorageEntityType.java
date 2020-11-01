@@ -20,6 +20,7 @@ package tech.dnaco.storage.entity;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +48,8 @@ public class StorageEntityType {
     final ArrayList<String> dataFields = new ArrayList<>(fields.length);
     for (int i = 0; i < fields.length; ++i) {
       final Field field = fields[i];
+      if (Modifier.isTransient(field.getModifiers())) continue;
+
       if (field.isAnnotationPresent(StorageKeyField.class)) {
         final StorageKeyField key = field.getAnnotation(StorageKeyField.class);
         keyNames.add(new KeyInfo(field.getName(), key.index()));
@@ -85,17 +88,24 @@ public class StorageEntityType {
       final KeyInfo keyInfo = keyFields.get(i);
       final String name = StringConverter.snakeToCamelCase(keyInfo.name);
       keyNames[i] = name;
-      keyGetMethods[i] = methodMap.get("get" + name);
-      keySetMethods[i] = methodMap.get("set" + name);
+      keyGetMethods[i] = findMethod(methodMap, "get" + name);
+      keySetMethods[i] = findMethod(methodMap, "set" + name);
     }
 
     for (int i = 0, n = dataFields.size(); i < n; ++i) {
       final String name = StringConverter.snakeToCamelCase(dataFields.get(i));
       fieldNames[i] = name;
-      fieldGetMethods[i] = methodMap.get("get" + name);
-      fieldSetMethods[i] = methodMap.get("set" + name);
-      fieldChangedMethods[i] = methodMap.get("has" + name + "Changes");
+      fieldGetMethods[i] = findMethod(methodMap, "get" + name);
+      fieldSetMethods[i] = findMethod(methodMap, "set" + name);
+      fieldChangedMethods[i] = findMethod(methodMap, "is" + name + "Changed");
     }
+  }
+
+  private Method findMethod(final HashMap<String, Method> methodMap, final String name) {
+    final Method m = methodMap.get(name);
+    if (m != null) return m;
+
+    throw new UnsupportedOperationException("unable to find method " + name + " for entity " + entityClass);
   }
 
   public <T extends StorageEntity> void encode(final T entity, final StorageEntityEncoder encoder)
@@ -108,6 +118,7 @@ public class StorageEntityType {
       throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
     for (int i = 0; i < keyNames.length; ++i) {
       final Method getter = keyGetMethods[i];
+      System.out.println(" - " + i + " -> " + keyNames[i] + " -> " + getter);
       encoder.addKeyField(keyNames[i], i, getter.getReturnType(), getter.invoke(entity));
     }
   }

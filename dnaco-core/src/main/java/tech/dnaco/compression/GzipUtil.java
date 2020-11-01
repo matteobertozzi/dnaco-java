@@ -19,6 +19,7 @@ package tech.dnaco.compression;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.zip.GZIPOutputStream;
 
 public final class GzipUtil {
@@ -27,11 +28,35 @@ public final class GzipUtil {
   }
 
   public static byte[] compress(final String data) throws IOException {
-    try (ByteArrayOutputStream out = new ByteArrayOutputStream(data.length())) {
+    return compress(data.getBytes());
+  }
+
+  public static byte[] compress(final byte[] data) throws IOException {
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream(data.length)) {
       try (GZIPOutputStream gz = new GZIPOutputStream(out)) {
-        gz.write(data.getBytes());
+        gz.write(data);
       }
       return out.toByteArray();
+    }
+  }
+
+  public static byte[] compress(final String data, final int level) throws IOException {
+    return compress(data.getBytes(), level);
+  }
+
+  public static byte[] compress(final byte[] data, final int level) throws IOException {
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream(data.length)) {
+      try (GZIPOutputStream gz = new GzipOutputStreamWithLevel(out, level)) {
+        gz.write(data);
+      }
+      return out.toByteArray();
+    }
+  }
+
+  private static final class GzipOutputStreamWithLevel extends GZIPOutputStream {
+    private GzipOutputStreamWithLevel(final OutputStream out, final int level) throws IOException {
+      super(out);
+      def.setLevel(level);
     }
   }
 }

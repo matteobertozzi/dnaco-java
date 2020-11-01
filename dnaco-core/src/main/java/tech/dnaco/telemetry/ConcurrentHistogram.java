@@ -20,13 +20,17 @@ package tech.dnaco.telemetry;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 
+import tech.dnaco.collections.ArrayUtil;
+
 public class ConcurrentHistogram implements TelemetryCollector {
   private final long[] bounds;
   private final AtomicLongArray events;
   private final AtomicLong maxValue = new AtomicLong(0);
 
   public ConcurrentHistogram(final long... bounds) {
-    assert bounds.length > 0;
+    if (ArrayUtil.isEmpty(bounds)) {
+      throw new UnsupportedOperationException("expected a list of bounds");
+    }
     this.bounds = bounds;
     this.events = new AtomicLongArray(bounds.length + 1);
     clear();
@@ -64,22 +68,25 @@ public class ConcurrentHistogram implements TelemetryCollector {
 
 	@Override
 	public TelemetryCollectorData getSnapshot() {
-    long numEvents = 0;
-    final long[] snapshotEvents = new long[events.length()];
+    final int nBounds = bounds.length;
+    int index = 0;
+    long nEvents = 0;
+    final long maxValue = this.maxValue.get();
+    while ((index < nBounds) && (maxValue > bounds[index])) {
+      nEvents += events.get(index);
+      index++;
+    }
+    nEvents += events.get(index);
+
+    if (nEvents == 0) return HistogramData.EMPTY;
+
+    final long[] snapshotBounds = new long[index + 1];
+    final long[] snapshotEvents = new long[index + 1];
+    System.arraycopy(bounds, 0, snapshotBounds, 0, index);
+    snapshotBounds[index] = maxValue;
     for (int i = 0; i < snapshotEvents.length; ++i) {
-      final long n = events.get(i);
-      snapshotEvents[i] = n;
-      numEvents += n;
+      snapshotEvents[i] = events.get(i);
     }
-
-    if (numEvents == 0) {
-      return HistogramData.EMPTY;
-    }
-
-    final long snapshotMaxValue = this.maxValue.get();
-    final long[] snapshotBounds = new long[snapshotEvents.length];
-    System.arraycopy(bounds, 0, snapshotBounds, 0, snapshotEvents.length - 1);
-    snapshotBounds[snapshotEvents.length - 1] = snapshotMaxValue;
     return new HistogramData(snapshotBounds, snapshotEvents);
 	}
 }

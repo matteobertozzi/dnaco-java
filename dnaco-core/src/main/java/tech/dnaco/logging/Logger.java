@@ -21,11 +21,11 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.StackWalker.StackFrame;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.HashSet;
 import java.util.function.Supplier;
 
 import tech.dnaco.logging.LogUtil.LogLevel;
-import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringFormat;
 
 // checkout System.logger in java 9
@@ -33,6 +33,10 @@ public final class Logger {
   public static final HashSet<String> EXCLUDE_CLASSES = new HashSet<>(128);
   static {
     EXCLUDE_CLASSES.add(Logger.class.getName());
+
+    // log uncaught exceptions
+    final UncaughtExceptionHandler ueh = Thread.getDefaultUncaughtExceptionHandler();
+    Thread.setDefaultUncaughtExceptionHandler(new LoggerDefaultUncaughtExceptionHandler(ueh));
   }
 
   private static final ThreadLocal<LoggerSession> localSession = ThreadLocal.withInitial(LoggerSession::newSystemGeneralSession);
@@ -228,7 +232,7 @@ public final class Logger {
         .setFormat(format, args);
 
     // add to trace buffer for error reporting
-    LogTraceBuffer.add(session.getProjectId(), entry);
+    LogTraceBuffer.INSTANCE.addToLogQueue(thread, session.getProjectId(), entry);
 
     // append to the logger
     if (writer != null) {
@@ -325,24 +329,21 @@ public final class Logger {
     return null;
   }
 
-  static class Foo {
-    static long frame(Thread thread) {
-      Logger.info("FOO");
-      return 1;
-    }
-  }
 
-  public static void main(String[] args) {
-    Logger.setWriter(new LogAsyncWriter(true) {
-      public void addToLogQueue(final Thread thread, final String projectId, final LogEntry entry) {
-        //System.out.println(entry.getClassAndMethod());
-      }
-    });
-    final Thread thread = Thread.currentThread();
-    long startTime = System.nanoTime();
-    long x = 0;
-    for (int i = 0; i < 1_000_000; ++i) x += Foo.frame(thread);
-    long elapsed = System.nanoTime() - startTime;
-    System.out.println(x + " -> " + HumansUtil.humanTimeNanos(elapsed));
+  // ===============================================================================================
+  // PRIVATE Default Uncaught Exception Handler
+  // ===============================================================================================
+  private static final class LoggerDefaultUncaughtExceptionHandler implements UncaughtExceptionHandler {
+    private final UncaughtExceptionHandler ueh;
+
+    private LoggerDefaultUncaughtExceptionHandler(final UncaughtExceptionHandler ueh) {
+      this.ueh = ueh;
+    }
+
+    @Override
+    public void uncaughtException(final Thread t, final Throwable e) {
+      Logger.critical(e, "Uncaught Exception was thrown by thread {}", t.getName());
+      if (ueh != null) ueh.uncaughtException(t, e);
+    }
   }
 }

@@ -44,19 +44,19 @@ public class LogFileWriter implements LogWriter {
   private static final int ROLL_SIZE = 32 << 20;
 
   private final TimeRangeCounter diskFlushes = new TelemetryCollector.Builder()
-      .setName("logger.logger_disk_flushes")
+      .setName("logger_disk_flushes")
       .setLabel("Logger disk flushes")
       .setUnit(HumansUtil.HUMAN_COUNT)
       .register(new TimeRangeGauge(60, 1, TimeUnit.HOURS));
 
   private final Histogram diskFlushSizeHisto = new TelemetryCollector.Builder()
-      .setName("logger.logger_disk_flush_size_histo")
+      .setName("logger_disk_flush_size_histo")
       .setLabel("Logger disk flush size")
       .setUnit(HumansUtil.HUMAN_SIZE)
       .register(new Histogram(Histogram.DEFAULT_SIZE_BOUNDS));
 
   private final Histogram diskFlushTimeHisto = new TelemetryCollector.Builder()
-      .setName("logger.logger_disk_flush_time_histo")
+      .setName("logger_disk_flush_time_histo")
       .setLabel("Logger disk flush time")
       .setUnit(HumansUtil.HUMAN_TIME_NANOS)
       .register(new Histogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
@@ -110,10 +110,10 @@ public class LogFileWriter implements LogWriter {
     final long eligibleForDeletion = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(deleteDays);
     for (int i = 0; i < dateSubFolders.length; ++i) {
       final File dateSubFolder = dateSubFolders[i];
-      if (!dateSubFolder.isDirectory()) continue;
-      if (!isElegibleForDeletion(dateSubFolder, eligibleForDeletion)) continue;
-
       try {
+        if (!dateSubFolder.isDirectory()) continue;
+        if (!isElegibleForDeletion(dateSubFolder, eligibleForDeletion)) continue;
+
         FileUtil.recursiveDelete(dateSubFolder);
       } catch (final Throwable e) {
         Logger.error(e, "unable to delete old logs: {}", dateSubFolder);
@@ -127,7 +127,8 @@ public class LogFileWriter implements LogWriter {
   }
 
   private static boolean isElegibleForDeletion(final File folder, final long elegibleTs) {
-    final LocalDate folderDate = LocalDate.parse(folder.getName(), LOG_FOLDER_DATE_FORMAT);
+    final String name = folder.getName().substring(0, 10); // yyyy-MM-dd
+    final LocalDate folderDate = LocalDate.parse(name, LOG_FOLDER_DATE_FORMAT);
     return TimeUnit.DAYS.toMillis(folderDate.toEpochDay()) < elegibleTs;
   }
 

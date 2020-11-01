@@ -33,6 +33,10 @@ public final class IntArrayList {
     this.items = Arrays.copyOf(items, initialCapacity);
   }
 
+  public int[] toArray() {
+    return Arrays.copyOf(items, count);
+  }
+
   public int[] rawBuffer() {
     return items;
   }

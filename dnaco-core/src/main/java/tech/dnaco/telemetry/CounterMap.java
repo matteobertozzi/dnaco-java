@@ -25,7 +25,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 
 public class CounterMap implements TelemetryCollector {
-  private final ConcurrentHashMap<String, LongAdder> counters = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, LongAdder> counters;
+
+  public CounterMap() {
+    this.counters = new ConcurrentHashMap<>();
+  }
+
+  public CounterMap(final int size) {
+    this.counters = new ConcurrentHashMap<>(size);
+  }
 
   public void inc(final String key) {
     inc(key, 1);
@@ -40,12 +48,9 @@ public class CounterMap implements TelemetryCollector {
   }
 
   public void set(final String key, final long value) {
-    LongAdder adder = counters.get(key);
-    if (adder == null) {
-      adder = counters.computeIfAbsent(key, k -> new LongAdder());
-    }
-    adder.reset();
+    final LongAdder adder = new LongAdder();
     adder.add(value);
+    counters.put(key, adder);
   }
 
   public long get(final String key) {

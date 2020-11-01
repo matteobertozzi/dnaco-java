@@ -18,6 +18,7 @@
 package tech.dnaco.collections;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -49,6 +50,12 @@ public final class MapUtil {
   public static <K, V> V upsert(final Map<K, V> map, final K key, final V newValue) {
     map.put(key, newValue);
     return newValue;
+  }
+
+  public static <K, V> void removeAll(final Map<K, V> map, final Collection<K> keys) {
+    for (K key: keys) {
+      map.remove(key);
+    }
   }
 
   // ================================================================================

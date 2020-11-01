@@ -191,8 +191,8 @@ public class LogAsyncWriter implements AutoCloseable {
 
   private final class LogWriterTask implements Runnable {
     private final MaxAndAvgTimeRangeGauge logBufferUsage = new TelemetryCollector.Builder()
-        .setUnit(HumansUtil.HUMAN_COUNT)
-        .setName("logger.logger_buffer_usage")
+        .setUnit(HumansUtil.HUMAN_SIZE)
+        .setName("logger_buffer_usage")
         .setLabel("Logger Buffer Usage")
         .register(new MaxAndAvgTimeRangeGauge(24 * 60, 5, TimeUnit.MINUTES));
 
@@ -249,7 +249,7 @@ public class LogAsyncWriter implements AutoCloseable {
       }
       logBufferUsage.set(System.currentTimeMillis(), bufSize);
 
-      Logger.logToStdout(LogLevel.TRACE, "flush queues: {} buffers: {}", projectIds, buffers.size());
+      //Logger.logToStdout(LogLevel.TRACE, "flush queues: {} buffers: {}", projectIds, buffers.size());
       for (final String projectId: projectIds) {
         for (LogWriter writer: writers) {
           try {

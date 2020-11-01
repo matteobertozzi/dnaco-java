@@ -17,7 +17,9 @@
 
 package tech.dnaco.telemetry;
 
+import java.util.Collection;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.google.gson.JsonElement;
@@ -38,6 +40,14 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     return name;
   }
 
+  public Set<String> keys() {
+    return collectorMap.keySet();
+  }
+
+  public Collection<CollectorInfo> getMetricsInfo() {
+    return collectorMap.values();
+  }
+
   @SuppressWarnings("unchecked")
   public <T extends TelemetryCollector> T get(final String name) {
     final CollectorInfo info = collectorMap.get(name);
@@ -45,11 +55,11 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
   }
 
   public String humanReport() {
-    return humanReport(new StringBuilder());
+    return humanReport(new StringBuilder(1 << 20));
   }
 
   public String humanReport(final String key) {
-    return humanReport(new StringBuilder(), key);
+    return humanReport(new StringBuilder(64 << 10), key);
   }
 
   public String humanReport(final StringBuilder report) {
@@ -84,7 +94,10 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
   }
 
   public JsonObject toJson() {
-    final JsonObject json = new JsonObject();
+    return toJson(new JsonObject());
+  }
+
+  public JsonObject toJson(final JsonObject json) {
     for (CollectorInfo collectorInfo: collectorMap.values()) {
       final TelemetryCollectorData snapshot = collectorInfo.getSnapshot();
       json.add(collectorInfo.name, collectorInfo.toJson(snapshot));
@@ -148,12 +161,12 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     }
   }
 
-  private static final class CollectorInfo {
+  public static final class CollectorInfo {
     private final String name;
     private final String label;
     private final String help;
-    private final HumanLongValueConverter humanConverter;
-    private final TelemetryCollector collector;
+    private transient final HumanLongValueConverter humanConverter;
+    private transient final TelemetryCollector collector;
 
     private CollectorInfo(final String name, final String label, final String help,
         final HumanLongValueConverter humanConverter, final TelemetryCollector collector) {
@@ -209,7 +222,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     public boolean equals(final Object obj) {
       if (this == obj) return true;
       if (obj == null) return false;
-      if (obj instanceof CollectorInfo) return false;
+      if (!(obj instanceof CollectorInfo)) return false;
 
       final CollectorInfo other = (CollectorInfo) obj;
       return StringUtil.equals(name, other.name);

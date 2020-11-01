@@ -19,6 +19,8 @@ package tech.dnaco.telemetry;
 
 import java.util.Arrays;
 
+import tech.dnaco.collections.ArrayUtil;
+
 public class Histogram implements TelemetryCollector {
   public static final long[] DEFAULT_DURATION_BOUNDS_MS = new long[] {
     5, 10, 25, 50, 75, 100, 150, 250, 350, 500, 750,  // msec
@@ -53,21 +55,15 @@ public class Histogram implements TelemetryCollector {
     50_000, 75_000, 100_000, 250_000, 500_000, 1_000_000
   };
 
-  public static void main(String[] args) {
-    final long[][] foo = new long[][] {
-      DEFAULT_DURATION_BOUNDS_MS, DEFAULT_DURATION_BOUNDS_NS,
-      DEFAULT_SIZE_BOUNDS, DEFAULT_SMALL_SIZE_BOUNDS, DEFAULT_COUNT_BOUNDS
-    };
-    for (int i = 0; i < foo.length; ++i) {
-      System.out.println(foo[i].length);
-    }
-  }
-
   private final long[] bounds;
   private final long[] events;
   private long maxValue;
 
   public Histogram(final long[] bounds) {
+    if (ArrayUtil.isEmpty(bounds)) {
+      throw new UnsupportedOperationException("expected a list of bounds");
+    }
+
     this.bounds = bounds;
     this.events = new long[bounds.length + 1];
     this.clear();

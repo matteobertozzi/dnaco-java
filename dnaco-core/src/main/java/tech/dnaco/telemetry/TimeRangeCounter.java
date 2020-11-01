@@ -76,6 +76,28 @@ public class TimeRangeCounter implements TelemetryCollector {
     return counters[index];
   }
 
+  public void update(final long value) {
+    update(System.currentTimeMillis(), value);
+  }
+
+  public void update(final long now, final long value) {
+    if ((now - lastInterval) < window) {
+      final int index = Math.toIntExact(next % counters.length);
+      counters[index] = value;
+      return;
+    }
+
+    final int index;
+    if ((now - lastInterval) >= window) {
+      injectZeros(now);
+      index = Math.toIntExact(++next % counters.length);
+      setLastInterval(now);
+    } else {
+      index = Math.toIntExact(next % counters.length);
+    }
+    counters[index] = value;
+  }
+
   @Override
   public String getType() {
     return "TIME_RANGE_COUNTER";
@@ -83,6 +105,9 @@ public class TimeRangeCounter implements TelemetryCollector {
 
   @Override
   public TimeRangeCounterData getSnapshot() {
+    final long now = System.currentTimeMillis();
+    if ((now - lastInterval) >= window) injectZeros(now);
+
     final long[] data = new long[(int) Math.min(next + 1, counters.length)];
     for (int i = 0, n = data.length; i < n; ++i) {
       data[data.length - (i + 1)] = counters[Math.toIntExact((next - i) % counters.length)];
