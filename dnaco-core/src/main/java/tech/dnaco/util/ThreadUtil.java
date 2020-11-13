@@ -66,10 +66,10 @@ public final class ThreadUtil {
   // ================================================================================
   // Sleep related
   // ================================================================================
-  public static boolean sleep(final AtomicBoolean running, final int wakeInterval, final int millis) {
-    final long expireTs = System.currentTimeMillis() + millis;
+  public static boolean sleep(final AtomicBoolean running, final long wakeInterval, final long millis) {
+    final long expireTs = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(millis);
     while (running.get()) {
-      final long delta = expireTs - System.currentTimeMillis();
+      final long delta = TimeUnit.NANOSECONDS.toMillis(expireTs - System.nanoTime());
       if (delta <= 0) break;
 
       if (!ThreadUtil.sleep(Math.min(delta, wakeInterval))) {

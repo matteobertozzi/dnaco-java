@@ -51,7 +51,11 @@ public class PagedByteArrayWriter extends BytesOutputStream {
 
   @Override
   public int writeTo(BytesOutputStream stream) {
-    return this.buf.forEach(stream::write);
+    try {
+      return this.buf.forEach(stream::write);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

@@ -17,6 +17,7 @@
 
 package tech.dnaco.tracing;
 
+import java.lang.StackWalker.StackFrame;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -30,7 +31,7 @@ import tech.dnaco.strings.HumansUtil;
 public final class Tracer {
   private static final long SLOW_TASK_DEBUG_TRESHOLD_NS = TimeUnit.MILLISECONDS.toNanos(500);
 
-  private static ConcurrentHashMap<Thread, TaskTracer> taskTracer = new ConcurrentHashMap<>(16);
+  private static ConcurrentHashMap<Thread, TaskTracer> taskTracer = new ConcurrentHashMap<>(64);
 
   private static final TaskTracer[] recentlyCompletedTracers = new TaskTracer[16];
   private static final AtomicLong recentlyCompletedIndex = new AtomicLong(0);
@@ -51,8 +52,9 @@ public final class Tracer {
 
   public static TaskTracer newTask(final String label) {
     final Thread thread = Thread.currentThread();
-    final TaskTracer tracer = new TaskTracer(thread, label);
+    final TaskTracer tracer = new TaskTracer(thread, lookupLogLineClassAndMethod(), label);
     taskTracer.put(thread, tracer);
+    addLogEntry(tracer);
     return tracer;
   }
 
@@ -64,6 +66,31 @@ public final class Tracer {
     addCompletedTask(task);
   }
 
+  private static void addLogEntry(final TaskTracer taskTracer) {
+    /*
+    final LogEntryTask logEntry = new LogEntryTask();
+    logEntry.setTenantId("__SYS_TRACES__");
+    logEntry.setThread(taskTracer.getThread().getName());
+    logEntry.setTimestamp(taskTracer.getStartTime());
+    logEntry.setTraceId(taskTracer.getTraceId());
+    //Logger.add(taskTracer.getThread(), logEntry);
+     */
+  }
+
+  private static String lookupLogLineClassAndMethod() {
+    // Get the stack trace: this is expensive... but really useful
+    // NOTE: i should be set to the first public method
+    // i = 3 -> [0: lookupLogLineClassAndMethod(), 1: traceMethod(), 4:userFunc()]
+    final StackFrame frame = StackWalker.getInstance().walk(s ->
+      s.skip(2)
+      .filter(x -> !Logger.EXCLUDE_CLASSES.contains(x.getClassName()))
+      .findFirst()
+    ).get();
+
+    // com.foo.Bar.m1():11
+    return frame.getClassName() + "." + frame.getMethodName() + "():" + frame.getLineNumber();
+  }
+
   public static TraceSpan newSpan(final String label) {
     return NoOpTraceSpan.INSTANCE;
   }
@@ -71,5 +98,6 @@ public final class Tracer {
   private static void addCompletedTask(final TaskTracer task) {
     final int index = (int) (recentlyCompletedIndex.incrementAndGet() & (recentlyCompletedTracers.length - 1));
     recentlyCompletedTracers[index] = task;
+    addLogEntry(task);
   }
 }

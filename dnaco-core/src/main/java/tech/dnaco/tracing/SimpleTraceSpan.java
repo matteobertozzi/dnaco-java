@@ -13,17 +13,22 @@ public abstract class SimpleTraceSpan implements TraceSpan {
   private final long parentId;
   private final long traceId;
   private final long startTime;
+
+  private final String callerMethodAndLine;
   private final String label;
 
   private String[] customKeys;
   private Object[] customVals;
   private long elapsedNs;
 
-  protected SimpleTraceSpan(final Thread thread, final long parentId, final long traceId, final String label) {
+  protected SimpleTraceSpan(final Thread thread, final long parentId, final long traceId,
+      final String callerMethodAndLine, final String label) {
     this.thread = thread;
     this.parentId = parentId;
     this.traceId = traceId;
     this.startTime = System.currentTimeMillis();
+
+    this.callerMethodAndLine = callerMethodAndLine;
     this.label = label;
 
     this.customKeys = null;
@@ -36,12 +41,18 @@ public abstract class SimpleTraceSpan implements TraceSpan {
     this.elapsedNs = System.nanoTime() - this.elapsedNs;
   }
 
+  @Override
   public long getParentId() {
     return parentId;
   }
 
+  @Override
   public long getTraceId() {
     return traceId;
+  }
+
+  public String getCallerMethodAndLine() {
+    return callerMethodAndLine;
   }
 
   public String getLabel() {
@@ -64,6 +75,15 @@ public abstract class SimpleTraceSpan implements TraceSpan {
     return thread;
   }
 
+  public String[] getCustomKeys() {
+    return customKeys;
+  }
+
+  public Object[] getCustomVals() {
+    return customVals;
+  }
+
+  @Override
   public void addData(final String key, final Object value) {
     if (this.customKeys != null) {
       customKeys = Arrays.copyOf(customKeys, 1 + customKeys.length);

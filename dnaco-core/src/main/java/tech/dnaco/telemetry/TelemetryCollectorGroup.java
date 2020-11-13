@@ -30,15 +30,6 @@ import tech.dnaco.strings.StringUtil;
 
 public class TelemetryCollectorGroup implements TelemetryCollector {
   private final ConcurrentSkipListMap<String, CollectorInfo> collectorMap = new ConcurrentSkipListMap<>();
-  private final String name;
-
-  public TelemetryCollectorGroup(final String name) {
-    this.name = name;
-  }
-
-  public String getName() {
-    return name;
-  }
 
   public Set<String> keys() {
     return collectorMap.keySet();
@@ -63,7 +54,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
   }
 
   public String humanReport(final StringBuilder report) {
-    for (Entry<String, CollectorInfo> entry: collectorMap.entrySet()) {
+    for (final Entry<String, CollectorInfo> entry: collectorMap.entrySet()) {
       humanReport(report, entry.getValue());
     }
     return report.toString();
@@ -72,7 +63,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
   public String humanReport(final StringBuilder report, final String key) {
     if (StringUtil.isEmpty(key)) return humanReport(report);
 
-    for (Entry<String, CollectorInfo> entry: collectorMap.tailMap(key).entrySet()) {
+    for (final Entry<String, CollectorInfo> entry: collectorMap.tailMap(key).entrySet()) {
       if (!entry.getKey().startsWith(key)) continue;
       humanReport(report, entry.getValue());
     }
@@ -98,7 +89,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
   }
 
   public JsonObject toJson(final JsonObject json) {
-    for (CollectorInfo collectorInfo: collectorMap.values()) {
+    for (final CollectorInfo collectorInfo: collectorMap.values()) {
       final TelemetryCollectorData snapshot = collectorInfo.getSnapshot();
       json.add(collectorInfo.name, collectorInfo.toJson(snapshot));
     }
@@ -109,7 +100,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     if (StringUtil.isEmpty(key)) return toJson();
 
     final JsonObject json = new JsonObject();
-    for (Entry<String, CollectorInfo> entry: collectorMap.tailMap(key).entrySet()) {
+    for (final Entry<String, CollectorInfo> entry: collectorMap.tailMap(key).entrySet()) {
       if (!entry.getKey().startsWith(key)) continue;
       final CollectorInfo collectorInfo = entry.getValue();
       final TelemetryCollectorData snapshot = collectorInfo.getSnapshot();
@@ -144,7 +135,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     private final JsonObject json;
     private final String report;
 
-    private GroupData(JsonObject json, String report) {
+    private GroupData(final JsonObject json, final String report) {
       this.json = json;
       this.report = report;
     }
@@ -155,7 +146,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     }
 
     @Override
-    public StringBuilder toHumanReport(StringBuilder report, HumanLongValueConverter humanConverter) {
+    public StringBuilder toHumanReport(final StringBuilder report, final HumanLongValueConverter humanConverter) {
       report.append('\n');
       return report.append(this.report);
     }

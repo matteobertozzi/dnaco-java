@@ -55,10 +55,6 @@ public final class JvmGcMetrics extends TelemetryCollectorGroup {
     private long totalCollectionCount;
     private long totalCollectionTime;
 
-    protected GcDataGroup() {
-      super("JVM_GC_GROUP");
-    }
-
     private synchronized void update(final long now, final GarbageCollectorMXBean gc) {
       final long count = gc.getCollectionCount();
       final long time = gc.getCollectionTime();
@@ -70,7 +66,6 @@ public final class JvmGcMetrics extends TelemetryCollectorGroup {
   }
 
   private JvmGcMetrics() {
-    super("JVM_GC_METRICS");
     collect(System.currentTimeMillis());
   }
 

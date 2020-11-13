@@ -15,38 +15,22 @@
  * limitations under the License.
  */
 
-package tech.dnaco.telemetry;
+package tech.dnaco.collections;
 
-import tech.dnaco.logging.Logger;
-
-public class ConcurrentTopK extends TopK {
-	public ConcurrentTopK(final TopType type, final int k) {
-		super(type, k);
+public class StringIndexedArrayMap extends HashIndexedArrayMap<String, String> {
+  public StringIndexedArrayMap(final HashIndexedArray<String> keyIndex, final String[] values) {
+    super(keyIndex, values);
   }
 
-  @Override
-  public void add(final String key, final long value) {
-    add(key, value, Logger.getSessionTraceId());
+  public StringIndexedArrayMap(final HashIndexedArray<String> keyIndex) {
+    super(keyIndex, new String[keyIndex.size()]);
   }
 
-  @Override
-  public void add(final String key, final long value, final long traceId) {
-    synchronized (this) {
-      super.add(key, value, traceId);
-    }
+  public StringIndexedArrayMap(final String[] keys, final String[] values) {
+    super(keys, values);
   }
 
-  @Override
-  public void clear() {
-    synchronized (this) {
-      super.clear();
-    }
-  }
-
-  @Override
-  public TopKData getSnapshot() {
-    synchronized (this) {
-      return super.getSnapshot();
-    }
+  public StringIndexedArrayMap(final String[] keys) {
+    super(keys, new String[keys.length]);
   }
 }

@@ -30,7 +30,7 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
   private final ConcurrentHashMap<String, TelemetryCollectorGroup> tenantMap = new ConcurrentHashMap<>();
 
   private TelemetryCollectorRegistry() {
-    super("telemetry_registry");
+    // no-op
   }
 
   public void updateSystemUsage() {
@@ -48,16 +48,18 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
     final TelemetryCollectorGroup group = tenantMap.get(tenantId);
     if (group != null) return group;
 
-    final TelemetryCollectorGroup newGroup = new TelemetryCollectorGroup(tenantId);
+    final TelemetryCollectorGroup newGroup = new TelemetryCollectorGroup();
     final TelemetryCollectorGroup oldGroup = tenantMap.putIfAbsent(tenantId, newGroup);
     return oldGroup != null ? oldGroup : newGroup;
   }
 
+  @Override
   public String humanReport(final StringBuilder report) {
     jvmHumanReport(report);
     return super.humanReport(report);
   }
 
+  @Override
   public String humanReport(final StringBuilder report, final String key) {
     if (StringUtil.isEmpty(key)) return humanReport(report);
 
@@ -69,6 +71,7 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
     return super.humanReport(report, key);
   }
 
+  @Override
   public JsonObject toJson(final JsonObject json) {
     json.add("jvm_metrics", JvmMetrics.INSTANCE.getSnapshot().toJson());
     json.add("jvm_gc_metrics", JvmGcMetrics.INSTANCE.getSnapshot().toJson());

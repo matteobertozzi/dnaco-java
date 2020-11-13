@@ -20,6 +20,7 @@ package tech.dnaco.telemetry;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.telemetry.TopKData.TopEntry;
@@ -50,10 +51,10 @@ public class TopK implements TelemetryCollector {
   }
 
   public void add(final String key, final long value) {
-    add(key, value, null);
+    add(key, value, Logger.getSessionTraceId());
   }
 
-  public void add(final String key, final long value, final String traceId) {
+  public void add(final String key, final long value, final long traceId) {
     final int keyHash = hash(key);
     final int entryIndex = findEntry(key, keyHash);
     final MinMaxEntry entry;
@@ -129,9 +130,9 @@ public class TopK implements TelemetryCollector {
     for (int i = 0; i < topEntries.length; ++i) {
       final MinMaxEntry entry = entries[i];
 
-      final String[] traceIds;
+      final long[] traceIds;
       if (entry.traceIdIndex > 0) {
-        traceIds = new String[(int) Math.min(entry.traceIds.length, entry.traceIdIndex)];
+        traceIds = new long[(int) Math.min(entry.traceIds.length, entry.traceIdIndex)];
         for (int k = 0; k < traceIds.length; ++k) {
           traceIds[k] = entry.traceIds[(int)((entry.traceIdIndex - (k + 1)) % traceIds.length)];
         }
@@ -178,7 +179,7 @@ public class TopK implements TelemetryCollector {
     private long vSum = 0;
     private long freq = 0;
 
-    private final String[] traceIds = new String[4];
+    private final long[] traceIds = new long[4];
     private long traceIdIndex = 0;
 
     private MinMaxEntry(final String key, final int keyHash) {
@@ -187,11 +188,11 @@ public class TopK implements TelemetryCollector {
       this.next = -1;
     }
 
-    private void add(final long value, final String traceId) {
+    private void add(final long value, final long traceId) {
       if (value >= vMax) {
         vMax = value;
         maxTs = System.currentTimeMillis();
-        if (StringUtil.isNotEmpty(traceId)) {
+        if (traceId > 0) {
           traceIds[(int)(traceIdIndex++ % traceIds.length)] = traceId;
         }
       }
@@ -201,14 +202,15 @@ public class TopK implements TelemetryCollector {
     }
   }
 
-  public static void main(String[] args) throws Exception {
+  public static void main(final String[] args) throws Exception {
     final long startTime = System.nanoTime();
     final TopK topK  = new TopK(TopType.MIN_MAX, 10);
     for (int i = 0; i < 1_000_000; ++i) {
-      topK.add("foo-" + (i % 2), i);
+      topK.add("foo-" + (i % 4), i, i % 2 == 0 ? i + 1 : 0);
       topK.getSnapshot();
     }
     System.out.println(HumansUtil.humanTimeSince(startTime));
+    System.out.println(topK.getSnapshot().toJson());
     System.out.println(topK.getSnapshot().toHumanReport(new StringBuilder(), HumansUtil.HUMAN_COUNT));
   }
 }

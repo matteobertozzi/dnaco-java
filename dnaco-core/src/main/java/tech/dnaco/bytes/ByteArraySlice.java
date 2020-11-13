@@ -17,6 +17,8 @@
 
 package tech.dnaco.bytes;
 
+import java.util.Arrays;
+
 import tech.dnaco.collections.ArrayUtil.ByteArrayConsumer;
 import tech.dnaco.hash.XXHash;
 
@@ -26,7 +28,7 @@ public class ByteArraySlice implements BytesSlice {
   private int len;
 
   public ByteArraySlice() {
-    this(null, 0, 0);
+    this(BytesUtil.EMPTY_BYTES);
   }
 
   public ByteArraySlice(final byte[] buf) {
@@ -61,6 +63,10 @@ public class ByteArraySlice implements BytesSlice {
     return buf;
   }
 
+  public byte[] buffer() {
+    return Arrays.copyOfRange(buf, off, len);
+  }
+
   public int offset() {
     return off;
   }
@@ -76,6 +82,7 @@ public class ByteArraySlice implements BytesSlice {
     return buf[off + index] & 0xff;
   }
 
+  @Override
   public void copyTo(final byte[] xBuf, final int xOff, final int xLen) {
     System.arraycopy(this.buf, this.off, xBuf, xOff, xLen);
   }

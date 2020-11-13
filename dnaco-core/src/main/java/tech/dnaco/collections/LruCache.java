@@ -31,6 +31,7 @@ import tech.dnaco.util.ThreadUtil;
 
 public class LruCache<TKey, TValue> {
   private final long maxSize;
+  private final long expirationIntervalNs;
 
   private final ReentrantLock lock = new ReentrantLock();
 
@@ -45,6 +46,7 @@ public class LruCache<TKey, TValue> {
 
   public LruCache(final int initialCapacity, final int maxSize, final Duration expiration) {
     this.maxSize = maxSize;
+    this.expirationIntervalNs = expiration != null ? expiration.toNanos() : -1;
 
     final int capacity = BitUtil.nextPow2(Math.max(8, initialCapacity));
     this.entries = new CacheItemNode[capacity];
@@ -90,6 +92,12 @@ public class LruCache<TKey, TValue> {
       final CacheItemNode node = findEntry(key, hashCode(key));
       if (node == null) return null;
 
+      if (expirationIntervalNs > 0 && node.isExpired(System.nanoTime())) {
+        node.clear();
+        moveToLruTail(node);
+        return null;
+      }
+
       moveToLruFront(node);
       return node.getValue();
     } finally {
@@ -100,15 +108,16 @@ public class LruCache<TKey, TValue> {
   public TValue put(final TKey key, final TValue value) {
     lock.lock();
     try {
+      final long expirationNs = expirationIntervalNs < 0 ? Long.MAX_VALUE : (System.nanoTime() + expirationIntervalNs);
       final int keyHash = hashCode(key);
       final CacheItemNode node = findEntry(key, keyHash);
       if (node == null) {
-        insertNewEntry(keyHash, key, value);
+        insertNewEntry(keyHash, key, value, expirationNs);
         return null;
       }
 
       final TValue oldValue = node.getValue();
-      node.set(value);
+      node.set(value, expirationNs);
       moveToLruFront(node);
       return oldValue;
     } finally {
@@ -137,7 +146,7 @@ public class LruCache<TKey, TValue> {
     }
   }
 
-  public void scanEvict(BiPredicate<TKey, TValue> predicate) {
+  public void scanEvict(final BiPredicate<TKey, TValue> predicate) {
     lock.lock();
     try {
       for (int i = 0; i < entries.length; ++i) {
@@ -177,7 +186,7 @@ public class LruCache<TKey, TValue> {
   private long newFromEviction = 0;
   private long newFromResize = 0;
 
-  private void insertNewEntry(int keyHash, TKey key, TValue value) {
+  private void insertNewEntry(final int keyHash, final TKey key, final TValue value, final long expirationNs) {
     // try to use an evicted item or if we are already at threshold we should evict a node
     if (entries[lruHead.lruPrev].isEmpty()) {
       // no-op
@@ -195,7 +204,7 @@ public class LruCache<TKey, TValue> {
     }
 
     final CacheItemNode node = entries[lruHead.lruPrev];
-    node.set(keyHash, key, value);
+    node.set(keyHash, key, value, expirationNs);
     moveToLruFront(node);
 
     final int bucketIndex = targetBucket(keyHash);
@@ -282,6 +291,7 @@ public class LruCache<TKey, TValue> {
   private static final class CacheItemNode {
     private final int index;
 
+    private long expirationNs;
     private int keyHash;
     private int hashNext;
     private int lruPrev;
@@ -296,14 +306,19 @@ public class LruCache<TKey, TValue> {
       this.lruNext = index;
     }
 
-    void set(final int keyHash, final Object key, final Object value) {
-      this.keyHash = keyHash;
-      this.key = key;
-      set(value);
+    public boolean isExpired(final long nowNs) {
+      return nowNs > expirationNs;
     }
 
-    void set(final Object value) {
+    void set(final int keyHash, final Object key, final Object value, final long expirationNs) {
+      this.keyHash = keyHash;
+      this.key = key;
+      set(value, expirationNs);
+    }
+
+    void set(final Object value, final long expirationNs) {
       this.value = value;
+      this.expirationNs = expirationNs;
     }
 
     void clear() {
@@ -333,7 +348,7 @@ public class LruCache<TKey, TValue> {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(final String[] args) {
     final int NLOOKUPS = 1000_000;
 
     final SecureRandom rand = new SecureRandom();

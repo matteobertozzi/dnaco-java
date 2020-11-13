@@ -26,13 +26,12 @@ public final class SystemMetrics extends TelemetryCollectorGroup {
     .register(this, new MemoryDataGroup());
 
   public SystemMetrics() {
-    super("SYSTEM_GROUP");
     collect(System.currentTimeMillis());
   }
 
   public void addDiskMonitor(final String name, final File root) {
     final DiskDataGroup group = new DiskDataGroup(name, root);
-    register(group.getName(), "Disk " + root.getAbsolutePath(), null, null, group);
+    register("disk_" + name, "Disk " + root.getAbsolutePath(), null, null, group);
     diskGroups.put(name, group);
     collect(System.currentTimeMillis());
   }
@@ -45,7 +44,7 @@ public final class SystemMetrics extends TelemetryCollectorGroup {
     memoryGroup.update(now);
 
     // update disk stats
-    for (DiskDataGroup disk: this.diskGroups.values()) {
+    for (final DiskDataGroup disk: this.diskGroups.values()) {
       disk.update(now);
     }
   }
@@ -54,7 +53,7 @@ public final class SystemMetrics extends TelemetryCollectorGroup {
   //  Threads Related
   // ================================================================================
   public long getCpuUsage() {
-    OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
+    final OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
     if (bean instanceof com.sun.management.OperatingSystemMXBean) {
       return Math.round(((com.sun.management.OperatingSystemMXBean)bean).getSystemCpuLoad() * 100);
     }
@@ -109,13 +108,9 @@ public final class SystemMetrics extends TelemetryCollectorGroup {
       .setLabel("System Mem Space")
       .register(this, new CounterMap(2));
 
-    public MemoryDataGroup() {
-      super("system_memory");
-    }
-
     public void update(final long now) {
-      long memUsed = getUsedMemory();
-      long memFree = getFreeMemory();
+      final long memUsed = getUsedMemory();
+      final long memFree = getFreeMemory();
       memUsage.set(now, memUsed);
       memAvail.set(now, memFree);
       memSpace.set("Used", memUsed);
@@ -123,7 +118,7 @@ public final class SystemMetrics extends TelemetryCollectorGroup {
     }
 
     public long getTotalMemory() {
-      OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
+      final OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
       if (bean instanceof com.sun.management.OperatingSystemMXBean) {
         return ((com.sun.management.OperatingSystemMXBean)bean).getTotalPhysicalMemorySize();
       }
@@ -131,7 +126,7 @@ public final class SystemMetrics extends TelemetryCollectorGroup {
     }
 
     public long getFreeMemory() {
-      OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
+      final OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
       if (bean instanceof com.sun.management.OperatingSystemMXBean) {
         return ((com.sun.management.OperatingSystemMXBean)bean).getFreePhysicalMemorySize();
       }
@@ -165,7 +160,6 @@ public final class SystemMetrics extends TelemetryCollectorGroup {
     private final File root;
 
     public DiskDataGroup(final String name, final File root) {
-      super("disk_" + name);
       this.root = root;
     }
 

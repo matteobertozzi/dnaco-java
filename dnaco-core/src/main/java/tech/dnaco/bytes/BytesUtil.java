@@ -57,6 +57,12 @@ public final class BytesUtil {
     return Arrays.equals(a, aOff, aOff + aLen, b, bOff, bOff + bLen);
   }
 
+  public static int compare(final byte[] a, final byte[] b) {
+    final int aLen = BytesUtil.length(a);
+    final int bLen = BytesUtil.length(b);
+    return compare(a, 0, aLen, b, 0, bLen);
+  }
+
   public static int compare(final byte[] a, final int aOff, final int aLen,
       final byte[] b, final int bOff, final int bLen) {
     return Arrays.compare(a, aOff, aOff + aLen, b, bOff, bOff + bLen);
@@ -175,5 +181,18 @@ public final class BytesUtil {
       hex.append(StringUtil.HEX_DIGITS[val & 0xf]);
     }
     return hex;
+  }
+
+  public static String toString(final byte[] buf) {
+    return toString(buf, 0, buf.length);
+  }
+
+  public static String toString(final byte[] buf, final int off, final int len) {
+    final StringBuilder builder = new StringBuilder(len * 2);
+    for (int i = 0; i < len; ++i) {
+      if (i > 0) builder.append(", ");
+      builder.append(String.valueOf(buf[off + i]));
+    }
+    return builder.toString();
   }
 }
