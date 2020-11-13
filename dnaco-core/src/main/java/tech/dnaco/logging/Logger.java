@@ -1,34 +1,35 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package tech.dnaco.logging;
 
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.StackWalker.StackFrame;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.function.Supplier;
 
+import tech.dnaco.journal.JournalAsyncWriter;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.strings.StringFormat;
 
-// checkout System.logger in java 9
 public final class Logger {
   public static final HashSet<String> EXCLUDE_CLASSES = new HashSet<>(128);
   static {
@@ -39,18 +40,21 @@ public final class Logger {
     Thread.setDefaultUncaughtExceptionHandler(new LoggerDefaultUncaughtExceptionHandler(ueh));
   }
 
-  private static final ThreadLocal<LoggerSession> localSession = ThreadLocal.withInitial(LoggerSession::newSystemGeneralSession);
+  private static final PrintStream STDERR = System.err;
+  private static final PrintStream STDOUT = System.out;
 
-  private static final PrintStream STDERR = System.out;
-  private static final PrintStream STDOUT = System.err;
-  private static LogAsyncWriter writer;
+  private static final ThreadLocal<LoggerSession> localSession = ThreadLocal.withInitial(LoggerSession::newSystemGeneralSession);
   private static LogLevel defaultLevel = LogLevel.TRACE;
+  private static JournalAsyncWriter writer = null;
 
   private Logger() {
     // no-op
   }
 
-  public static void setWriter(final LogAsyncWriter writer) {
+  // ===============================================================================================
+  //  Logging setup methods
+  // ===============================================================================================
+  public static void setWriter(final JournalAsyncWriter writer) {
     Logger.writer = writer;
   }
 
@@ -78,8 +82,7 @@ public final class Logger {
   }
 
   public static long getSessionTraceId() {
-    final LoggerSession session = localSession.get();
-    return session != null ? session.getTraceId() : -1;
+    return localSession.get().getTraceId();
   }
 
   // ===============================================================================================
@@ -87,7 +90,7 @@ public final class Logger {
   // ===============================================================================================
   public static boolean isEnabled(final LogLevel level) {
     final LoggerSession session = getSession();
-    LogLevel scopeLevel = (session != null) ? session.getLevel() : defaultLevel;
+    final LogLevel scopeLevel = (session != null) ? session.getLevel() : defaultLevel;
     return level.ordinal() <= scopeLevel.ordinal();
   }
 
@@ -104,8 +107,44 @@ public final class Logger {
   }
 
   // ===============================================================================================
+  //  Logging methods (stderr/stdout)
+  // ===============================================================================================
+  public static void logToStderr(final LogLevel level, final Throwable throwable,
+      final String format, final Object... args) {
+    STDERR.println(buildTextMessage(level, format, args));
+    if (throwable != null) throwable.printStackTrace(STDERR);
+  }
+
+  public static void logToStderr(final LogLevel level, final Throwable throwable,
+      final String format, final String[] args) {
+    STDERR.println(buildTextMessage(level, format, args));
+    if (throwable != null) throwable.printStackTrace(STDERR);
+  }
+
+  public static void logToStderr(final LogLevel level, final String format, final Object... args) {
+    STDERR.println(buildTextMessage(level, format, args));
+  }
+
+  public static void logToStdout(final LogLevel level, final String format, final Object... args) {
+    STDOUT.println(buildTextMessage(level, format, args));
+  }
+
+  private static String buildTextMessage(final LogLevel level, final String format, final Object[] args) {
+    return LogEntry.LOG_DATE_FORMAT.format(ZonedDateTime.now())
+      + " " +  level + " " + StringFormat.format(format, args);
+  }
+
+  // ===============================================================================================
   //  Logging methods
   // ===============================================================================================
+  public static void always(final Throwable exception, final String format, final Object... args) {
+    log(LogLevel.ALWAYS, exception, format, args);
+  }
+
+  public static void always(final String format, final Object... args) {
+    log(LogLevel.ALWAYS, null, format, args);
+  }
+
   public static void fatal(final Throwable exception, final String format, final Object... args) {
     log(LogLevel.FATAL, exception, format, args);
   }
@@ -191,101 +230,96 @@ public final class Logger {
   }
 
   // ===============================================================================================
-  //  Logging methods
+  //  PRIVATE Logging methods
   // ===============================================================================================
-  private static void log(final LogLevel level, final Throwable exception, final String format, final Supplier<?>[] args) {
+  protected static void log(final LogLevel level, final Throwable exception, final String format, final Supplier<?>[] args) {
     if (!isEnabled(level)) return;
 
-    final Object[] params;
+    final String[] params;
     if (args == null || args.length == 0) {
       params = null;
     } else {
-      params = new Object[args.length];
-      for (int i = 0, n = args.length; i < n; ++i) {
-        params[i] = args[i].get();
+      params = new String[args.length];
+      for (int i = 0; i < args.length; ++i) {
+        final Object obj = args[i].get();
+        params[i] = String.valueOf(obj);
       }
     }
 
     logRaw(level, exception, format, params);
   }
 
-  static void log(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
-    if (isEnabled(level)) logRaw(level, exception, format, args);
-  }
+  protected static void log(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
+    if (!isEnabled(level)) return;
 
-  private static void logRaw(final LogLevel level, final Throwable exception, final String format, final Object[] args) {
-    final Thread thread = Thread.currentThread();
-    final LoggerSession session = getSession();
-    if (session == null) {
-      throw new IllegalStateException("expected an active logger session");
+    final String[] params;
+    if (args == null || args.length == 0) {
+      params = null;
+    } else {
+      params = new String[args.length];
+      for (int i = 0; i < args.length; ++i) {
+        params[i] = String.valueOf(args[i]);
+      }
     }
 
-    final LogEntry entry = new LogEntry()
-        .setModuleId(session.getModuleId())
-        .setGroupId(session.getGroupId())
-        .setThreadName(thread.getName())
-        .setClassAndMethod(buildMethodLine())
-        .setStackTrace(exception != null ? stackTraceToString(exception) : null)
-        .setTraceId(session.getTraceId())
-        .setLevel(level)
-        .setTimestamp(System.currentTimeMillis())
-        .setFormat(format, args);
+    logRaw(level, exception, format, params);
+  }
+
+  private static void logRaw(final LogLevel level, final Throwable exception,
+      final String format, final String[] args) {
+    final Thread thread = Thread.currentThread();
+    final LogEntryMessage entry = new LogEntryMessage();
+
+    // entry header fields
+    final LoggerSession session = getSession();
+    entry.setTenantId(session.getTenantId());
+    entry.setModule(session.getModuleId());
+    entry.setOwner(session.getOwnerId());
+    entry.setThread(thread.getName());
+    entry.setTraceId(session.getTraceId());
+    entry.setTimestamp(System.currentTimeMillis());
+
+    // entry message fields
+    entry.setLevel(level);
+    entry.setClassAndMethod(lookupLogLineClassAndMethod());
+    entry.setMsgFormat(format);
+    entry.setMsgArgs(args);
+    entry.setException(exception != null ? LogUtil.stackTraceToString(exception) : null);
 
     // add to trace buffer for error reporting
-    LogTraceBuffer.INSTANCE.addToLogQueue(thread, session.getProjectId(), entry);
+    LogTraceBuffer.INSTANCE.addToLogQueue(thread, entry);
 
-    // append to the logger
+    // add to writer queue
+    add(thread, entry);
+  }
+
+  public static void add(final Thread thread, final LogEntry entry) {
     if (writer != null) {
-      writer.addToLogQueue(thread, session.getProjectId(), entry);
+      writer.addToLogQueue(thread, entry);
     } else {
-      entry.printEntry(session.getProjectId(), System.out);
+      writeEntryToStdout(thread, entry);
     }
   }
 
-  public static void logToStderr(final LogLevel level, final Throwable throwable,
-      final String format, final Object... args) {
-    STDERR.println(StringFormat.format(format, args));
-    throwable.printStackTrace(System.err);
-  }
-
-  public static void logToStderr(final LogLevel level, final String format, final Object... args) {
-    STDERR.println(StringFormat.format(format, args));
-  }
-
-  public static void logToStdout(final LogLevel level, final String format, final Object... args) {
-    STDOUT.println(StringFormat.format(format, args));
+  private static void writeEntryToStdout(final Thread thread, final LogEntry entry) {
+    STDOUT.println(entry.toHumanReport(new StringBuilder(160)));
   }
 
   // ===============================================================================================
-  //  Trace helper
+  //  PRIVATE lookup log line details
   // ===============================================================================================
-  public static String stackTraceToString(final Throwable exception) {
-    final StringWriter writer = new StringWriter();
-    try (PrintWriter printWriter = new PrintWriter(writer)) {
-      exception.printStackTrace(printWriter);
-      printWriter.flush();
-      return writer.getBuffer().toString();
-    }
-  }
+  private static String lookupLogLineClassAndMethod() {
+    // Get the stack trace: this is expensive... but really useful
+    // NOTE: i should be set to the first public method
+    // i = 4 -> [0: lookupLogLineClassAndMethod(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
+    final StackFrame frame = StackWalker.getInstance().walk(s ->
+      s.skip(4)
+      .filter(x -> !EXCLUDE_CLASSES.contains(x.getClassName()))
+      .findFirst()
+    ).get();
 
-  public static String stackTraceToString(final StackTraceElement[] stackTrace) {
-    return stackTraceToString(stackTrace, 0);
-  }
-
-  public static String stackTraceToString(final StackTraceElement[] stackTrace, final int offset) {
-    if (stackTrace == null) return "";
-
-    final StringBuilder builder = new StringBuilder((stackTrace.length - offset) * 32);
-    for (int i = offset; i < stackTrace.length; ++i) {
-      final StackTraceElement st = stackTrace[i];
-      builder.append(getClassName(st)).append('.').append(st.getMethodName()).append("():").append(st.getLineNumber());
-      builder.append(System.lineSeparator());
-    }
-    return builder.toString();
-  }
-
-  private static String getClassName(final StackTraceElement st) {
-    return getClassName(st.getClassName());
+    // com.foo.Bar.m1():11
+    return getClassName(frame.getClassName()) + "." + frame.getMethodName() + "():" + frame.getLineNumber();
   }
 
   private static String getClassName(final String cname) {
@@ -298,37 +332,25 @@ public final class Logger {
     return cname.substring(index + 1);
   }
 
-  private static String buildMethodLine() {
-    // Get the stack trace: this is expensive... but really useful
-    // NOTE: i should be set to the first public method
-    // i = 4 -> [0: buildMethodLine(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
-    final StackFrame frame = StackWalker.getInstance().walk(s ->
-      s.skip(4)
-      .filter(x -> !EXCLUDE_CLASSES.contains(x.getClassName()))
-      .findFirst()
-    ).get();
-
-    // com.foo.Bar.m1():11
-    return getClassName(frame.getClassName()) + "." + frame.getMethodName() + "():" + frame.getLineNumber();
+  public static String stackTraceToString(final Throwable exception) {
+    return LogUtil.stackTraceToString(exception);
   }
 
-  private static String buildMethodLineB(final Thread thread) {
-    // Get the stack trace: this is expensive... but really useful
-    // NOTE: i should be set to the first public method
-    // i = 4 -> [0: buildMethodLine(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
-    final StackTraceElement[] stackTrace = thread.getStackTrace();
-    for (int i = 4; i < stackTrace.length; ++i) {
+  public static String stackTraceToString(final StackTraceElement[] stackTrace) {
+    return stackTraceToString(stackTrace, 0);
+  }
+
+  public static String stackTraceToString(final StackTraceElement[] stackTrace, final int offset) {
+    if (stackTrace == null) return "";
+
+    final StringBuilder builder = new StringBuilder((stackTrace.length - offset) * 32);
+    for (int i = offset; i < stackTrace.length; ++i) {
       final StackTraceElement st = stackTrace[i];
-
-      // skip helper classes that contains a log indirection
-      if (EXCLUDE_CLASSES.contains(st.getClassName())) continue;
-
-      // com.foo.Bar.m1():11
-      return getClassName(st) + "." + st.getMethodName() + "():" + st.getLineNumber();
+      builder.append(getClassName(st.getClassName())).append('.').append(st.getMethodName()).append("():").append(st.getLineNumber());
+      builder.append(System.lineSeparator());
     }
-    return null;
+    return builder.toString();
   }
-
 
   // ===============================================================================================
   // PRIVATE Default Uncaught Exception Handler

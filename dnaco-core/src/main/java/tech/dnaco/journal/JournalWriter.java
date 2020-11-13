@@ -17,21 +17,12 @@
  * under the License.
  */
 
-package tech.dnaco.logging;
+package tech.dnaco.journal;
 
-import tech.dnaco.journal.JournalAsyncWriter;
+import java.util.List;
 
-public class LogAsyncWriter extends JournalAsyncWriter {
-	public LogAsyncWriter() {
-		super("Logger");
-  }
+public interface JournalWriter {
+  void manageOldLogs();
 
-  @Deprecated
-  public LogAsyncWriter(final boolean binaryFormat) {
-    super("Logger");
-  }
-
-  public void start() {
-    super.start(2500);
-  }
+  void writeBuffers(String tenantId, List<JournalBuffer> buffers);
 }

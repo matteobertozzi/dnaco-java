@@ -17,21 +17,14 @@
  * under the License.
  */
 
-package tech.dnaco.logging;
+package tech.dnaco.journal;
 
-import tech.dnaco.journal.JournalAsyncWriter;
+import tech.dnaco.collections.paged.PagedByteArray;
 
-public class LogAsyncWriter extends JournalAsyncWriter {
-	public LogAsyncWriter() {
-		super("Logger");
-  }
+public interface JournalEntry {
+  String getTenantId();
 
-  @Deprecated
-  public LogAsyncWriter(final boolean binaryFormat) {
-    super("Logger");
-  }
+  void write(PagedByteArray buffer);
 
-  public void start() {
-    super.start(2500);
-  }
+  void release();
 }

@@ -39,27 +39,27 @@ public final class LogTraceBuffer {
     this.collectors.remove(collector);
   }
 
-  public void addToLogQueue(final Thread thread, final String projectId, final LogEntry entry) {
+  public void addToLogQueue(final Thread thread, final LogEntry entry) {
     for (final LogCollector collector: collectors) {
-      collector.addToLogQueue(thread, projectId, entry);
+      collector.addToLogQueue(thread, entry);
     }
   }
 
   public interface LogCollector {
-    void addToLogQueue(Thread thread, String projectId, LogEntry entry);
+    void addToLogQueue(Thread thread, LogEntry entry);
   }
 
   private static final class LogTraceBuffersCollector implements LogCollector {
     private final ThreadLocal<LogTraceBufferData> traceBuffer = new ThreadLocal<>();
 
     @Override
-    public void addToLogQueue(final Thread thread, final String projectId, final LogEntry entry) {
+    public void addToLogQueue(final Thread thread, final LogEntry entry) {
       LogTraceBufferData data = traceBuffer.get();
       if (data == null) {
         data = new LogTraceBufferData();
         traceBuffer.set(data);
       }
-      data.add(projectId, entry);
+      data.add(entry.getTenantId(), entry);
     }
   }
 
@@ -78,6 +78,8 @@ public final class LogTraceBuffer {
     }
 
     public void addBad(final String projectId, final LogEntry entry) {
+      if (!(entry instanceof LogEntryMessage)) return;
+
       if (!StringUtil.equals(currentProjectId, projectId)) {
         flushTraces(currentProjectId);
         this.currentProjectId = projectId;
@@ -86,7 +88,7 @@ public final class LogTraceBuffer {
       final int index = Math.toIntExact(nextEntries++ & ENTRIES_MASK);
       this.entries[index] = entry;
 
-      if (entry.getLevel().ordinal() <= LogLevel.ERROR.ordinal()) {
+      if (((LogEntryMessage)entry).getLevel().ordinal() <= LogLevel.ERROR.ordinal()) {
         flushTraces(projectId);
       }
     }
@@ -97,20 +99,10 @@ public final class LogTraceBuffer {
       final StringBuilder builder = new StringBuilder(1024);
       builder.append("--- ").append(projectId).append(" ---\n");
       for (int i = entriesCount; i > 0; --i) {
-        entries[Math.toIntExact(nextEntries - i) & ENTRIES_MASK].printEntry(null, builder);
+        builder.append(entries[Math.toIntExact(nextEntries - i) & ENTRIES_MASK]);
       }
       builder.append('\n');
       traces[index] = builder.toString();
-    }
-  }
-
-  public static void main(final String[] args) {
-    for (int i = 0; i < 1000; ++i) {
-      LogTraceBuffer.INSTANCE.addToLogQueue(Thread.currentThread(), "foo", new LogEntry()
-        .setGroupId("groupId")
-        .setModuleId("moduleId")
-        .setFormat("foo {}", new Object[] { i })
-        .setLevel(LogLevel.ERROR));
     }
   }
 }
