@@ -65,6 +65,10 @@ public class HashIndexedArrayMap<K, V> {
     return keyIndex.contains(key);
   }
 
+  public K getKey(final int index) {
+    return keyIndex.get(index);
+  }
+
   public V get(final K key) {
     final int index = keyIndex.getIndex(key);
     return index < 0 ? null : get(index);

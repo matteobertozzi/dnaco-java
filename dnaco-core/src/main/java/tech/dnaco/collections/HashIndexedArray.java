@@ -88,26 +88,30 @@ public class HashIndexedArray<K> {
   }
 
   @Override
-  public String toString() {
-    return Arrays.toString(keys);
+  public int hashCode() {
+    return Arrays.deepHashCode(keys);
   }
 
-  public static void main(final String[] args) {
-    new HashIndexedArray<>(new String[] {"paramname", "paramvalue"});
-    new HashIndexedArray<>(new String[] {"idqg", "descrizione", "img", "idqlist", "flag1", "flag2", "flag3", "flag4", "flag5"});
-    new HashIndexedArray<>(new String[] {"idq", "descrizione", "enable", "lang", "codiceq"});
-    new HashIndexedArray<>(new String[] {"idq", "idd", "descrizione", "tipo", "idri", "qorder", "valdef", "required", "condizioneval", "condizione", "condizionep1", "condizionep2", "azione", "azioneelse", "azionep1", "azionep2", "azioneelsep1", "azioneelsep2", "codiced"});
-    new HashIndexedArray<>(new String[] {"idq", "idd", "type", "data01", "data02", "data03", "data04", "data05"});
-    new HashIndexedArray<>(new String[] {"idri", "idi", "itemorder", "varreturn", "descrizione"});
-    new HashIndexedArray<>(new String[] {"idq", "idd", "ida", "action", "actionp1", "actionp2", "descrizione", "img", "custom1", "custom2", "custom3", "custom4", "custom5", "custom6", "custom7", "custom8", "custom9", "custom10"});
-    new HashIndexedArray<>(new String[] {"tabname", "tabdesc", "idxvalkey", "descval01", "descval02", "descval03", "descval04", "descval05", "descval06", "descval07", "descval08", "descval09", "descval10", "descval11", "descval12", "descval13", "descval14", "descval15", "descval16", "descval17", "descval18", "descval19", "descval20", "flag1", "flag2", "flag3", "flag4", "flag5"});
-    new HashIndexedArray<>(new String[] {"tabname", "reckey", "defvalue", "idd", "flag1", "flag2", "flag3", "flag4", "flag5"});
-    new HashIndexedArray<>(new String[] {"idgracq", "idacq", "acqorder", "descrizione", "tipo", "custom1", "custom2", "custom3", "custom4", "custom5", "custom6", "custom7", "custom8", "custom9", "custom10", "readonly"});
-    new HashIndexedArray<>(new String[] {"idq", "img", "flag1", "flag2", "flag3", "flag4", "flag5"});
-    new HashIndexedArray<>(new String[] {"idq", "img", "flag1", "flag2", "flag3", "flag4", "flag5"});
-    new HashIndexedArray<>(new String[] {"tabname", "reckey", "rectype", "isupdated", "val01", "val02", "val03", "val04", "val05", "val06", "val07", "val08", "val09", "val10"});
-    new HashIndexedArray<>(new String[] {"id", "idk", "idt", "tipo", "lang", "translation", "custom1", "custom2", "custom3", "custom4", "custom5"});
-    new HashIndexedArray<>(new String[] {"idq", "idd", "type", "idref", "script", "custom1", "custom2", "custom3", "custom4", "custom5"});
-    new HashIndexedArray<>(new String[] {"tabname", "reckey", "val01", "val02", "val03", "val04", "val05", "val06", "val07", "val08", "val09", "val10", "val11", "val12", "val13", "val14", "val15", "val16", "val17", "val18", "val19", "val20", "sortorder"});
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) return true;
+    if (obj == null) return false;
+    if (!(obj instanceof HashIndexedArray)) return false;
+
+    @SuppressWarnings("unchecked")
+    final HashIndexedArray<K> other = (HashIndexedArray<K>) obj;
+    if (keys.length != other.size()) return false;
+
+    for (int i = 0; i < keys.length; ++i) {
+      if (!other.contains(keys[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    return Arrays.toString(keys);
   }
 }

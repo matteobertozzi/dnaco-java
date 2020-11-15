@@ -49,11 +49,15 @@ import com.google.gson.stream.JsonReader;
 
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.collections.ArrayUtil;
+import tech.dnaco.collections.HashIndexedArray;
+import tech.dnaco.collections.HashIndexedArrayMap;
 
 public final class JsonUtil {
   public static final String JSON_DATE_FORMAT_PATTERN = "YYYYMMddHHmmss";
   private static final Gson GSON = new GsonBuilder()
       .registerTypeAdapter(byte[].class, new BytesTypeAdapter())
+      .registerTypeAdapter(HashIndexedArray.class, new HashIndexedArrayTypeAdapter())
+      .registerTypeAdapter(HashIndexedArrayMap.class, new HashIndexedArrayMapTypeAdapter())
       .setDateFormat(JSON_DATE_FORMAT_PATTERN)
       .disableHtmlEscaping()
       .create();
@@ -284,6 +288,29 @@ public final class JsonUtil {
     public byte[] deserialize(final JsonElement json, final Type typeOfT, final JsonDeserializationContext context)
         throws JsonParseException {
       return Base64.getDecoder().decode(json.getAsString());
+    }
+  }
+
+  public static final class HashIndexedArrayTypeAdapter implements JsonSerializer<HashIndexedArray<?>> {
+    @Override
+    public JsonElement serialize(final HashIndexedArray<?> src, final Type typeOfSrc, final JsonSerializationContext context) {
+      final JsonArray json = new JsonArray();
+      for (int i = 0, n = src.size(); i < n; ++i) {
+        json.add(toJsonTree(src.get(i)));
+      }
+      return json;
+    }
+  }
+
+  public static final class HashIndexedArrayMapTypeAdapter implements JsonSerializer<HashIndexedArrayMap<?, ?>> {
+    @Override
+    public JsonElement serialize(final HashIndexedArrayMap<?, ?> src, final Type typeOfSrc, final JsonSerializationContext context) {
+      final HashIndexedArray<?> keys = src.getKeyIndex();
+      final JsonObject json = new JsonObject();
+      for (int i = 0, n = src.size(); i < n; ++i) {
+        json.add(String.valueOf(keys.get(i)), toJsonTree(src.get(i)));
+      }
+      return json;
     }
   }
 }
