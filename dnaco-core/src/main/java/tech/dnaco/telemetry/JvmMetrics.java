@@ -25,6 +25,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.bytes.BytesUtil;
@@ -159,7 +160,7 @@ public final class JvmMetrics implements TelemetryCollector {
   public String getDeviceId() {
     try {
       final ArrayList<NetworkInterface> networkIfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
-      networkIfaces.sort((a, b) -> a.getName().compareTo(b.getName()));
+      networkIfaces.sort(Comparator.comparing(NetworkInterface::getName));
 
       final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
       for (NetworkInterface iface: networkIfaces) {

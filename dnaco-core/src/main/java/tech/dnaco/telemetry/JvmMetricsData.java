@@ -97,7 +97,16 @@ public class JvmMetricsData implements TelemetryCollectorData {
     json.add("cpu_usage", cpuJson);
     json.addProperty("uptime", uptime);
     return json;
-	}
+  }
+
+  private static JsonObject jsonCollectorLabe(final String name, final String label, final String help, final String value) {
+    JsonObject json = new JsonObject();
+    json.addProperty("label", label);
+    json.addProperty("help", help);
+    json.addProperty("type", "LABEL");
+    json.addProperty("data", value);
+    return json;
+  }
 
 	@Override
 	public StringBuilder toHumanReport(StringBuilder report, HumanLongValueConverter humanConverter) {

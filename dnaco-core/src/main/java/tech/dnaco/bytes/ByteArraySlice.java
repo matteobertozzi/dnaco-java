@@ -64,7 +64,7 @@ public class ByteArraySlice implements BytesSlice {
   }
 
   public byte[] buffer() {
-    return Arrays.copyOfRange(buf, off, len);
+    return Arrays.copyOfRange(buf, off, off + len);
   }
 
   public int offset() {

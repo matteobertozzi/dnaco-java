@@ -35,11 +35,6 @@ public class LogEntryMessage extends LogEntry {
     return LogEntryType.MESSAGE;
   }
 
-  @Override
-  protected void writeData(final PagedByteArray buffer) {
-    LogFormat.CURRENT.writeEntryData(buffer, this);
-  }
-
   public boolean hasException() {
     return exception != null;
   }
@@ -89,9 +84,14 @@ public class LogEntryMessage extends LogEntry {
   }
 
   @Override
+  protected void writeData(final PagedByteArray buffer) {
+    LogFormat.CURRENT.writeEntryMessage(buffer, this);
+  }
+
+  @Override
   public StringBuilder toHumanReport(final StringBuilder report) {
     super.toHumanReport(report);
-    report.append(" ").append(level).append(" ").append(classAndMethod).append(" ");
+    report.append(" ").append(level).append(" ").append(classAndMethod).append(" - ");
     StringFormat.applyFormat(report, msgFormat, msgArgs);
     if (exception != null) report.append(" - ").append(exception);
     return report;

@@ -18,8 +18,8 @@ public final class IndexedHashSet<K> {
     private Object key;
   }
 
-  private IndexedSetEntry[] entries = null;
-  private int[] buckets = null;
+  private IndexedSetEntry[] entries;
+  private int[] buckets;
   private int entriesIndex;
   private int freeList;
   private int count;
@@ -55,16 +55,25 @@ public final class IndexedHashSet<K> {
     return count == 0;
   }
 
-  public boolean containsKey(final Object key) {
+  public int get(final K key) {
+    return findEntry(key);
+  }
+
+  @SuppressWarnings("unchecked")
+  public K get(final int index) {
+    return (K) entries[index].key;
+  }
+
+  public boolean containsKey(final K key) {
     return findEntry(key) >= 0;
   }
 
-  private int findEntry(final Object key) {
+  private int findEntry(final K key) {
     final int hashCode = Objects.hashCode(key) & 0x7FFFFFFF;
     return findEntry(key, hashCode);
   }
 
-  private int findEntry(final Object key, final int hashCode) {
+  private int findEntry(final K key, final int hashCode) {
     for (int i = buckets[hashCode % buckets.length]; i >= 0; i = entries[i].next) {
       final IndexedSetEntry entry = entries[i];
       if (entry.hash == hashCode && Objects.equals(entry.key, key)) {
@@ -77,10 +86,9 @@ public final class IndexedHashSet<K> {
   public int add(final K key) {
     final int hashCode = Objects.hashCode(key) & 0x7FFFFFFF;
     final int index = findEntry(key, hashCode);
-    if (index < 0) {
-      return insertNewEntry(hashCode, key);
-    }
-    return index;
+    if (index >= 0) return index;
+
+    return insertNewEntry(hashCode, key);
   }
 
   private int insertNewEntry(final int hashCode, final K key) {

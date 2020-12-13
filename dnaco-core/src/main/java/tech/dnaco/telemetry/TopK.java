@@ -154,19 +154,8 @@ public class TopK implements TelemetryCollector {
     throw new UnsupportedOperationException(type.name());
   }
 
-  private static final Comparator<MinMaxEntry> SORT_BY_FREQ = new Comparator<>() {
-    @Override
-    public int compare(final MinMaxEntry a, final MinMaxEntry b) {
-      return Long.compare(b.freq, a.freq);
-    }
-  };
-
-  private static final Comparator<MinMaxEntry> SORT_BY_MAX_VALUE = new Comparator<>() {
-    @Override
-    public int compare(final MinMaxEntry a, final MinMaxEntry b) {
-      return Long.compare(b.vMax, a.vMax);
-    }
-  };
+  private static final Comparator<MinMaxEntry> SORT_BY_FREQ = (a, b) -> Long.compare(b.getFrequency(), a.getFrequency());
+  private static final Comparator<MinMaxEntry> SORT_BY_MAX_VALUE = (a, b) -> Long.compare(b.getMaxValue(), a.getMaxValue());
 
   private static final class MinMaxEntry {
     private final String key;
@@ -187,6 +176,10 @@ public class TopK implements TelemetryCollector {
       this.keyHash = keyHash;
       this.next = -1;
     }
+
+    public long getMaxValue() { return vMax; }
+    public long getMinValue() { return vMin; }
+    public long getFrequency() { return freq; }
 
     private void add(final long value, final long traceId) {
       if (value >= vMax) {

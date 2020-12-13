@@ -19,6 +19,8 @@ package tech.dnaco.collections;
 
 import java.util.Arrays;
 
+import tech.dnaco.bytes.BytesUtil;
+
 public class ByteArray {
   private byte[] blob;
   private int count;
@@ -33,10 +35,21 @@ public class ByteArray {
   }
 
   public byte[] buffer() {
-    if (count == blob.length) {
-      return blob;
-    }
     return Arrays.copyOf(blob, count);
+  }
+
+  public byte[] drain() {
+    final byte[] result;
+    if (blob.length == count) {
+      result = blob;
+      this.blob = BytesUtil.EMPTY_BYTES;
+    } else if (count == 0) {
+      result = BytesUtil.EMPTY_BYTES;
+    } else {
+      result = Arrays.copyOf(blob, count);
+    }
+    this.count = 0;
+    return result;
   }
 
   public void reset() {

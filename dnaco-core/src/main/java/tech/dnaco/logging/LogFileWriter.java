@@ -106,6 +106,7 @@ public class LogFileWriter implements JournalWriter {
 
       try (ZstdOutputStream stream = new ZstdOutputStream(fileStream)) {
         try (LogEntryWriter deltaWriter = LogFormat.CURRENT.newEntryWriter()) {
+          deltaWriter.newBlock(stream);
           for (final JournalBuffer threadBuf: buffers) {
             if (!threadBuf.hasTenantId(tenantId)) continue;
 

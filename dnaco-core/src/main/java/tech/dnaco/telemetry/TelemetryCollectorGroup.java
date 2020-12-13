@@ -152,7 +152,7 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     }
   }
 
-  public static final class CollectorInfo {
+  private static final class CollectorInfo {
     private final String name;
     private final String label;
     private final String help;

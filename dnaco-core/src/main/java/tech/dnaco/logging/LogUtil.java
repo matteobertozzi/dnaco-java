@@ -65,6 +65,7 @@ public final class LogUtil {
 
   public enum LogLevel {
     ALWAYS,
+    NEVER,
     FATAL,      // system is unusable
     ALERT,      // action must be taken immediately
     CRITICAL,   // critical conditions
@@ -92,11 +93,11 @@ public final class LogUtil {
   // ===============================================================================================
   private static LogLevel fromJavaLevel(final Level level) {
     switch (level) {
-      case ALL:     return LogLevel.ALWAYS;
+      case ALL:     return LogLevel.TRACE;
+      case OFF:     return LogLevel.NEVER;
       case DEBUG:   return LogLevel.DEBUG;
       case ERROR:   return LogLevel.ERROR;
       case INFO:    return LogLevel.INFO;
-      case OFF:     return LogLevel.FATAL;
       case TRACE:   return LogLevel.TRACE;
       case WARNING: return LogLevel.WARNING;
     }

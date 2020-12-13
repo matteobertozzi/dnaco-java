@@ -76,6 +76,10 @@ public class ByteArrayWriter extends BytesOutputStream {
     buffer[wpos++] = (byte) (b & 0xff);
   }
 
+  public void write(final byte[] buf) {
+    write(buf, 0, buf.length);
+  }
+
   @Override
   public void write(final byte[] buf, final int off, final int len) {
     System.arraycopy(buf, off, this.buffer, this.wpos, len);

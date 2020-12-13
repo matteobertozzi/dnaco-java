@@ -55,7 +55,7 @@ public class TelemetryCollectorDefinition {
   public JsonObject toJson() {
     final JsonObject json = new JsonObject();
     json.addProperty("label", label);
-    json.addProperty("type", unit.name());
+    json.addProperty("type", type.name());
     json.addProperty("unit", unit.name());
     json.addProperty("help", help);
     json.add("data", data);

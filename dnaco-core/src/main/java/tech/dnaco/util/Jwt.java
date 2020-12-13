@@ -41,11 +41,11 @@ public class Jwt {
 
   private final JsonObject dat;
 
-  public Jwt(final String issuer, final long validity, TimeUnit validityUnit) {
+  public Jwt(final String issuer, final long validity, final TimeUnit validityUnit) {
     this(issuer, System.currentTimeMillis(), validity, validityUnit);
   }
 
-  public Jwt(final String issuer, final long issuedAtMs, final long validity, TimeUnit validityUnit) {
+  public Jwt(final String issuer, final long issuedAtMs, final long validity, final TimeUnit validityUnit) {
     this.dat = new JsonObject();
 
     final long issuedAtSec = TimeUnit.MILLISECONDS.toSeconds(issuedAtMs);
@@ -103,7 +103,7 @@ public class Jwt {
     return this;
   }
 
-  public Jwt addClaim(final String key, Object value) {
+  public Jwt addClaim(final String key, final Object value) {
     dat.add(key, JsonUtil.toJsonTree(value));
     return this;
   }
@@ -172,7 +172,7 @@ public class Jwt {
 
   public static final JwtVerifier<Void> JWT_NOOP_VERIFIER = new JwtVerifier<>() {
     @Override
-    public void verifySignature(JwtHeader jwtHead, Jwt jwtBody, Void key, byte[] jwtSigned, byte[] jwtSignature) {
+    public void verifySignature(final JwtHeader jwtHead, final Jwt jwtBody, final Void key, final byte[] jwtSigned, final byte[] jwtSignature) {
       // no-op
     }
   };
@@ -185,11 +185,11 @@ public class Jwt {
     private String kid;
     private String alg;
 
-    public JwtHeader(String kid, String alg) {
+    public JwtHeader(final String kid, final String alg) {
       this("JWT", kid, alg);
     }
 
-    public JwtHeader(String typ, String kid, String alg) {
+    public JwtHeader(final String typ, final String kid, final String alg) {
       this.typ = typ;
       this.kid = kid;
       this.alg = alg;
@@ -203,7 +203,7 @@ public class Jwt {
       return kid;
     }
 
-    public void setKid(String kid) {
+    public void setKid(final String kid) {
       this.kid = kid;
     }
 
@@ -211,7 +211,7 @@ public class Jwt {
       return typ;
     }
 
-    public void setTyp(String typ) {
+    public void setTyp(final String typ) {
       this.typ = typ;
     }
 
@@ -219,7 +219,7 @@ public class Jwt {
       return alg;
     }
 
-    public void setAlg(String alg) {
+    public void setAlg(final String alg) {
       this.alg = alg;
     }
 
@@ -298,34 +298,34 @@ public class Jwt {
     }
   }
 
-  public static void main(String[] args) throws Exception {
-    String jwtString = "eyJ0eXAiOiJKV1QiLCJraWQiOiJxWnRrdHQxajhmbVBJc2o0RVBKWUFuYU9HSGxhbVlRalpQazF4UFdKV2ZJZWVZVVRiM1g2T1BGN1FGRTBFZ0lVRHZnT0w1Sk45V3FMcUJqcGV6c1hnIiwiYWxnIjoiRVMyNTYifQ.eyJpc3MiOiJnb2FsLmd1bGxpdmVybmV0LmNvbSIsImlhdCI6MTU5NTYxNjczOSwiZXhwIjoxNTk1NjIwMzM5LCJ0eXBlIjoiQUNDRVNTIiwicHJvamVjdElkIjoiZ29hbC5hZG1pbiIsInNjbHoiOiJjb20uZ3VsbGl2ZXJuZXQuc2VydmVyLmF1dGguVXNlclNlc3Npb24iLCJzY2x6cyI6WyJjb20uZ3VsbGl2ZXJuZXQuc2VydmVyLmF1dGguQXV0aEFjY2Vzc1Nlc3Npb24iXSwic2tleSI6ImZ2WkxBWkpxTUlXeEZieFhsVE43SmlFMlhWbUVIR24tdGZ2TGtwWWVqM0RHUXlTVlkxQTMzS0J4aFVHTWxYZ3JLTUgxR2paN2NnREk1RjUxdmNXN3lRIiwic2RhdCI6IkhnM21PR05rZ1g1LTludFhPaUZTcHJCNW82eHg4cm9RbVBDUzlHSDRCOXdIOTlpcHlNaklITTV4R1dvTG9qZEszZ0JqTEg5cHhwQ18tX3hEbzNjWS1HRUJjaXVaNU9XNXlYcTZxTzlDcTVLRXpEREZJV1lZSEE3QnRwcGs1cHgyWTZUQ2tvVmxlOW40TDBpWnhEUWF4Qk5tc2RmLW5JVEI1YXpHZ0xvemRwc0V2ZEZyVjBXVHd5NVUyVXo4NFA4b2J2LUIyam9VWGE3aXFNZS1zSHBLUktETjBqaUpCSjgxNUVOdTk0ZGdDTkFoSHVrYnpGMFRuYkZqaEUtaFJaX2k3dyIsImtleUFsZ28iOiJFQ19QMjU2IiwicHVibGljS2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFV0k4RGcxcEVYMzFTaHdCQ2ZCQzF1M2ROZmxSOXZONW43NGt1djhmUXRsQWtUbHRVSEdqc200TWtPMmxfMkNmWW5lX3k3N0hNbHZNX282WXBHcWVPU2ciLCJwZXJtaXNzaW9ucyI6eyJ0YXNrIjpbIkNPREVfREVWRUxPUEVSIiwiTU9OSVRPUl9NQUlMQk9YX01BTkFHRU1FTlQiLCJTVUJTQ1JJUFRJT05fTUFOQUdFTUVOVCIsIlNDSEVEVUxFUl9UQVNLX01BTkFHRU1FTlQiLCJTQ0hFRFVMRVJfVEFTS19JTkZPIiwiRkxPV19ERVZFTE9QRVIiLCJGTE9XX0VYRUMiLCJNT05JVE9SX0ZUUF9NQU5BR0VNRU5UIiwiRVZFTlRfQlVTX01BTkFHRU1FTlQiLCJFWEVDVVRJT05fSElTVE9SWV9NQU5BR0VNRU5UIiwiU1VCU0NSSVBUSU9OX0lORk8iLCJNT05JVE9SX01BSUxCT1hfSU5GTyIsIk1PTklUT1JfRlRQX0lORk8iLCJFWEVDVVRJT05fSElTVE9SWV9JTkZPIiwiRlVOQ1RJT05fRVhFQyJdLCJrdHN5bmMtYWN0aXZhdGlvbiI6WyJBQ1RJVkFURSIsIkFDVElWQVRJT05fTUFOQUdFTUVOVCJdLCJkYXRhIjpbIlRBQkxFX0RFTEVURSIsIlRBQkxFX1NFTEVDVCIsIlRBQkxFX0lOU0VSVCIsIkRBVEFTT1VSQ0VfTUFOQUdFTUVOVCIsIlRBQkxFX1VQU0VSVCIsIlRBQkxFX1VQREFURSJdLCJhdXRoIjpbIlVTRVJfRURJVCIsIlVTRVJfQ0hBTkdFX1BBU1NXT1JEX1ZFUklGWSIsIlVTRVJfU0lHTl9VUCIsIlVTRVJfUkVTRVRfUEFTU1dPUkRfU0VORCIsIlBFUk1JU1NJT05fQVBJX0tFWV9JTkZPIiwiQVBJX0tFWV9DUkVBVEUiLCJQRVJNSVNTSU9OX0dST1VQX0lORk8iLCJVU0VSX1JFU0VUX1BBU1NXT1JEX1ZFUklGWSIsIkdST1VQX0lORk8iLCJBUElfS0VZX0RFTEVURSIsIlVTRVJfU0lHTl9JTiIsIkdST1VQX0xJU1QiLCJQRVJNSVNTSU9OX1VTRVJfSU5GTyIsIkdST1VQX0NSRUFURSIsIlVTRVJfQ1JFQVRFIiwiQVBJX0tFWV9JTkZPIiwiVVNFUl9BQ1RJVkFUSU9OX1NFTkQiLCJBUElfS0VZX0xJU1QiLCJHUk9VUF9FRElUIiwiR1JPVVBfREVMRVRFIiwiVVNFUl9ERUxFVEUiLCJERVZJQ0VfTUFOQUdFTUVOVCIsIlBFUk1JU1NJT05fVVNFUl9NQU5BR0VNRU5UIiwiR1JPVVBfQVBJX0tFWV9NQU5BR0VNRU5UIiwiQVBJX0tFWV9FRElUIiwiREVWSUNFX0RBVEFTT1VSQ0VfTUFOQUdFTUVOVCIsIkFVVEhfQ09ORklHIiwiUEVSTUlTU0lPTl9BVkFJTEFCTEUiLCJVU0VSX0lORk8iLCJVU0VSX0xJU1QiLCJHUk9VUF9VU0VSX01BTkFHRU1FTlQiLCJERVZJQ0VfREFUQV9NQU5BR0VNRU5UIiwiVVNFUl9BQ1RJVkFUSU9OX1ZFUklGWSIsIlBFUk1JU1NJT05fR1JPVVBfTUFOQUdFTUVOVCIsIlBFUk1JU1NJT05fQVBJX0tFWV9NQU5BR0VNRU5UIl0sInN1cGVyLWFkbWluIjpbIlBST0pFQ1RfQ1JFQVRFIiwiUFJPSkVDVF9FRElUIiwiRU5WSVJPTk1FTlRfTUFOQUdFTUVOVCJdLCJtZGMiOlsiREFUQVNPVVJDRV9NQU5BR0VNRU5UIiwiU0VORF9QVVNIIl0sIm1lc3NhZ2luZyI6WyJEQVRBU09VUkNFX01BTkFHRU1FTlQiLCJTRU5EX1NNUyIsIlNFTkRfQU5ZIiwiU0VORF9NQUlMIiwiU0VORF9QVVNIIl19LCJncm91cHMiOlsibmV3LWdyb3VwIiwiZ3JwNCIsImdycDIiXSwidWlkIjoiMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJkZXZpY2VJZCI6InpYbmpnMGxSSGhZS0pGajB2WTdhLUMzbGZaMzNhS2R1NnpqNG1XRHdTWm8iLCJsYW5nIjoiZW4ifQ.MEYCIQChuFdRSxKTD_RE2p7tX12zzSoZ1Pq3DQt4VCqJFpS5sQIhAOO0TeX6zAPXvteknL4Nkl0EaN2Sf6PgTVgIvVjs0A28";
+  public static void main(final String[] args) throws Exception {
+    final String jwtString = "eyJ0eXAiOiJKV1QiLCJraWQiOiJxWnRrdHQxajhmbVBJc2o0RVBKWUFuYU9HSGxhbVlRalpQazF4UFdKV2ZJZWVZVVRiM1g2T1BGN1FGRTBFZ0lVRHZnT0w1Sk45V3FMcUJqcGV6c1hnIiwiYWxnIjoiRVMyNTYifQ.eyJpc3MiOiJnb2FsLmd1bGxpdmVybmV0LmNvbSIsImlhdCI6MTU5NTYxNjczOSwiZXhwIjoxNTk1NjIwMzM5LCJ0eXBlIjoiQUNDRVNTIiwicHJvamVjdElkIjoiZ29hbC5hZG1pbiIsInNjbHoiOiJjb20uZ3VsbGl2ZXJuZXQuc2VydmVyLmF1dGguVXNlclNlc3Npb24iLCJzY2x6cyI6WyJjb20uZ3VsbGl2ZXJuZXQuc2VydmVyLmF1dGguQXV0aEFjY2Vzc1Nlc3Npb24iXSwic2tleSI6ImZ2WkxBWkpxTUlXeEZieFhsVE43SmlFMlhWbUVIR24tdGZ2TGtwWWVqM0RHUXlTVlkxQTMzS0J4aFVHTWxYZ3JLTUgxR2paN2NnREk1RjUxdmNXN3lRIiwic2RhdCI6IkhnM21PR05rZ1g1LTludFhPaUZTcHJCNW82eHg4cm9RbVBDUzlHSDRCOXdIOTlpcHlNaklITTV4R1dvTG9qZEszZ0JqTEg5cHhwQ18tX3hEbzNjWS1HRUJjaXVaNU9XNXlYcTZxTzlDcTVLRXpEREZJV1lZSEE3QnRwcGs1cHgyWTZUQ2tvVmxlOW40TDBpWnhEUWF4Qk5tc2RmLW5JVEI1YXpHZ0xvemRwc0V2ZEZyVjBXVHd5NVUyVXo4NFA4b2J2LUIyam9VWGE3aXFNZS1zSHBLUktETjBqaUpCSjgxNUVOdTk0ZGdDTkFoSHVrYnpGMFRuYkZqaEUtaFJaX2k3dyIsImtleUFsZ28iOiJFQ19QMjU2IiwicHVibGljS2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFV0k4RGcxcEVYMzFTaHdCQ2ZCQzF1M2ROZmxSOXZONW43NGt1djhmUXRsQWtUbHRVSEdqc200TWtPMmxfMkNmWW5lX3k3N0hNbHZNX282WXBHcWVPU2ciLCJwZXJtaXNzaW9ucyI6eyJ0YXNrIjpbIkNPREVfREVWRUxPUEVSIiwiTU9OSVRPUl9NQUlMQk9YX01BTkFHRU1FTlQiLCJTVUJTQ1JJUFRJT05fTUFOQUdFTUVOVCIsIlNDSEVEVUxFUl9UQVNLX01BTkFHRU1FTlQiLCJTQ0hFRFVMRVJfVEFTS19JTkZPIiwiRkxPV19ERVZFTE9QRVIiLCJGTE9XX0VYRUMiLCJNT05JVE9SX0ZUUF9NQU5BR0VNRU5UIiwiRVZFTlRfQlVTX01BTkFHRU1FTlQiLCJFWEVDVVRJT05fSElTVE9SWV9NQU5BR0VNRU5UIiwiU1VCU0NSSVBUSU9OX0lORk8iLCJNT05JVE9SX01BSUxCT1hfSU5GTyIsIk1PTklUT1JfRlRQX0lORk8iLCJFWEVDVVRJT05fSElTVE9SWV9JTkZPIiwiRlVOQ1RJT05fRVhFQyJdLCJrdHN5bmMtYWN0aXZhdGlvbiI6WyJBQ1RJVkFURSIsIkFDVElWQVRJT05fTUFOQUdFTUVOVCJdLCJkYXRhIjpbIlRBQkxFX0RFTEVURSIsIlRBQkxFX1NFTEVDVCIsIlRBQkxFX0lOU0VSVCIsIkRBVEFTT1VSQ0VfTUFOQUdFTUVOVCIsIlRBQkxFX1VQU0VSVCIsIlRBQkxFX1VQREFURSJdLCJhdXRoIjpbIlVTRVJfRURJVCIsIlVTRVJfQ0hBTkdFX1BBU1NXT1JEX1ZFUklGWSIsIlVTRVJfU0lHTl9VUCIsIlVTRVJfUkVTRVRfUEFTU1dPUkRfU0VORCIsIlBFUk1JU1NJT05fQVBJX0tFWV9JTkZPIiwiQVBJX0tFWV9DUkVBVEUiLCJQRVJNSVNTSU9OX0dST1VQX0lORk8iLCJVU0VSX1JFU0VUX1BBU1NXT1JEX1ZFUklGWSIsIkdST1VQX0lORk8iLCJBUElfS0VZX0RFTEVURSIsIlVTRVJfU0lHTl9JTiIsIkdST1VQX0xJU1QiLCJQRVJNSVNTSU9OX1VTRVJfSU5GTyIsIkdST1VQX0NSRUFURSIsIlVTRVJfQ1JFQVRFIiwiQVBJX0tFWV9JTkZPIiwiVVNFUl9BQ1RJVkFUSU9OX1NFTkQiLCJBUElfS0VZX0xJU1QiLCJHUk9VUF9FRElUIiwiR1JPVVBfREVMRVRFIiwiVVNFUl9ERUxFVEUiLCJERVZJQ0VfTUFOQUdFTUVOVCIsIlBFUk1JU1NJT05fVVNFUl9NQU5BR0VNRU5UIiwiR1JPVVBfQVBJX0tFWV9NQU5BR0VNRU5UIiwiQVBJX0tFWV9FRElUIiwiREVWSUNFX0RBVEFTT1VSQ0VfTUFOQUdFTUVOVCIsIkFVVEhfQ09ORklHIiwiUEVSTUlTU0lPTl9BVkFJTEFCTEUiLCJVU0VSX0lORk8iLCJVU0VSX0xJU1QiLCJHUk9VUF9VU0VSX01BTkFHRU1FTlQiLCJERVZJQ0VfREFUQV9NQU5BR0VNRU5UIiwiVVNFUl9BQ1RJVkFUSU9OX1ZFUklGWSIsIlBFUk1JU1NJT05fR1JPVVBfTUFOQUdFTUVOVCIsIlBFUk1JU1NJT05fQVBJX0tFWV9NQU5BR0VNRU5UIl0sInN1cGVyLWFkbWluIjpbIlBST0pFQ1RfQ1JFQVRFIiwiUFJPSkVDVF9FRElUIiwiRU5WSVJPTk1FTlRfTUFOQUdFTUVOVCJdLCJtZGMiOlsiREFUQVNPVVJDRV9NQU5BR0VNRU5UIiwiU0VORF9QVVNIIl0sIm1lc3NhZ2luZyI6WyJEQVRBU09VUkNFX01BTkFHRU1FTlQiLCJTRU5EX1NNUyIsIlNFTkRfQU5ZIiwiU0VORF9NQUlMIiwiU0VORF9QVVNIIl19LCJncm91cHMiOlsibmV3LWdyb3VwIiwiZ3JwNCIsImdycDIiXSwidWlkIjoiMSIsInVzZXJuYW1lIjoiYWRtaW4iLCJkZXZpY2VJZCI6InpYbmpnMGxSSGhZS0pGajB2WTdhLUMzbGZaMzNhS2R1NnpqNG1XRHdTWm8iLCJsYW5nIjoiZW4ifQ.MEYCIQChuFdRSxKTD_RE2p7tX12zzSoZ1Pq3DQt4VCqJFpS5sQIhAOO0TeX6zAPXvteknL4Nkl0EaN2Sf6PgTVgIvVjs0A28";
     System.out.println(jwtString.length());
 
-    String[] parts = jwtString.split(Pattern.quote("."));
+    final String[] parts = jwtString.split(Pattern.quote("."));
     for (int i = 0; i < parts.length; ++i) {
       System.out.println(i + " -> " + parts[i].length());
       //System.out.println(i + " -> gz: " + Base64.getUrlEncoder().encodeToString(ZstdUtil.compress(Base64.getUrlDecoder().decode(parts[i]))));
     }
 
-    byte[] rawJwt = Base64.getUrlDecoder().decode(parts[1]);
+    final byte[] rawJwt = Base64.getUrlDecoder().decode(parts[1]);
     System.out.println("RAW: " + rawJwt.length + " b64: " + parts[1].length());
-    byte[] gzJwt = GzipUtil.compress(rawJwt);
+    final byte[] gzJwt = GzipUtil.compress(rawJwt);
     System.out.println(" -> gz: " + gzJwt.length + " b64: " + Base64.getUrlEncoder().encodeToString(gzJwt).length());
-    byte[] gz9Jwt = GzipUtil.compress(rawJwt, Deflater.BEST_COMPRESSION);
+    final byte[] gz9Jwt = GzipUtil.compress(rawJwt, Deflater.BEST_COMPRESSION);
     System.out.println(" -> gz9: " + gz9Jwt.length + " b64: " + Base64.getUrlEncoder().encodeToString(gz9Jwt).length());
 
-    ByteArraySlice zstdJwt = ZstdUtil.compress(rawJwt, 0, rawJwt.length);
-    byte[] zstdRaw = Arrays.copyOfRange(zstdJwt.rawBuffer(), zstdJwt.offset(), zstdJwt.length());
+    final ByteArraySlice zstdJwt = ZstdUtil.compress(rawJwt, 0, rawJwt.length);
+    final byte[] zstdRaw = Arrays.copyOfRange(zstdJwt.rawBuffer(), zstdJwt.offset(), zstdJwt.length());
     System.out.println(" -> zstd: " + zstdRaw.length + " b64: " + Base64.getUrlEncoder().encodeToString(zstdRaw).length());
 
     if (true) return;
 
-    Jwt jwt = new Jwt("foo", 1, TimeUnit.HOURS);
+    final Jwt jwt = new Jwt("foo", 1, TimeUnit.HOURS);
     jwt.addClaim("project", "puppa");
-    String jwtEnc = jwt.sign("k123", "EC123", null, new JwtSigner<Void>(){
+    final String jwtEnc = jwt.sign("k123", "EC123", null, new JwtSigner<Void>(){
       @Override
-      public byte[] sign(String kid, String alg, Void key, byte[] jwtToSign) {
+      public byte[] sign(final String kid, final String alg, final Void key, final byte[] jwtToSign) {
         return new byte[] { 1, 2, 3 };
       }
     });

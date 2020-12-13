@@ -83,12 +83,7 @@ public final class ArraySortUtil {
     int compare(int[] array, int aIndex, int bIndex);
   }
 
-  public static final IntArrayComparator INT_ARRAY_COMPARATOR = new IntArrayComparator() {
-    @Override
-    public int compare(final int[] array, final int aIndex, final int bIndex) {
-      return Integer.compare(array[aIndex], array[bIndex]);
-    }
-  };
+  public static final IntArrayComparator INT_ARRAY_COMPARATOR = (array, aIndex, bIndex) -> Integer.compare(array[aIndex], array[bIndex]);
 
   public static void sort(final int[] buf, final int off, final int len, final IntArrayComparator comparator) {
     int i = (len / 2 - 1);

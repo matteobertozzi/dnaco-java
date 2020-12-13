@@ -154,6 +154,16 @@ public final class StringUtil {
     return StringUtil.isNotEmpty(text) && text.contains(pattern);
   }
 
+  public static int count(final String text, final char c) {
+    int count = 0;
+    int index = text.indexOf(c);
+    while (index >= 0) {
+      count++;
+      index = text.indexOf(c, index + 1);
+    }
+    return count;
+  }
+
   // ================================================================================
   //  Pad helpers
   // ================================================================================
@@ -412,6 +422,81 @@ public final class StringUtil {
   }
 
   // ================================================================================
+  //  String like related
+  // ================================================================================
+  public static boolean like(final String source, final String exp) {
+    if (source == null || exp == null) {
+      return false;
+    }
+
+    final int sourceLength = source.length();
+    final int expLength = exp.length();
+
+    if (sourceLength == 0 || expLength == 0) {
+      return false;
+    }
+
+    boolean fuzzy = false;
+    char lastCharOfExp = 0;
+    int positionOfSource = 0;
+
+    for (int i = 0; i < expLength; i++) {
+      final char ch = exp.charAt(i);
+
+      boolean escape = false;
+      if (lastCharOfExp == '\\') {
+        if (ch == '%' || ch == '_') {
+          escape = true;
+        }
+      }
+
+      if (!escape && ch == '%') {
+        fuzzy = true;
+      } else if (!escape && ch == '_') {
+        if (positionOfSource >= sourceLength) {
+          return false;
+        }
+
+        positionOfSource++;
+      } else if (ch != '\\') {
+        if (positionOfSource >= sourceLength) {
+          return false;
+        }
+
+        if (lastCharOfExp == '%') {
+          final int tp = source.indexOf(ch);
+
+          if (tp == -1) {
+            return false;
+          }
+
+          if (tp >= positionOfSource) {
+            positionOfSource = tp + 1;
+
+            if (i == expLength - 1 && positionOfSource < sourceLength) {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        } else if (source.charAt(positionOfSource) == ch) {
+          positionOfSource++;
+        } else {
+          return false;
+        }
+      }
+
+      lastCharOfExp = ch;
+    }
+
+    if (!fuzzy && positionOfSource < sourceLength) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // ================================================================================
   //  String comparison related
   // ================================================================================
   @SuppressWarnings({ "StringEquality", "EqualsReplaceableByObjectsCall" })
@@ -455,9 +540,5 @@ public final class StringUtil {
     return true;
   }
 
-  public static final Comparator<String> STRING_REVERSE_COMPARATOR = new Comparator<>() {
-    @Override public int compare(final String a, final String b) {
-      return StringUtil.compareTo(b, a);
-    }
-  };
+  public static final Comparator<String> STRING_REVERSE_COMPARATOR = (a, b) -> StringUtil.compareTo(b, a);
 }

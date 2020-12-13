@@ -30,7 +30,7 @@ import tech.dnaco.journal.JournalEntry;
 public abstract class LogEntry implements JournalEntry {
   public static final DateTimeFormatter LOG_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
-  public enum LogEntryType { RESET, TRACE, MESSAGE, DATA }
+  public enum LogEntryType { FLUSH, RESET, MESSAGE, TASK, DATA }
 
   private String thread;
   private String tenantId;

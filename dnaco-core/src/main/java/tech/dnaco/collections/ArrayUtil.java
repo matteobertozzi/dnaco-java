@@ -553,4 +553,22 @@ public final class ArrayUtil {
     values[aIndex] = values[bIndex];
     values[bIndex] = tmp;
   }
+
+  public static String[] concat(final String[]... arrays) {
+    int length = 0;
+    for (int i = 0; i < arrays.length; ++i) {
+      length += length(arrays[i]);
+    }
+
+    int index = 0;
+    final String[] values = new String[length];
+    for (int i = 0; i < arrays.length; ++i) {
+      final int len = length(arrays[i]);
+      if (len == 0) continue;
+
+      System.arraycopy(arrays[i], 0, values, index, len);
+      index += len;
+    }
+    return values;
+  }
 }

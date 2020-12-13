@@ -11,6 +11,10 @@ public final class SetUtil {
     // no-op
   }
 
+  public static <T> int size(final Set<T> input) {
+    return input != null ? input.size() : 0;
+  }
+
   public static <T> Set<T> emptyIfNull(final Set<T> input) {
     return input == null ? Collections.emptySet() : input;
   }

@@ -34,6 +34,10 @@ final class LogSerde {
     // no-op
   }
 
+  public static int readVarInt(final InputStream stream) throws IOException {
+    return IntDecoder.LITTLE_ENDIAN.readUnsignedVarInt(stream);
+  }
+
   public static void writeVarInt(final PagedByteArray buffer, final long value) {
     final byte[] buf8 = new byte[9];
     final int vlen = IntEncoder.LITTLE_ENDIAN.writeUnsignedVarLong(buf8, 0, value);
@@ -61,7 +65,7 @@ final class LogSerde {
   }
 
   public static String readString(final InputStream stream) throws IOException {
-    final int len = IntDecoder.LITTLE_ENDIAN.readUnsignedVarInt(stream);
+    final int len = readVarInt(stream);
     if (len == 0) return "";
 
     final byte[] blob = stream.readNBytes(len);

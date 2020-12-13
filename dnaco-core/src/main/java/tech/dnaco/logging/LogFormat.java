@@ -26,14 +26,18 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.bytes.encoding.IntEncoder;
 import tech.dnaco.collections.paged.PagedByteArray;
+import tech.dnaco.io.IOUtil;
 import tech.dnaco.logging.LogEntry.LogEntryType;
+import tech.dnaco.strings.StringUtil;
 
 /*
  * | entry type | entry data |
  *
+ * | BLOCK   | magic |
  * | RESET   | version | thread |
  * | TRACE   | timestamp | traceId | module | owner | thread | ... |
  * | MESSAGE | timestamp | traceId | module | owner | thread | ... |
@@ -48,24 +52,32 @@ public abstract class LogFormat {
 
   public abstract int getVersion();
 
-  public abstract void writeEntryData(PagedByteArray buffer, LogEntryMessage logEntryMessage);
+  public abstract void writeEntryMessage(PagedByteArray buffer, LogEntryMessage logEntryMessage);
+  public abstract void writeEntryTask(PagedByteArray buffer, LogEntryTask logEntryTask);
 
   public abstract LogEntryWriter newEntryWriter();
   protected abstract LogEntryReader newEntryReader(final InputStream stream) throws IOException;
 
   interface LogEntryWriter extends AutoCloseable {
+    void newBlock(OutputStream stream) throws IOException;
     void reset(OutputStream stream, Thread thread) throws IOException;
     void add(OutputStream stream, PagedByteArray buffer, int offset) throws IOException;
   }
 
   interface LogEntryReader extends AutoCloseable {
-    boolean fetchEntryHead(InputStream stream) throws IOException;
+    void readResetEntry(InputStream stream) throws IOException;
+    boolean fetchEntryHead(InputStream stream, LogEntryType type) throws IOException;
     LogEntry fetchEntryData(InputStream stream) throws IOException;
     void skipEntryData(InputStream stream) throws IOException;
 	  LogEntryHeader getEntryHeader();
   }
 
   private static final class LogFormatV0 extends LogFormat {
+    private static final byte[] FLUSH_MAGIC = new byte[] {
+      (byte) 0x5a, (byte) 0xd9, (byte) 0x2f, (byte) 0xd6, (byte) 0x41, (byte) 0xf0, (byte) 0x20, (byte) 0xb1,
+      (byte) 0x08, (byte) 0xf0, (byte) 0x9c, (byte) 0x1b, (byte) 0xb1, (byte) 0x31, (byte) 0x07, (byte) 0x2b
+    };
+
     @Override
     public int getVersion() {
       return 0;
@@ -78,11 +90,18 @@ public abstract class LogFormat {
 
     @Override
     protected LogEntryReader newEntryReader(final InputStream stream) throws IOException {
-      return new DeltaReader(stream);
+      // read magic
+      final byte[] magic = new byte[FLUSH_MAGIC.length];
+      IOUtil.readNBytes(stream, magic, 0, magic.length);
+
+      // check magic
+      if (!BytesUtil.equals(FLUSH_MAGIC, magic)) return null;
+
+      return new DeltaReader();
     }
 
     @Override
-    public void writeEntryData(final PagedByteArray buffer, final LogEntryMessage entry) {
+    public void writeEntryMessage(final PagedByteArray buffer, final LogEntryMessage entry) {
       // level 1byte
       buffer.add((entry.hasException() ? 1 << 7 : 0) | (entry.getLevel().ordinal() & 0xff));
 
@@ -110,7 +129,7 @@ public abstract class LogFormat {
       }
     }
 
-    private void readEntryData(final LogEntryMessage entry, final InputStream stream) throws IOException {
+    private void readEntryMessage(final LogEntryMessage entry, final InputStream stream) throws IOException {
       // read level (and flag has exception)
       final int level = stream.read();
       entry.setLevel(LogUtil.levelFromOrdinal(level & 0x7f));
@@ -122,7 +141,7 @@ public abstract class LogFormat {
       entry.setMsgFormat(LogSerde.readString(stream));
 
       // msg args
-      final int argsLen = IntDecoder.LITTLE_ENDIAN.readUnsignedVarInt(stream);
+      final int argsLen = LogSerde.readVarInt(stream);
       if (argsLen > 0) {
         final String[] args = new String[argsLen];
         for (int i = 0; i < argsLen; ++i) {
@@ -141,19 +160,76 @@ public abstract class LogFormat {
       }
     }
 
-    private final class DeltaReader implements LogEntryReader {
-      private final String threadName;
 
+    @Override
+    public void writeEntryTask(final PagedByteArray buffer, final LogEntryTask entry) {
+      final boolean state = entry.isComplete();
+
+      // state 1byte
+      buffer.add(state ? 1 : 0);
+
+      // write parentId
+      LogSerde.writeVarInt(buffer, entry.getParentId());
+
+      // write class and method 1b + N
+      LogSerde.writeBlob8(buffer, entry.getCallerMethodAndLine());
+
+      // write label
+      LogSerde.writeString(buffer, entry.getLabel());
+
+      // write elapsedNs
+      if (state) {
+        LogSerde.writeVarInt(buffer, entry.getElapsedNs());
+      }
+
+      // write key/vals
+      LogSerde.writeVarInt(buffer, entry.getAttributesCount());
+      for (int i = 0, n = entry.getAttributesCount(); i < n; ++i) {
+        LogSerde.writeString(buffer, entry.getAttributeKey(i));
+        LogSerde.writeString(buffer, entry.getAttributeValue(i));
+      }
+    }
+
+    private void readEntryTask(final LogEntryTask entry, final InputStream stream) throws IOException {
+      final int state = stream.read() & 0xff;
+
+      // read parentId
+      entry.setParentId(LogSerde.readVarInt(stream));
+
+      // read class and method
+      final byte[] methodAndLine = LogSerde.readBlob8(stream);
+      if (methodAndLine != null) {
+        entry.setCallerMethodAndLine(new String(methodAndLine, StandardCharsets.UTF_8));
+      }
+
+      // read label
+      entry.setLabel(LogSerde.readString(stream));
+
+      if (state == 1) {
+        entry.setElapsedNs(LogSerde.readVarInt(stream));
+      }
+
+      // read key/vals
+      final int attributesCount = LogSerde.readVarInt(stream);
+      if (attributesCount > 0) {
+        final String[] keys = new String[attributesCount];
+        final String[] vals = new String[attributesCount];
+        for (int i = 0; i < attributesCount; ++i) {
+          keys[i] = LogSerde.readString(stream);
+          vals[i] = LogSerde.readString(stream);
+        }
+        entry.setAttributes(keys, vals);
+      }
+    }
+
+    private final class DeltaReader implements LogEntryReader {
+      private String threadName;
       private LogEntryType type;
       private String lastModule;
       private String lastOwner;
       private long lastTimestamp;
       private long lastTraceId;
       private int dataLength;
-
-      public DeltaReader(final InputStream stream) throws IOException {
-        this.threadName = LogSerde.readString(stream);
-      }
 
       @Override
       public void close() {
@@ -171,17 +247,15 @@ public abstract class LogFormat {
         return header;
       }
 
+      public void readResetEntry(final InputStream stream) throws IOException {
+        this.threadName = LogSerde.readString(stream);
+      }
+
       @Override
-      public boolean fetchEntryHead(final InputStream stream) throws IOException {
+      public boolean fetchEntryHead(final InputStream stream, final LogEntryType type) throws IOException {
         // | type 1b | delta-ts vint | traceId vint | module-len 1b | owner-len 1b | data-len vint |
         // | module Nb | owner Nb | data Nb |
-
-        // read type (1byte)
-        final int vType = stream.read();
-        if (vType < 0) throw new EOFException();
-
-        this.type = LogEntryType.values()[vType];
-        if (this.type == LogEntryType.RESET) return false;
+        this.type = type;
 
         // read delta-timestamp (vint)
         this.lastTimestamp += IntDecoder.LITTLE_ENDIAN.readUnsignedVarLong(stream);
@@ -217,13 +291,11 @@ public abstract class LogFormat {
             break;
           case MESSAGE:
             entry = new LogEntryMessage();
-            readEntryData((LogEntryMessage) entry, stream);
+            readEntryMessage((LogEntryMessage) entry, stream);
             break;
-          case TRACE:
-            entry = null;
-            break;
-          case RESET:
-            entry = null;
+          case TASK:
+            entry = new LogEntryTask();
+            readEntryTask((LogEntryTask) entry, stream);
             break;
           default:
             throw new UnsupportedOperationException(type.name());
@@ -246,7 +318,7 @@ public abstract class LogFormat {
       }
     }
 
-    private static final class DeltaWriter implements LogEntryWriter {
+    private final class DeltaWriter implements LogEntryWriter {
       private byte[] lastModule;
       private byte[] lastOwner;
       private long lastTimestamp;
@@ -258,10 +330,16 @@ public abstract class LogFormat {
       }
 
       @Override
+      public void newBlock(final OutputStream stream) throws IOException {
+        stream.write(LogEntryType.FLUSH.ordinal());
+        stream.write(getVersion() & 0xff);
+        stream.write(FLUSH_MAGIC);
+      }
+
+      @Override
       public void reset(final OutputStream stream, final Thread thread) throws IOException {
         // write: | reset | version | thread |
         stream.write(LogEntryType.RESET.ordinal());
-        stream.write(LogFormat.CURRENT.getVersion() & 0xff);
         LogSerde.writeString(stream, thread.getName());
 
         this.lastModule = null;
@@ -337,8 +415,8 @@ public abstract class LogFormat {
     buffer.add(entry.getType().ordinal() & 0xff);
     buffer.addFixed64(entry.getTimestamp());
     buffer.addFixed64(entry.getTraceId());
-    LogSerde.writeBlob8(buffer, entry.getModule());
-    LogSerde.writeBlob8(buffer, entry.getOwner());
+    LogSerde.writeBlob8(buffer, StringUtil.defaultIfEmpty(entry.getModule(), "unknown"));
+    LogSerde.writeBlob8(buffer, StringUtil.defaultIfEmpty(entry.getOwner(), "unknown"));
   }
 
   public static LogJournalEntryHeader readJournalHeader(final PagedByteArray buffer, final int offset) {
@@ -373,12 +451,6 @@ public abstract class LogFormat {
 
     public LogReader(final InputStream stream) throws IOException {
       this.stream = stream;
-
-      final int type = stream.read();
-      if (type < 0) throw new EOFException();
-      if ((type & 0xff) != LogEntryType.RESET.ordinal()) {
-        throw new IOException("expected log entry type RESET");
-      }
       nextReader();
     }
 
@@ -387,12 +459,36 @@ public abstract class LogFormat {
     }
 
     public boolean readEntryHead() throws IOException {
-      if (reader.fetchEntryHead(stream)) return true;
+      while (true) {
+        try {
+          // read type (1byte)
+          final int vType = stream.read();
+          if (vType < 0) throw new EOFException();
 
-      do {
-        nextReader();
-      } while (!reader.fetchEntryHead(stream));
-      return true;
+          final LogEntryType type = LogEntryType.values()[vType];
+          switch (type) {
+            case FLUSH:
+              if (readFlushEntry()) {
+                nextReader();
+              }
+              break;
+            case RESET:
+              reader.readResetEntry(stream);
+              break;
+            default:
+              if (reader.fetchEntryHead(stream, type)) {
+                return true;
+              }
+              nextReader();
+              break;
+          }
+        } catch (final EOFException e) {
+          throw e;
+        } catch (final IOException e) {
+          Logger.error("failed to read entries. skipping blocks: {}", e.getMessage());
+          nextReader();
+        }
+      }
     }
 
     public LogEntry readEntryData() throws IOException {
@@ -404,8 +500,24 @@ public abstract class LogFormat {
     }
 
     private void nextReader() throws IOException {
-      final int version = stream.read() & 0xff;
+      while (true) {
+        final int type = stream.read();
+        if (type < 0) throw new EOFException();
+        if (type != LogEntryType.FLUSH.ordinal()) continue;
+        if (readFlushEntry()) break;
+      }
+    }
+
+    private boolean readFlushEntry() throws IOException {
+      // FLUSH entry block start with a version field
+      final int version = stream.read();
+      if (version < 0) throw new EOFException();
+
+      // invalid version
+      if (version >= VERSIONS.length) return false;
+
       reader = VERSIONS[version].newEntryReader(stream);
+      return reader != null;
     }
   }
 }

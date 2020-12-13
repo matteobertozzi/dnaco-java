@@ -48,18 +48,32 @@ public class HumansTableView {
     return this;
   }
 
-  public HumansTableView addRow(Object... rowValues) {
+  public HumansTableView addRow(final Object... rowValues) {
     return addRow(Arrays.asList(rowValues));
   }
 
   public <T> HumansTableView addRow(final List<T> rowValues) {
     final String[] row = new String[columns.size()];
     int index = 0;
-    for (Object colValue: rowValues) {
+    for (final Object colValue: rowValues) {
       row[index++] = valueOf(colValue);
       if (index >= row.length) break;
     }
     rows.add(row);
+    return this;
+  }
+
+  public <T> HumansTableView addRow(final T[] rowValues, final int offset) {
+    final String[] row = new String[columns.size()];
+    for (int i = 0; i < row.length; ++i) {
+      row[i] = valueOf(rowValues[offset + i]);
+    }
+    rows.add(row);
+    return this;
+  }
+
+  public HumansTableView addSeparator() {
+    rows.add(null);
     return this;
   }
 
@@ -73,14 +87,23 @@ public class HumansTableView {
   }
 
   public StringBuilder addHumanView(final StringBuilder builder) {
+    return addHumanView(builder, true);
+  }
+
+  public StringBuilder addHumanView(final StringBuilder builder, final boolean drawHeader) {
     final int[] columnsLength = calcColumnsLength();
 
+    if (drawHeader) {
+      drawHeaderBorder(builder, columnsLength);
+      builder.append(drawRow(columnsLength, columns)).append('\n');
+    }
     drawHeaderBorder(builder, columnsLength);
-    builder.append(drawRow(columnsLength, columns)).append('\n');
-    drawHeaderBorder(builder, columnsLength);
-    for (String[] row: this.rows) {
-      builder.append(drawRow(columnsLength, Arrays.asList(row)));
-      builder.append('\n');
+    for (final String[] row: this.rows) {
+      if (row == null) {
+        drawHeaderBorder(builder, columnsLength);
+      } else {
+        builder.append(drawRow(columnsLength, Arrays.asList(row))).append('\n');
+      }
     }
     drawHeaderBorder(builder, columnsLength);
     return builder;
@@ -95,7 +118,7 @@ public class HumansTableView {
     builder.append("+\n");
   }
 
-  private String drawRow(final int[] columnsLength, List<String> values) {
+  private String drawRow(final int[] columnsLength, final List<String> values) {
     final StringBuilder buf = new StringBuilder();
     final ArrayList<String> truncatedColumns = new ArrayList<>();
     boolean hasTruncation = false;
@@ -134,19 +157,22 @@ public class HumansTableView {
 
   private int calcColumnLength(final int index) {
     int length = columns.get(index).length();
-    for (String[] row: this.rows) {
+    for (final String[] row: this.rows) {
+      if (row == null) continue;
       length = Math.max(length, row[index].length());
     }
     return Math.min(length, COLUMN_WRAP_LENGTH);
   }
 
-  public static void main(String[] args) {
-    HumansTableView view = new HumansTableView();
+  public static void main(final String[] args) {
+    final HumansTableView view = new HumansTableView();
     view.addColumns(Arrays.asList("foo", "bar"));
     view.addRow("car is in the bar", 10);
     view.addRow("zar is in the car", 20);
+    view.addSeparator();
     view.addRow("war", 30);
     System.out.println(view.addHumanView(new StringBuilder()).toString());
+    if (true) return;
 
     final HumansTableView table = new HumansTableView();
     table.addColumns(Arrays.asList("", "max timestamp", "max",

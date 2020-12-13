@@ -52,6 +52,10 @@ public final class ListUtil {
     return input != null ? input : new ArrayList<>();
   }
 
+  public static List<String> newArrayList(final List<String> input) {
+    return input != null ? new ArrayList<>(input) : new ArrayList<>();
+  }
+
   public static <T> List<T> subList(final List<T> records, final int offset, final int length) {
     if (isEmpty(records)) return records;
     if (offset > records.size()) return Collections.emptyList();

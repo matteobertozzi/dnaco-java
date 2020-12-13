@@ -107,4 +107,13 @@ public final class MapUtil {
     values.remove(valueToRemove);
     return values;
   }
+
+  public static <K, V> Set<K> keySet(final Map<K, V> map) {
+    return map != null ? map.keySet() : Collections.emptySet();
+  }
+
+  public static <K, V> void removeAllKeys(final Map<K, V> map, final Set<String> keys) {
+    if (MapUtil.isEmpty(map)) return;
+    map.keySet().removeAll(keys);
+  }
 }

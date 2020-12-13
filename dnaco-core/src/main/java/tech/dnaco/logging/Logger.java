@@ -141,6 +141,10 @@ public final class Logger {
     log(LogLevel.ALWAYS, exception, format, args);
   }
 
+  public static void raw(final String format, final Object... args) {
+    log(LogLevel.ALWAYS, null, format, args);
+  }
+
   public static void always(final String format, final Object... args) {
     log(LogLevel.ALWAYS, null, format, args);
   }
@@ -225,10 +229,6 @@ public final class Logger {
     log(LogLevel.TRACE, null, format, args);
   }
 
-  public static void raw(final String text) {
-    logRaw(LogLevel.ALWAYS, null, text, null);
-  }
-
   // ===============================================================================================
   //  PRIVATE Logging methods
   // ===============================================================================================
@@ -296,6 +296,17 @@ public final class Logger {
   public static void add(final Thread thread, final LogEntry entry) {
     if (writer != null) {
       writer.addToLogQueue(thread, entry);
+    } else {
+      addToStdout(thread, entry);
+    }
+  }
+
+  private static void addToStdout(final Thread thread, final LogEntry entry) {
+    if (entry instanceof LogEntryTask) {
+      final LoggerSession session = getSession();
+      if (session != null && session.getLevel().compareTo(LogLevel.INFO) > 0) {
+        writeEntryToStdout(thread, entry);
+      }
     } else {
       writeEntryToStdout(thread, entry);
     }

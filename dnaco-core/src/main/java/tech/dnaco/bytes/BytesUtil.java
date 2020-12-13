@@ -46,6 +46,107 @@ public final class BytesUtil {
   }
 
   // ================================================================================
+  //  Bytes find single byte util
+  // ================================================================================
+  public static int indexOf(final byte[] haystack, final byte needle) {
+    return indexOf(haystack, 0, haystack.length, needle);
+  }
+
+  public static int indexOf(final byte[] haystack, final int haystackOff, final byte needle) {
+    return indexOf(haystack, haystackOff, haystack.length - haystackOff, needle);
+  }
+
+  public static int indexOf(final byte[] haystack, final int haystackOff, final int haystackLen, final byte needle) {
+    for (int i = 0; i < haystackLen; ++i) {
+      if (haystack[haystackOff + i] == needle) {
+        return haystackOff + i;
+      }
+    }
+    return -1;
+  }
+
+  public static int lastIndexOf(final byte[] haystack, final byte needle) {
+    return lastIndexOf(haystack, 0, haystack.length, needle);
+  }
+
+  public static int lastIndexOf(final byte[] haystack, final int haystackOff, final byte needle) {
+    return lastIndexOf(haystack, haystackOff, haystack.length - haystackOff, needle);
+  }
+
+  public static int lastIndexOf(final byte[] haystack, final int haystackOff, final int haystackLen, final byte needle) {
+    for (int i = haystackLen - 1; i >= 0; --i) {
+      if (haystack[haystackOff + i] == needle) {
+        return haystackOff + i;
+      }
+    }
+    return -1;
+  }
+
+  // ================================================================================
+  //  Bytes find multi byte util
+  // ================================================================================
+  public static int indexOf(final byte[] haystack, final byte[] needle) {
+    return indexOf(haystack, 0, haystack.length, needle, needle.length);
+  }
+
+  public static int indexOf(final byte[] haystack, final int haystackOff, final byte[] needle) {
+    return indexOf(haystack, haystackOff, haystack.length - haystackOff, needle, needle.length);
+  }
+
+  public static int indexOf(final byte[] haystack, final int haystackOff, final int haystackLen, final byte[] needle) {
+    return indexOf(haystack, haystackOff, haystackLen, needle, needle.length);
+  }
+
+  private static int indexOf(final byte[] haystack, final int haystackOff, final int haystackLen,
+      final byte[] needle, final int needleLen) {
+    if (needleLen > haystackLen || needleLen == 0 || haystackLen == 0) return -1;
+    if (needleLen == 1) return indexOf(haystack, haystackOff, haystackLen, needle[0]);
+
+    final int len = haystackLen - needleLen;
+    for (int i = 0; i < len; ++i) {
+      final int off = haystackOff + i;
+      if (Arrays.equals(haystack, off, off + needleLen, needle, 0, needleLen)) {
+        return off;
+      }
+    }
+    return -1;
+  }
+
+  public static int lastIndexOf(final byte[] haystack, final byte[] needle) {
+    return lastIndexOf(haystack, 0, haystack.length, needle, needle.length);
+  }
+
+  public static int lastIndexOf(final byte[] haystack, final int haystackOff, final byte[] needle) {
+    return lastIndexOf(haystack, haystackOff, haystack.length - haystackOff, needle, needle.length);
+  }
+
+  public static int lastIndexOf(final byte[] haystack, final int haystackOff, final int haystackLen, final byte[] needle) {
+    return lastIndexOf(haystack, haystackOff, haystackLen, needle, needle.length);
+  }
+
+  private static int lastIndexOf(final byte[] haystack, final int haystackOff, final int haystackLen,
+      final byte[] needle, final int needleLen) {
+    if (needleLen > haystackLen || needleLen == 0 || haystackLen == 0) return -1;
+    if (needleLen == 1) return lastIndexOf(haystack, haystackOff, haystackLen, needle[0]);
+
+    final int len = haystackLen - needleLen;
+    for (int i = len; i >= 0; --i) {
+      final int off = haystackOff + i;
+      if (Arrays.equals(haystack, off, off + needleLen, needle, 0, needleLen)) {
+        return off;
+      }
+    }
+    return -1;
+  }
+
+  public static void main(final String[] args) {
+    final byte[] k1 = new byte[] { 0, 1, 2, 0, 0, 5, 6, 7, 0, 0 };
+    System.out.println(indexOf(k1, 0, new byte[] { 0, 0 }));
+    System.out.println(indexOf(k1, 5, new byte[] { 0, 0 }));
+    System.out.println(lastIndexOf(k1, 0, k1.length - 2, new byte[] { 0, 0 }));
+  }
+
+  // ================================================================================
   //  Bytes equals/compare util
   // ================================================================================
   public static boolean equals(final byte[] a, final byte[] b) {
@@ -79,6 +180,11 @@ public final class BytesUtil {
     return len;
   }
 
+  public static boolean hasPrefix(final byte[] buf, final int off, final int len,
+      final byte[] prefix, final int prefixOff, final int prefixLen) {
+    return prefix(buf, off, len, prefix, prefixOff, prefixLen) == prefixLen;
+  }
+
   // ================================================================================
   //  Bytes concatenation
   // ================================================================================
@@ -98,6 +204,47 @@ public final class BytesUtil {
       length += data[i].length;
     }
     return length;
+  }
+
+  public static int length(final ByteArraySlice... slice) {
+    int length = 0;
+    for (int i = 0; i < slice.length; ++i) {
+      length += slice[i].length();
+    }
+    return length;
+  }
+
+  public static byte[] concat(final ByteArraySlice... data) {
+    final byte[] fullData = new byte[length(data)];
+    int offset = 0;
+    for (int i = 0; i < data.length; ++i) {
+      final int len = data[i].length();
+      data[i].copyTo(fullData, offset, len);
+      offset += len;
+    }
+    return fullData;
+  }
+
+  // ================================================================================
+  //  Bytes to int
+  // ================================================================================
+  public static int parseUnsignedInt(final byte[] data, final int off, final int count)
+      throws NumberFormatException {
+    return Math.toIntExact(parseUnsignedLong(data, off, count));
+  }
+
+  public static long parseUnsignedLong(final byte[] data, final int off, final int count)
+      throws NumberFormatException {
+    long value = 0;
+    for (int i = 0; i < count; ++i) {
+      final int chr = data[off + i];
+      if (chr >= 48 && chr <= 57) {
+        value = value * 10 + (chr - 48);
+      } else {
+        throw new NumberFormatException();
+      }
+    }
+    return value;
   }
 
   // ================================================================================
@@ -188,11 +335,15 @@ public final class BytesUtil {
   }
 
   public static String toString(final byte[] buf, final int off, final int len) {
+    if (len == 0) return "[]";
+
     final StringBuilder builder = new StringBuilder(len * 2);
+    builder.append("[");
     for (int i = 0; i < len; ++i) {
       if (i > 0) builder.append(", ");
       builder.append(String.valueOf(buf[off + i]));
     }
+    builder.append("]");
     return builder.toString();
   }
 }

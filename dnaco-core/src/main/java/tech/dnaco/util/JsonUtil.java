@@ -291,7 +291,7 @@ public final class JsonUtil {
     }
   }
 
-  public static final class HashIndexedArrayTypeAdapter implements JsonSerializer<HashIndexedArray<?>> {
+  public static final class HashIndexedArrayTypeAdapter implements JsonSerializer<HashIndexedArray<?>>, JsonDeserializer<HashIndexedArray<?>> {
     @Override
     public JsonElement serialize(final HashIndexedArray<?> src, final Type typeOfSrc, final JsonSerializationContext context) {
       final JsonArray json = new JsonArray();
@@ -299,6 +299,17 @@ public final class JsonUtil {
         json.add(toJsonTree(src.get(i)));
       }
       return json;
+    }
+
+    @Override
+    public HashIndexedArray<?> deserialize(final JsonElement json, final Type typeOfT, final JsonDeserializationContext context)
+        throws JsonParseException {
+      final JsonArray jsonArray = json.getAsJsonArray();
+      if (jsonArray.get(0).isJsonPrimitive()) {
+        final JsonPrimitive primitive = jsonArray.get(0).getAsJsonPrimitive();
+        if (primitive.isString()) return new HashIndexedArray<>(JsonUtil.fromJson(jsonArray, String[].class));
+      }
+      throw new UnsupportedOperationException();
     }
   }
 
@@ -312,5 +323,20 @@ public final class JsonUtil {
       }
       return json;
     }
+  }
+
+  public static class Test {
+    final HashIndexedArray<String> h = new HashIndexedArray<>(new String[] { "a", "b", "c" });
+
+    public String toString() {
+      return h.toString();
+    }
+  }
+
+  public static void main(final String[] args) {
+    final Test t = new Test();
+    final String json = JsonUtil.toJson(t);
+    System.out.println(json);
+    System.out.println(JsonUtil.fromJson(json, Test.class));
   }
 }

@@ -25,10 +25,10 @@ public class TestOverlap {
     System.out.println(fileB.get(0).isOverlapping(fileC.get(0)));
 
     final PriorityQueue<BlockInfo> blocks = new PriorityQueue<>();
-    for (BlockInfo b: fileA) blocks.add(b);
-    for (BlockInfo b: fileB) blocks.add(b);
-    for (BlockInfo b: fileC) blocks.add(b);
-    for (BlockInfo b: fileD) blocks.add(b);
+    blocks.addAll(fileA);
+    blocks.addAll(fileB);
+    blocks.addAll(fileC);
+    blocks.addAll(fileD);
     System.out.println(blocks);
     mergeIntervals(Arrays.asList(fileA, fileB, fileC, fileD));
   }

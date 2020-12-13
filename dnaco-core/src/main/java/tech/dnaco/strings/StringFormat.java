@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 public final class StringFormat {
   private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\{(.*?)}");
   private static final Pattern POSITIONAL_PATTERN = Pattern.compile("\\{([0-9]+)}");
-  
+
   private StringFormat() {
     // no-op
   }
@@ -47,16 +47,22 @@ public final class StringFormat {
     return builder.toString();
   }
 
-  public static void applyFormat(final StringBuilder msgBuilder, final String format, final Object[] args) {
-    if (args == null || args.length == 0) {
+  public static int applyFormat(final StringBuilder msgBuilder, final String format, final Object[] args) {
+    return applyFormat(msgBuilder, format, args, 0, args != null ? args.length : 0);
+  }
+
+  public static int applyFormat(final StringBuilder msgBuilder, final String format,
+      final Object[] args, final int argsOff, final int argsLen) {
+    if (argsLen == 0) {
       msgBuilder.append(format);
-      return;
+      return 0;
     }
 
+    int argsIndex = argsOff;
     final Matcher m = KEYWORD_PATTERN.matcher(format);
-    for (int i = 0; m.find(); ++i) {
+    while (m.find()) {
       final String key = m.group(1);
-      final String value = stringValue(args[i]);
+      final String value = stringValue(args[argsIndex++]);
       if (StringUtil.isNotEmpty(key)) {
         m.appendReplacement(msgBuilder, key);
         msgBuilder.append(':').append(value);
@@ -65,6 +71,7 @@ public final class StringFormat {
       }
     }
     m.appendTail(msgBuilder);
+    return argsIndex;
   }
 
   public static int indexOfKeywordArgument(final String format, final String key) {

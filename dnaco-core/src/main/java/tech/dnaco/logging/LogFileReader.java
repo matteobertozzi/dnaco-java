@@ -163,7 +163,7 @@ public class LogFileReader {
     do {
       final StringBuilder report = new StringBuilder(256);
       for (final LogFileReader reader: params.files) {
-        reader.read((head) -> params.matchFilter(head), (entry, lineNo) -> {
+        reader.read(params::matchFilter, (entry, lineNo) -> {
           if (!params.matchFilter(entry)) return;
 
           report.setLength(0);

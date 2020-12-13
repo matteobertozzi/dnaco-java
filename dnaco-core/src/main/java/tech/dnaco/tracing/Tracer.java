@@ -25,13 +25,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import tech.dnaco.logging.LogEntryTask;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.util.ThreadUtil;
 
 public final class Tracer {
   private static final long SLOW_TASK_DEBUG_TRESHOLD_NS = TimeUnit.MILLISECONDS.toNanos(500);
 
-  private static ConcurrentHashMap<Thread, TaskTracer> taskTracer = new ConcurrentHashMap<>(64);
+  private static final ConcurrentHashMap<Thread, TaskTracer> taskTracer = new ConcurrentHashMap<>(64);
 
   private static final TaskTracer[] recentlyCompletedTracers = new TaskTracer[16];
   private static final AtomicLong recentlyCompletedIndex = new AtomicLong(0);
@@ -54,7 +56,7 @@ public final class Tracer {
     final Thread thread = Thread.currentThread();
     final TaskTracer tracer = new TaskTracer(thread, lookupLogLineClassAndMethod(), label);
     taskTracer.put(thread, tracer);
-    addLogEntry(tracer);
+    addLogEntry(tracer, false);
     return tracer;
   }
 
@@ -66,15 +68,23 @@ public final class Tracer {
     addCompletedTask(task);
   }
 
-  private static void addLogEntry(final TaskTracer taskTracer) {
-    /*
+  private static void addLogEntry(final TaskTracer taskTracer, final boolean completed) {
     final LogEntryTask logEntry = new LogEntryTask();
+
     logEntry.setTenantId("__SYS_TRACES__");
     logEntry.setThread(taskTracer.getThread().getName());
     logEntry.setTimestamp(taskTracer.getStartTime());
     logEntry.setTraceId(taskTracer.getTraceId());
-    //Logger.add(taskTracer.getThread(), logEntry);
-     */
+
+    logEntry.setCallerMethodAndLine(taskTracer.getCallerMethodAndLine());
+    logEntry.setParentId(taskTracer.getParentId());
+    logEntry.setLabel(taskTracer.getLabel());
+    logEntry.setAttributes(taskTracer.getCustomKeys(), taskTracer.getCustomVals());
+    if (completed) {
+      logEntry.setElapsedNs(taskTracer.getElapsedNs());
+    }
+
+    Logger.add(taskTracer.getThread(), logEntry);
   }
 
   private static String lookupLogLineClassAndMethod() {
@@ -98,6 +108,24 @@ public final class Tracer {
   private static void addCompletedTask(final TaskTracer task) {
     final int index = (int) (recentlyCompletedIndex.incrementAndGet() & (recentlyCompletedTracers.length - 1));
     recentlyCompletedTracers[index] = task;
-    addLogEntry(task);
+    addLogEntry(task, true);
+  }
+
+  private static void foo() {
+    try (TaskTracer tracer = Tracer.newTask("foo")) {
+      ThreadUtil.sleep(250);
+    }
+  }
+
+  private static void bar() {
+    try (TaskTracer tracer = Tracer.newTask("bar")) {
+      tracer.addData("foo", 10);
+      ThreadUtil.sleep(100);
+    }
+  }
+
+  public static void main(final String[] args) {
+    foo();
+    bar();
   }
 }
