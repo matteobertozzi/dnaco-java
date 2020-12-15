@@ -62,7 +62,7 @@ public final class StringFormat {
     final Matcher m = KEYWORD_PATTERN.matcher(format);
     while (m.find()) {
       final String key = m.group(1);
-      final String value = stringValue(args[argsIndex++]);
+      final String value = stringValue(argsIndex < args.length ? args[argsIndex++] : "{unprovided arg}");
       if (StringUtil.isNotEmpty(key)) {
         m.appendReplacement(msgBuilder, key);
         msgBuilder.append(':').append(value);
