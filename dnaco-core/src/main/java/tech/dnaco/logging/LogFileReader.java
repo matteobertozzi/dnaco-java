@@ -19,7 +19,6 @@
 
 package tech.dnaco.logging;
 
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -78,8 +77,8 @@ public class LogFileReader {
           }
           offset = fileStream.getChannel().position();
         }
-      } catch (final EOFException e) {
-        // no-op
+      } catch (final IOException e) {
+        // no-op (EOFException)
       }
     }
   }
@@ -151,7 +150,8 @@ public class LogFileReader {
     }
   }
 
-  public static void main(final String[] args) throws Exception {
+  public static void main( String[] args) throws Exception {
+    args = new String[] { "development" };
     final Params params = new Params();
     params.parse(args);
 

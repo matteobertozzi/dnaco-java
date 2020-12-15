@@ -95,6 +95,7 @@ public abstract class LogFormat {
       IOUtil.readNBytes(stream, magic, 0, magic.length);
 
       // check magic
+      //System.out.println("MAGIC " + Arrays.toString(magic) + " -> " + Arrays.toString(FLUSH_MAGIC) + " -> " + BytesUtil.equals(FLUSH_MAGIC, magic));
       if (!BytesUtil.equals(FLUSH_MAGIC, magic)) return null;
 
       return new DeltaReader();
@@ -249,6 +250,10 @@ public abstract class LogFormat {
 
       public void readResetEntry(final InputStream stream) throws IOException {
         this.threadName = LogSerde.readString(stream);
+        this.lastModule = null;
+        this.lastOwner = null;
+        this.lastTimestamp = 0;
+        this.lastTraceId = 0;
       }
 
       @Override
@@ -466,9 +471,10 @@ public abstract class LogFormat {
           if (vType < 0) throw new EOFException();
 
           final LogEntryType type = LogEntryType.values()[vType];
+          //System.out.println(" -> TYPE: " + type);
           switch (type) {
             case FLUSH:
-              if (readFlushEntry()) {
+              if (!readFlushEntry()) {
                 nextReader();
               }
               break;
@@ -504,6 +510,7 @@ public abstract class LogFormat {
         final int type = stream.read();
         if (type < 0) throw new EOFException();
         if (type != LogEntryType.FLUSH.ordinal()) continue;
+        //System.out.println("READ FLUSH TYPE " + type);
         if (readFlushEntry()) break;
       }
     }
@@ -514,6 +521,7 @@ public abstract class LogFormat {
       if (version < 0) throw new EOFException();
 
       // invalid version
+      //System.out.println("READ FLUSH VERSION " + version);
       if (version >= VERSIONS.length) return false;
 
       reader = VERSIONS[version].newEntryReader(stream);
