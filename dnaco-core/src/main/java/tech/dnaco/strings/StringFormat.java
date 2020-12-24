@@ -23,11 +23,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class StringFormat {
-  private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\{(.*?)}");
+  private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\{([-_a-zA-Z0-9]*)}");
   private static final Pattern POSITIONAL_PATTERN = Pattern.compile("\\{([0-9]+)}");
 
   private StringFormat() {
     // no-op
+  }
+
+  public static void main(final String[] args) throws Exception {
+    System.out.println(StringFormat.format("{a {} b {xx} c}", 1, 2, 3));
   }
 
   public static String format(final String format, final Object... args) {

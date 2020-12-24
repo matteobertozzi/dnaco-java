@@ -100,7 +100,7 @@ public class JvmMetricsData implements TelemetryCollectorData {
   }
 
   private static JsonObject jsonCollectorLabe(final String name, final String label, final String help, final String value) {
-    JsonObject json = new JsonObject();
+    final JsonObject json = new JsonObject();
     json.addProperty("label", label);
     json.addProperty("help", help);
     json.addProperty("type", "LABEL");
@@ -109,7 +109,7 @@ public class JvmMetricsData implements TelemetryCollectorData {
   }
 
 	@Override
-	public StringBuilder toHumanReport(StringBuilder report, HumanLongValueConverter humanConverter) {
+	public StringBuilder toHumanReport(final StringBuilder report, final HumanLongValueConverter humanConverter) {
 		// Java Version
     report.append(JvmMetrics.INSTANCE.getJavaVersion()).append("\n");
 
@@ -119,6 +119,10 @@ public class JvmMetricsData implements TelemetryCollectorData {
       report.append(" - BuildInfo: ");
       report.append(buildInfo.getName()).append(" ").append(buildInfo.getVersion());
       report.append(" (").append(buildInfo.getBuildDate()).append(")\n");
+      report.append(" - Built by ").append(buildInfo.getCreatedBy());
+      report.append(" from ").append(buildInfo.getGitBranch());
+      report.append(" ").append(buildInfo.getGitHash());
+      report.append("\n");
     }
 
     // OS

@@ -150,8 +150,7 @@ public class LogFileReader {
     }
   }
 
-  public static void main( String[] args) throws Exception {
-    args = new String[] { "development" };
+  public static void main(final String[] args) throws Exception {
     final Params params = new Params();
     params.parse(args);
 

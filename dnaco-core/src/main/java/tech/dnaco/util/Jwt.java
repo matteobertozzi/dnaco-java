@@ -20,6 +20,8 @@ package tech.dnaco.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.zip.Deflater;
@@ -27,6 +29,7 @@ import java.util.zip.Deflater;
 import com.google.gson.JsonObject;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.collections.ArrayUtil;
 import tech.dnaco.compression.GzipUtil;
 import tech.dnaco.compression.ZstdUtil;
 import tech.dnaco.strings.StringUtil;
@@ -79,6 +82,11 @@ public class Jwt {
 
   public String getClaimAsString(final String key) {
     return JsonUtil.getString(dat, key, null);
+  }
+
+  public Set<String> getClaimAsStringSet(final String key) {
+    final String[] values = getClaim(key, String[].class);
+    return ArrayUtil.isEmpty(values) ? Collections.emptySet() : Set.of(values);
   }
 
   public <T> T getClaim(final String key, final Class<T> classOfT) {
@@ -319,7 +327,7 @@ public class Jwt {
     final byte[] zstdRaw = Arrays.copyOfRange(zstdJwt.rawBuffer(), zstdJwt.offset(), zstdJwt.length());
     System.out.println(" -> zstd: " + zstdRaw.length + " b64: " + Base64.getUrlEncoder().encodeToString(zstdRaw).length());
 
-    if (true) return;
+    //if (true) return;
 
     final Jwt jwt = new Jwt("foo", 1, TimeUnit.HOURS);
     jwt.addClaim("project", "puppa");
@@ -327,6 +335,13 @@ public class Jwt {
       @Override
       public byte[] sign(final String kid, final String alg, final Void key, final byte[] jwtToSign) {
         return new byte[] { 1, 2, 3 };
+      }
+    });
+    Jwt.verify(jwtEnc, null, new JwtVerifier<String>(){
+      @Override
+      public void verifySignature(final JwtHeader jwtHead, final Jwt jwtBody, final String key, final byte[] jwtSigned, final byte[] jwtSignature)
+          throws JwtException {
+        System.out.println("VERIFY " + Arrays.toString(jwtSigned) + " -> " + Arrays.toString(jwtSignature));
       }
     });
     System.out.println(jwtEnc);

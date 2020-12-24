@@ -40,39 +40,40 @@ public class PagedByteArrayWriter extends BytesOutputStream {
   }
 
   @Override
-  public void write(int b) {
+  public void write(final int b) {
     buf.add(b);
   }
 
   @Override
-  public void write(byte[] buf, int off, int len) {
+  public void write(final byte[] buf, final int off, final int len) {
     this.buf.add(buf, off, len);
   }
 
   @Override
-  public int writeTo(BytesOutputStream stream) {
+  public int writeTo(final BytesOutputStream stream) {
     try {
       return this.buf.forEach(stream::write);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public int writeTo(OutputStream stream) throws IOException {
-    // TODO Auto-generated method stub
-    return 0;
+  public int writeTo(final OutputStream stream) throws IOException {
+    return this.buf.forEach(stream::write);
   }
 
   @Override
-  public void writeTo(BytesOutputStream stream, int off, int len) {
-    // TODO Auto-generated method stub
-
+  public void writeTo(final BytesOutputStream stream, final int off, final int len) {
+    try {
+      this.buf.forEach(off, len, stream::write);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
-  public void writeTo(OutputStream stream, int off, int len) throws IOException {
-    // TODO Auto-generated method stub
-
+  public void writeTo(final OutputStream stream, final int off, final int len) throws IOException {
+    this.buf.forEach(off, len, stream::write);
   }
 }
