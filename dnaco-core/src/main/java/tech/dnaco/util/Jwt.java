@@ -21,11 +21,15 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.zip.Deflater;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 
 import tech.dnaco.bytes.ByteArraySlice;
@@ -93,6 +97,10 @@ public class Jwt {
     return JsonUtil.fromJson(dat.get(key), classOfT);
   }
 
+  public JsonElement getClaim(final String key) {
+    return dat.get(key);
+  }
+
   // ------------------------------------------------------------------------------------------
   // Set claim related
   // ------------------------------------------------------------------------------------------
@@ -111,9 +119,47 @@ public class Jwt {
     return this;
   }
 
-  public Jwt addClaim(final String key, final Object value) {
-    dat.add(key, JsonUtil.toJsonTree(value));
+  public Jwt addClaim(final String key, final Set<String> value) {
+    dat.add(key, stringSetToSortedArray(value));
     return this;
+  }
+
+  public Jwt addClaim(final String key, final Map<String, Set<String>> map) {
+    if (map == null) {
+      dat.add(key, JsonNull.INSTANCE);
+    } else if (map.isEmpty()) {
+      dat.add(key, new JsonObject());
+    } else {
+      final JsonObject json = new JsonObject();
+      for (final Map.Entry<String, Set<String>> entry: map.entrySet()) {
+        json.add(entry.getKey(), stringSetToSortedArray(entry.getValue()));
+      }
+      dat.add(key, json);
+    }
+    return this;
+  }
+
+  public Jwt addClaim(final String key, final Object value) {
+    return addClaim(key, JsonUtil.toJsonTree(value));
+  }
+
+  public Jwt addClaim(final String key, final JsonElement value) {
+    dat.add(key, value);
+    return this;
+  }
+
+  private static JsonElement stringSetToSortedArray(final Set<String> values) {
+    if (values == null) return JsonNull.INSTANCE;
+    if (values.isEmpty()) return new JsonArray();
+
+    final String[] sortedValues = values.toArray(new String[0]);
+    Arrays.sort(sortedValues);
+
+    final JsonArray jsonArray = new JsonArray(sortedValues.length);
+    for (int i = 0; i < sortedValues.length; ++i) {
+      jsonArray.add(sortedValues[i]);
+    }
+    return jsonArray;
   }
 
   // ------------------------------------------------------------------------------------------
@@ -331,6 +377,11 @@ public class Jwt {
 
     final Jwt jwt = new Jwt("foo", 1, TimeUnit.HOURS);
     jwt.addClaim("project", "puppa");
+    jwt.addClaim("intSet", Set.of(10, 20, 30));
+    jwt.addClaim("stringSet", Set.of("bbb", "cccc", "aaa"));
+    jwt.addClaim("mapStrSet", Map.of("bbb", Set.of("zz", "ww", "ll"), "aaa", Set.of("bbb", "ccc", "aaa")));
+    jwt.addClaim("mapIntSet", Map.of("bbb", Set.of(1, 2, 3), "aaa", Set.of(6, 5, 4)));
+    jwt.addClaim("mapStr", Map.of("bbb", "b", "aaa", "a"));
     final String jwtEnc = jwt.sign("k123", "EC123", null, new JwtSigner<Void>(){
       @Override
       public byte[] sign(final String kid, final String alg, final Void key, final byte[] jwtToSign) {

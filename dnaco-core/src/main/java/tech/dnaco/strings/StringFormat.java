@@ -18,6 +18,8 @@
 package tech.dnaco.strings;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,10 +30,6 @@ public final class StringFormat {
 
   private StringFormat() {
     // no-op
-  }
-
-  public static void main(final String[] args) throws Exception {
-    System.out.println(StringFormat.format("{a {} b {xx} c}", 1, 2, 3));
   }
 
   public static String format(final String format, final Object... args) {
@@ -66,7 +64,7 @@ public final class StringFormat {
     final Matcher m = KEYWORD_PATTERN.matcher(format);
     while (m.find()) {
       final String key = m.group(1);
-      final String value = stringValue(argsIndex < args.length ? args[argsIndex++] : "{unprovided arg}");
+      final String value = valueOf(argsIndex < args.length ? args[argsIndex++] : "{unprovided arg}");
       if (StringUtil.isNotEmpty(key)) {
         m.appendReplacement(msgBuilder, key);
         msgBuilder.append(':').append(value);
@@ -93,20 +91,40 @@ public final class StringFormat {
     final StringBuilder buf = new StringBuilder(format.length() + (args.length * 8));
     while (m.find()) {
       final int pos = Integer.parseInt(m.group(1));
-      final String value = stringValue(args[pos]);
+      final String value = valueOf(args[pos]);
       m.appendReplacement(buf, Matcher.quoteReplacement(value));
     }
     m.appendTail(buf);
     return buf.toString();
   }
 
-  public static String stringValue(final Object value) {
+  public static String valueOf(final Object value) {
+    if (value == null) return "null";
     if (value instanceof byte[]) return Arrays.toString((byte[]) value);
     if (value instanceof int[]) return Arrays.toString((int[]) value);
     if (value instanceof long[]) return Arrays.toString((long[]) value);
     if (value instanceof float[]) return Arrays.toString((float[]) value);
     if (value instanceof double[]) return Arrays.toString((double[]) value);
     if (value instanceof Object[]) return Arrays.toString((Object[]) value);
+    if (value instanceof Map) return stringMapValue((Map<?,?>) value);
     return String.valueOf(value);
+  }
+
+  private static String stringMapValue(final Map<?, ?> map) {
+    final StringBuilder builder = new StringBuilder(map.size() * 8);
+    builder.append("{");
+    int index = 0;
+    for (final Entry<?, ?> entry: map.entrySet()) {
+      if (index++ > 0) builder.append(", ");
+      builder.append(String.valueOf(entry.getKey()));
+      builder.append(":");
+      builder.append(valueOf(entry.getValue()));
+    }
+    builder.append("}");
+    return builder.toString();
+  }
+
+  public static void main(final String[] args) {
+    System.out.println(StringFormat.format("{a {} b {xx} c {}}", 1, 2, Map.of("aaa", new String[] { "foo", "bar" }, "bbb", "xxx")));
   }
 }

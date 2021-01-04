@@ -258,7 +258,7 @@ public final class Logger {
     } else {
       params = new String[args.length];
       for (int i = 0; i < args.length; ++i) {
-        params[i] = String.valueOf(args[i]);
+        params[i] = StringFormat.valueOf(args[i]);
       }
     }
 
