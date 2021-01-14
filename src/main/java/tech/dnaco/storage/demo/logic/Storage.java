@@ -2,7 +2,7 @@ package tech.dnaco.storage.demo.logic;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import tech.dnaco.storage.demo.driver.MemoryKvStore;
+import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.util.IdLock;
 
 public class Storage {
@@ -17,7 +17,8 @@ public class Storage {
       StorageLogic newStorage = projects.get(projectId);
       if (newStorage != null) return newStorage;
 
-      final MemoryKvStore kvStorage = new MemoryKvStore(projectId);
+      final RocksDbKvStore kvStorage = new RocksDbKvStore(projectId);
+      //final MemoryKvStore kvStorage = new MemoryKvStore(projectId);
       kvStorage.loadStorage();
 
       newStorage = new StorageLogic(kvStorage);

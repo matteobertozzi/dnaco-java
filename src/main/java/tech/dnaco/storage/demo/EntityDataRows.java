@@ -106,6 +106,12 @@ public class EntityDataRows {
     }
   }
 
+  public void copyFrom(final EntityDataRow oldRow) {
+    for (final String fieldName: schema.getFieldNames()) {
+      add(fieldName, oldRow.get(fieldName));
+    }
+  }
+
   public void copyFrom(final EntityDataRows oldRow) {
     for (int i = 0; i < oldRow.values.size(); ++i) {
       values.set(i, oldRow.values.get(i));
@@ -149,7 +155,7 @@ public class EntityDataRows {
 
   public byte[] get(final int rowIndex, final String fieldName) {
     final int fieldIndex = schema.getFieldIndex(fieldName);
-    return get(rowIndex, fieldIndex);
+    return fieldIndex < 0 ? null : get(rowIndex, fieldIndex);
   }
 
   public byte[] get(final int rowIndex, final int fieldIndex) {
@@ -159,7 +165,7 @@ public class EntityDataRows {
 
   public Object getObject(final int rowIndex, final String fieldName) {
     final int fieldIndex = schema.getFieldIndex(fieldName);
-    return getObject(rowIndex, fieldIndex);
+    return fieldIndex < 0 ? null : getObject(rowIndex, fieldIndex);
   }
 
   public Object getObject(final int rowIndex, final int fieldIndex) {

@@ -68,7 +68,8 @@ public class EntitySchema {
   }
 
   public EntityDataType getFieldType(final String name) {
-    return getFieldType(getFieldIndex(name));
+    final int fieldIndex = getFieldIndex(name);
+    return fieldIndex < 0 ? null : getFieldType(fieldIndex);
   }
 
   public byte[] getDefaultValue(final int fieldIndex) {
@@ -102,6 +103,7 @@ public class EntitySchema {
   }
 
   public boolean isKey(final String fieldName) {
+    if (fieldName == null) return false;
     if (fieldName.equals(SYS_FIELD_GROUP)) return true;
     return keys != null && keys.contains(fieldName);
   }

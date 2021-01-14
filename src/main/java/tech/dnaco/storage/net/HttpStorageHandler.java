@@ -2,12 +2,17 @@ package tech.dnaco.storage.net;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Queue;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.gullivernet.commons.util.DateUtil;
 import com.gullivernet.commons.util.VerifyArg;
 import com.gullivernet.server.http.HttpMethod;
 import com.gullivernet.server.http.rest.RestRequestHandler;
 
+import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.collections.ArrayUtil;
 import tech.dnaco.collections.HashIndexedArray;
 import tech.dnaco.logging.Logger;
@@ -19,6 +24,7 @@ import tech.dnaco.storage.demo.EntitySchema.Operation;
 import tech.dnaco.storage.demo.Filter;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.RowPredicate;
+import tech.dnaco.storage.demo.logic.Query;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
@@ -42,9 +48,68 @@ public class HttpStorageHandler implements RestRequestHandler {
     return modify(request, Operation.UPDATE);
   }
 
+  @UriMapping(uri = "/v0/entity/update-filtered", method = HttpMethod.POST)
+  public TransactionStatusResponse updateEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.tenantId);
+
+    final EntitySchema schema = updateSchema(storage, request.entity, null, new JsonEntityDataRows[] { request.fieldsToUpdate });
+    if (schema == null) {
+      return new TransactionStatusResponse(Transaction.State.FAILED);
+    }
+
+    // add to TXN log
+    final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
+    final Transaction txn = storage.getOrCreateTransaction(request.txnId);
+
+    for (final String groupId: request.groups) {
+      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+        if (request.filter == null || Query.process(request.filter, row)) {
+          final EntityDataRows updatedRow = new EntityDataRows(schema).newRow();
+          updatedRow.copyFrom(row);
+          updatedRow.setTimestamp(0, timestamp);
+          updatedRow.setOperation(0, Operation.UPDATE);
+          storage.addRow(txn, new EntityDataRow(updatedRow, 0));
+        }
+        return true;
+      });
+    }
+
+    commitIfLocalTxn(storage, txn);
+
+    return new TransactionStatusResponse(txn.getState());
+  }
+
   @UriMapping(uri = "/v0/entity/delete", method = HttpMethod.POST)
   public TransactionStatusResponse deleteEntity(final ModificationRequest request) throws Exception {
     return modify(request, Operation.DELETE);
+  }
+
+  @UriMapping(uri = "/v0/entity/delete-filtered", method = HttpMethod.POST)
+  public TransactionStatusResponse deleteEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.tenantId);
+
+    final EntitySchema schema = storage.getEntitySchema(request.entity);
+
+    // add to TXN log
+    final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
+    final Transaction txn = storage.getOrCreateTransaction(request.txnId);
+
+    for (final String groupId: request.groups) {
+      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+        if (request.filter == null || Query.process(request.filter, row)) {
+          final EntityDataRows updatedRow = new EntityDataRows(schema).newRow();
+          updatedRow.copyFrom(row);
+          updatedRow.setTimestamp(0, timestamp);
+          updatedRow.setOperation(0, Operation.DELETE);
+          storage.addRow(txn, new EntityDataRow(updatedRow, 0));
+        }
+        return true;
+      });
+    }
+
+    commitIfLocalTxn(storage, txn);
+
+    return new TransactionStatusResponse(txn.getState());
   }
 
   @UriMapping(uri = "/v0/commit", method = HttpMethod.POST)
@@ -62,26 +127,34 @@ public class HttpStorageHandler implements RestRequestHandler {
     return new TransactionStatusResponse(txn.getState());
   }
 
-  private TransactionStatusResponse modify(final ModificationRequest request, final Operation operation) throws Exception {
-    final StorageLogic storage = Storage.getInstance(request.tenantId);
-
+  private EntitySchema updateSchema(final StorageLogic storage, final String entity,
+      final String[] keys, final JsonEntityDataRows[] rows) throws Exception {
     // apply schema checks and modifications
-    final EntitySchema schema = storage.getEntitySchema(request.entity);
-    if (!schema.setKey(request.keys)) {
+    final EntitySchema schema = storage.getEntitySchema(entity);
+    if (keys != null && !schema.setKey(keys)) {
       // TODO: schema mismatch
-      return new TransactionStatusResponse(Transaction.State.FAILED);
+      return null;
     }
 
-    for (final JsonEntityDataRows jsonRows: request.rows) {
+    for (final JsonEntityDataRows jsonRows: rows) {
       if (!schema.update(jsonRows.fieldNames.keySet(), jsonRows.types)) {
         // TODO: schema mismatch
-        return new TransactionStatusResponse(Transaction.State.FAILED);
+        return null;
       }
     }
 
     // update the schema
     storage.registerSchema(schema);
+    return schema;
+  }
 
+  private TransactionStatusResponse modify(final ModificationRequest request, final Operation operation) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.tenantId);
+
+    final EntitySchema schema = updateSchema(storage, request.entity, request.keys, request.rows);
+    if (schema == null) {
+      return new TransactionStatusResponse(Transaction.State.FAILED);
+    }
 
     // add to TXN log
     final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
@@ -100,6 +173,12 @@ public class HttpStorageHandler implements RestRequestHandler {
       });
     }
 
+    commitIfLocalTxn(storage, txn);
+
+    return new TransactionStatusResponse(txn.getState());
+  }
+
+  private void commitIfLocalTxn(final StorageLogic storage, final Transaction txn) throws Exception {
     if (txn.isLocal()) {
       Logger.debug("local transaction {} state {}", txn.getTxnId(), txn.getState());
       if (txn.getState() == Transaction.State.PENDING) {
@@ -108,8 +187,6 @@ public class HttpStorageHandler implements RestRequestHandler {
         storage.rollback(txn);
       }
     }
-
-    return new TransactionStatusResponse(txn.getState());
   }
 
   // ================================================================================
@@ -146,9 +223,10 @@ public class HttpStorageHandler implements RestRequestHandler {
 
     // scan
     for (final String groupId: request.groups) {
-      storage.scanRow(txn, new RowKeyBuilder().add(groupId).slice(), (row) -> {
-        // TODO: apply filter
-        result.add(row);
+      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+        if (request.filter == null || Query.process(request.filter, row)) {
+          result.add(row);
+        }
         return true;
       });
     }
@@ -156,9 +234,110 @@ public class HttpStorageHandler implements RestRequestHandler {
     return new Scanner(result);
   }
 
+  private final ConcurrentHashMap<String, Queue<ScanResult>> scanResults = new ConcurrentHashMap<>();
+
+  @UriMapping(uri = "/v0/entity/scan-all", method = HttpMethod.POST)
+  public Scanner scanAll(final ScanRequest request) throws Exception {
+    VerifyArg.verifyNotEmpty("groups", request.groups);
+
+    final StorageLogic storage = Storage.getInstance(request.tenantId);
+    final Transaction txn = storage.getTransaction(request.txnId);
+
+    final CachedScannerResults results = new CachedScannerResults();
+    for (final String groupId: request.groups) {
+      storage.scanRow(txn, new RowKeyBuilder().add(groupId).addKeySeparator().slice(), (row) -> {
+        if (request.filter == null || Query.process(request.filter, row)) {
+          results.add(row);
+        }
+        return true;
+      });
+    }
+    results.sealResults();
+
+    if (results.isEmpty()) {
+      return Scanner.EMPTY;
+    }
+
+    final String scannerId = UUID.randomUUID().toString();
+    scanResults.put(scannerId, results.scanner);
+
+    return new Scanner(scannerId, results.scanner.poll());
+  }
+
   @UriMapping(uri = "/v0/entity/scan-next", method = HttpMethod.POST)
   public ScanResult scanEntity(final ScanNextRequest request) {
-    throw new UnsupportedOperationException();
+    final Queue<ScanResult> results = scanResults.get(request.scannerId);
+    if (results == null) return ScanResult.EMPTY_RESULT;
+
+    final ScanResult result = results.poll();
+    if (results.isEmpty()) scanResults.remove(request.scannerId);
+
+    return result;
+  }
+
+
+  private static final class CachedScannerResults {
+    private final LinkedBlockingQueue<ScanResult> scanner = new LinkedBlockingQueue<>();
+    private EntitySchema schema;
+    private ScanResult results;
+
+    public boolean isEmpty() {
+      return scanner.isEmpty();
+    }
+
+    public void sealResults() {
+      if (results != null) {
+        results.more = true;
+        scanner.add(results);
+      }
+    }
+
+    public boolean isSameSchema(final EntitySchema other) {
+      return schema != null && this.schema.getEntityName().equals(other.getEntityName());
+    }
+
+    public void setSchema(final EntitySchema schema) {
+      sealResults();
+
+      this.schema = schema;
+      this.results = new ScanResult(schema);
+    }
+
+    public void add(final EntityDataRow row) {
+      if (!isSameSchema(row.getSchema())) {
+        setSchema(row.getSchema());
+      }
+      results.add(row);
+    }
+  }
+
+  @UriMapping(uri = "/v0/entity/count", method = HttpMethod.POST)
+  public CountResult countEntity(final CountRequest request) throws Exception {
+    VerifyArg.verifyNotEmpty("groups", request.groups);
+
+    final StorageLogic storage = Storage.getInstance(request.tenantId);
+
+    final EntitySchema schema = storage.getEntitySchema(request.entity);
+    if (schema == null) throw new UnsupportedOperationException();
+
+    final Transaction txn = storage.getTransaction(request.txnId);
+    final CountResult result =  new CountResult();
+
+    // scan
+    for (final String groupId: request.groups) {
+      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+        if (request.filter == null || Query.process(request.filter, row)) {
+          result.totalRows++;
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }
+
+  private static ByteArraySlice rowKeyEntityGroup(final EntitySchema schema, final String groupId) {
+    return new RowKeyBuilder().add(groupId).add(schema.getEntityName()).addKeySeparator().slice();
   }
 
   // ================================================================================
@@ -185,11 +364,31 @@ public class HttpStorageHandler implements RestRequestHandler {
     private String[] groups;
     private String[] keys;
     private JsonEntityDataRows[] rows;
-    Filter[] filter;
 
     public boolean hasData() {
       return ArrayUtil.isNotEmpty(rows);
     }
+  }
+
+  public static final class ModificationWithFilterRequest {
+    private String tenantId;
+    private String txnId;
+    private String entity;
+    private String[] groups;
+    private JsonEntityDataRows fieldsToUpdate;
+    private Filter filter;
+  }
+
+  private static final class CountRequest {
+    private String tenantId;
+    private String txnId;
+    private String entity;
+    private String[] groups;
+    private Filter filter;
+  }
+
+  private static final class CountResult {
+    private long totalRows;
   }
 
   private static final class ScanRequest {
@@ -199,16 +398,22 @@ public class HttpStorageHandler implements RestRequestHandler {
     private String[] groups;
     private String[] fields;
     private JsonEntityDataRows[] rows;
-    //private Filter filter;
+    private Filter filter;
   }
 
   public static final class Scanner {
+    private static final Scanner EMPTY = new Scanner(null);
+
     private final ScanResult result;
     private final String scannerId;
 
     public Scanner(final ScanResult result) {
+      this(null, result);
+    }
+
+    public Scanner(final String scannerId, final ScanResult result) {
       this.result = result;
-      this.scannerId = null;
+      this.scannerId = scannerId;
     }
   }
 
@@ -218,18 +423,35 @@ public class HttpStorageHandler implements RestRequestHandler {
   }
 
   public static final class ScanResult {
+    public static final ScanResult EMPTY_RESULT = new ScanResult();
+
     private final JsonEntityDataRows rows;
-    private final boolean more = false;
+    private String[] key;
+    private String entity;
+    private boolean more = false;
+
+    private ScanResult() {
+      this.rows = null;
+      this.more = false;
+    }
+
+    public ScanResult(final EntitySchema schema) {
+      this(schema, null);
+    }
 
     public ScanResult(final EntitySchema schema, final String[] fields) {
       final String[] resultFields;
       if (ArrayUtil.isEmpty(fields)) {
+        // TODO: remove system fields e.g. __group__, __seqid__
         resultFields = schema.getFieldNames().toArray(new String[0]);
       } else {
         resultFields = fields;
       }
       Arrays.sort(resultFields);
+
       this.rows = new JsonEntityDataRows(schema, resultFields);
+      this.key = schema.getKeyFields();
+      this.entity = schema.getEntityName();
     }
 
     public void add(final EntityDataRow row) {

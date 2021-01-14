@@ -183,6 +183,7 @@ public abstract class AbstractKvStore {
       final String field = fields.get(i);
       final ByteArraySlice key = new RowKeyBuilder(rowKey).add(field).slice();
       final byte[] val = row.get(field);
+      //Logger.debug("prepare {} {}", field, row);
       if (val != null) consumer.accept(key, val);
     }
   }

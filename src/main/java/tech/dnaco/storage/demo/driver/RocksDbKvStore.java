@@ -186,11 +186,14 @@ public class RocksDbKvStore extends AbstractKvStore {
 
     private void computeNext() {
       while (iter.isValid()) {
-        iter.next();
         final byte[] key = iter.key();
+        final byte[] value = iter.value();
+        iter.next();
+
+        //Logger.debug("KEY: {} PREFIX: {}", new String(key), new String(prefix));
         if (BytesUtil.prefix(key, 0, key.length, prefix, 0, prefix.length) == prefix.length) {
           this.hasItem = true;
-          this.nextItem = Map.entry(new ByteArraySlice(key), iter.value());
+          this.nextItem = Map.entry(new ByteArraySlice(key), value);
           return;
         }
       }

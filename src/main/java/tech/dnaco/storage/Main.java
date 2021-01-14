@@ -1,5 +1,6 @@
 package tech.dnaco.storage;
 
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -20,6 +21,7 @@ import tech.dnaco.logging.LogFileWriter;
 import tech.dnaco.logging.LogUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.LoggerSession;
+import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.net.HttpStorageHandler;
 import tech.dnaco.storage.net.StorageServiceHandler;
 import tech.dnaco.storage.wal.Wal;
@@ -28,6 +30,7 @@ import tech.dnaco.telemetry.JvmMetrics;
 import tech.dnaco.telemetry.TelemetryCollectorRegistry;
 import tech.dnaco.util.BuildInfo;
 import tech.dnaco.util.ShutdownUtil;
+import tech.dnaco.util.ThreadUtil;
 
 public final class Main {
   public static void main(final String[] args) throws Exception {
@@ -38,6 +41,8 @@ public final class Main {
         conf.addJsonResource(args[i].substring(6));
       }
     }
+
+    RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
 
     // Setup Logger using ServiceConfig
     final LogAsyncWriter logWriter;
@@ -82,7 +87,7 @@ public final class Main {
       // Start the HTTP Service
       httpServer.start(eventLoop, new NettyHttpServerConfig()
         .setCompressionEnabled(true)
-        .setCorsEnabled(false)
+        .setCorsEnabled(true)
         .setPort(conf.getStorageHttpPort()));
 
       // Setup the shutdown hook (clean ctrl+c shutdown)
@@ -98,12 +103,12 @@ public final class Main {
         // main loop...
         long lastMetricsDump = System.nanoTime();
         while (running.get()) {
-
           final long now = System.nanoTime();
           if ((now - lastMetricsDump) > TimeUnit.MINUTES.toNanos(5)) {
             metricsDump();
             lastMetricsDump = now;
           }
+          ThreadUtil.sleep(250);
         }
       }
 

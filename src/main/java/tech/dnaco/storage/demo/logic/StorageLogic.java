@@ -195,9 +195,9 @@ public final class StorageLogic {
     // since the row is not in the transaction...
     final EntityDataRow oldRow = storage.getRow(row.buildRowKey());
     if (isRowDeleted(oldRow)) {
-      Logger.warn("{}: key does not exists in the master: {}", txn, row);
-      addErrorRow(txn, ErrorStatus.KEY_NOT_FOUND, row);
-      return false;
+      Logger.trace("{}: key does not exists in the master: {}", txn, row);
+      //addErrorRow(txn, ErrorStatus.KEY_NOT_FOUND, row);
+      return true;
     }
 
     storage.put(row, txn.getTxnId());
@@ -205,6 +205,7 @@ public final class StorageLogic {
   }
 
   private static boolean isRowActive(final EntityDataRow row) {
+    //Logger.debug("ROW: {}", row);
     return row != null && row.getOperation() != Operation.DELETE;
   }
 
