@@ -55,6 +55,10 @@ public final class StorageLogic {
     this.storage = storage;
   }
 
+  public AbstractKvStore getKvStore() {
+    return storage;
+  }
+
   public void shutdown() {
     storage.closeStorage();
   }

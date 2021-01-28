@@ -41,8 +41,8 @@ import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.strings.HumansUtil;
 
 public abstract class AbstractKvStore {
-  private static final byte[] SYS_COUNTERS = RowKeyUtil.newKeyBuilder().add("__SYS__").add("counter").drain();
-  private static final byte[] SYS_SCHEMAS = RowKeyUtil.newKeyBuilder().add("__SYS__").add("schema").drain();
+  protected static final byte[] SYS_COUNTERS = RowKeyUtil.newKeyBuilder().add("__SYS__").add("counter").drain();
+  protected static final byte[] SYS_SCHEMAS = RowKeyUtil.newKeyBuilder().add("__SYS__").add("schema").drain();
 
   private final ConcurrentHashMap<String, EntitySchema> schemas = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, Long> counters = new ConcurrentHashMap<>();
@@ -268,6 +268,7 @@ public abstract class AbstractKvStore {
       } else {
         // [group].[entity].[key].[field]
         final EntitySchema schema = getSchema(keyParts.get(1));
+        if (schema == null) throw new UnsupportedOperationException("invalid schema " + new String(keyParts.get(0)) + "." + new String(keyParts.get(1)));
         rows = new EntityDataRows(schema).newRow();
         rows.addKey(keyParts);
       }

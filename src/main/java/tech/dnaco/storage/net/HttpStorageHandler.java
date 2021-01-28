@@ -28,6 +28,7 @@ import tech.dnaco.storage.demo.logic.Query;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
+import tech.dnaco.strings.HumansUtil;
 
 public class HttpStorageHandler implements RestRequestHandler {
   // ================================================================================
@@ -50,6 +51,8 @@ public class HttpStorageHandler implements RestRequestHandler {
 
   @UriMapping(uri = "/v0/entity/update-filtered", method = HttpMethod.POST)
   public TransactionStatusResponse updateEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
+    final long startTime = System.nanoTime();
+
     final StorageLogic storage = Storage.getInstance(request.tenantId);
 
     final EntitySchema schema = updateSchema(storage, request.entity, null, new JsonEntityDataRows[] { request.fieldsToUpdate });
@@ -76,6 +79,10 @@ public class HttpStorageHandler implements RestRequestHandler {
 
     commitIfLocalTxn(storage, txn);
 
+    final long elapsed = System.nanoTime() - startTime;
+    Logger.debug("update {} {} filtered took {}",
+      request.tenantId, schema.getEntityName(), HumansUtil.humanTimeNanos(elapsed));
+
     return new TransactionStatusResponse(txn.getState());
   }
 
@@ -86,8 +93,9 @@ public class HttpStorageHandler implements RestRequestHandler {
 
   @UriMapping(uri = "/v0/entity/delete-filtered", method = HttpMethod.POST)
   public TransactionStatusResponse deleteEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
-    final StorageLogic storage = Storage.getInstance(request.tenantId);
+    final long startTime = System.nanoTime();
 
+    final StorageLogic storage = Storage.getInstance(request.tenantId);
     final EntitySchema schema = storage.getEntitySchema(request.entity);
 
     // add to TXN log
@@ -108,6 +116,10 @@ public class HttpStorageHandler implements RestRequestHandler {
     }
 
     commitIfLocalTxn(storage, txn);
+
+    final long elapsed = System.nanoTime() - startTime;
+    Logger.debug("delete {} {} filtered took {}",
+      request.tenantId, schema.getEntityName(), HumansUtil.humanTimeNanos(elapsed));
 
     return new TransactionStatusResponse(txn.getState());
   }
@@ -149,6 +161,8 @@ public class HttpStorageHandler implements RestRequestHandler {
   }
 
   private TransactionStatusResponse modify(final ModificationRequest request, final Operation operation) throws Exception {
+    final long startTime = System.nanoTime();
+
     final StorageLogic storage = Storage.getInstance(request.tenantId);
 
     final EntitySchema schema = updateSchema(storage, request.entity, request.keys, request.rows);
@@ -174,6 +188,10 @@ public class HttpStorageHandler implements RestRequestHandler {
     }
 
     commitIfLocalTxn(storage, txn);
+
+    final long elapsed = System.nanoTime() - startTime;
+    Logger.debug("{} {} {} took {}",
+      operation, request.tenantId, schema.getEntityName(), HumansUtil.humanTimeNanos(elapsed));
 
     return new TransactionStatusResponse(txn.getState());
   }
@@ -201,37 +219,41 @@ public class HttpStorageHandler implements RestRequestHandler {
   public Scanner scanEntity(final ScanRequest request) throws Exception {
     VerifyArg.verifyNotEmpty("groups", request.groups);
 
+    final long startTime = System.nanoTime();
+
     final StorageLogic storage = Storage.getInstance(request.tenantId);
 
     final EntitySchema schema = storage.getEntitySchema(request.entity);
     if (schema == null) throw new UnsupportedOperationException();
 
     final Transaction txn = storage.getTransaction(request.txnId);
-    final ScanResult result = new ScanResult(schema, request.fields);
+    return buildScanner(request.tenantId, request.entity, startTime, (results) -> {
+      results.setSchema(schema);
 
-    // direct get calls
-    if (ArrayUtil.isNotEmpty(request.rows)) {
-      for (final JsonEntityDataRows jsonRows: request.rows) {
-        if (txn.getState() != Transaction.State.PENDING) break;
+      // direct get calls
+      if (ArrayUtil.isNotEmpty(request.rows)) {
+        for (final JsonEntityDataRows jsonRows: request.rows) {
+          if (txn.getState() != Transaction.State.PENDING) break;
 
-        jsonRows.forEachEntityRow(schema, request.groups, (row) -> {
-          result.add(storage.getRow(txn, row));
+          jsonRows.forEachEntityRow(schema, request.groups, (row) -> {
+            results.add(storage.getRow(txn, row));
+            return true;
+          });
+        }
+      }
+
+      // scan
+      for (final String groupId: request.groups) {
+        storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+          if (request.filter == null || Query.process(request.filter, row)) {
+            results.add(row);
+            results.rowCount++;
+          }
+          results.rowRead++;
           return true;
         });
       }
-    }
-
-    // scan
-    for (final String groupId: request.groups) {
-      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
-        if (request.filter == null || Query.process(request.filter, row)) {
-          result.add(row);
-        }
-        return true;
-      });
-    }
-
-    return new Scanner(result);
+    });
   }
 
   private final ConcurrentHashMap<String, Queue<ScanResult>> scanResults = new ConcurrentHashMap<>();
@@ -240,28 +262,52 @@ public class HttpStorageHandler implements RestRequestHandler {
   public Scanner scanAll(final ScanRequest request) throws Exception {
     VerifyArg.verifyNotEmpty("groups", request.groups);
 
+    final long startTime = System.nanoTime();
     final StorageLogic storage = Storage.getInstance(request.tenantId);
     final Transaction txn = storage.getTransaction(request.txnId);
 
-    final CachedScannerResults results = new CachedScannerResults();
-    for (final String groupId: request.groups) {
-      storage.scanRow(txn, new RowKeyBuilder().add(groupId).addKeySeparator().slice(), (row) -> {
-        if (request.filter == null || Query.process(request.filter, row)) {
-          results.add(row);
-        }
-        return true;
-      });
-    }
-    results.sealResults();
+    return buildScanner(request.tenantId, null, startTime, (results) -> {
+      for (final String groupId: request.groups) {
+        storage.scanRow(txn, new RowKeyBuilder().add(groupId).addKeySeparator().slice(), (row) -> {
+          if (request.filter == null || Query.process(request.filter, row)) {
+            results.add(row);
+            results.rowCount++;
+          }
+          results.rowRead++;
+          return true;
+        });
+      }
+    });
+  }
 
+  @FunctionalInterface
+  interface ScannerBuilder {
+    void scan(CachedScannerResults results) throws Exception;
+  }
+
+  private Scanner buildScanner(final String tenant, final String entity, final long startTime, final ScannerBuilder builder)
+      throws Exception {
+    final CachedScannerResults results = new CachedScannerResults();
+    builder.scan(results);
+    results.sealResults(false);
+
+    final long elapsed = System.nanoTime() - startTime;
+    Logger.debug("{} scan {} read {} rows, result has {} rows matching the filter. took {}",
+      tenant, entity != null ? entity : "ALL", results.rowRead, results.rowCount, HumansUtil.humanTimeNanos(elapsed));
+
+    // no data...
     if (results.isEmpty()) {
       return Scanner.EMPTY;
     }
 
+    // the scan has a single page
+    final ScanResult firstResult = results.scanner.poll();
+    if (results.isEmpty()) return new Scanner(firstResult);
+
+    // the scan has multiple page
     final String scannerId = UUID.randomUUID().toString();
     scanResults.put(scannerId, results.scanner);
-
-    return new Scanner(scannerId, results.scanner.poll());
+    return new Scanner(scannerId, firstResult);
   }
 
   @UriMapping(uri = "/v0/entity/scan-next", method = HttpMethod.POST)
@@ -272,22 +318,27 @@ public class HttpStorageHandler implements RestRequestHandler {
     final ScanResult result = results.poll();
     if (results.isEmpty()) scanResults.remove(request.scannerId);
 
-    return result;
+    return result != null ? result : ScanResult.EMPTY_RESULT;
   }
 
-
-  private static final class CachedScannerResults {
+  public static final class CachedScannerResults {
     private final LinkedBlockingQueue<ScanResult> scanner = new LinkedBlockingQueue<>();
     private EntitySchema schema;
     private ScanResult results;
+    private long rowCount;
+    private long rowRead;
 
     public boolean isEmpty() {
       return scanner.isEmpty();
     }
 
     public void sealResults() {
+      sealResults(true);
+    }
+
+    public void sealResults(final boolean hasMore) {
       if (results != null) {
-        results.more = true;
+        results.more = hasMore;
         scanner.add(results);
       }
     }

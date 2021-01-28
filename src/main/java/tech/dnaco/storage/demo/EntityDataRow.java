@@ -66,6 +66,14 @@ public class EntityDataRow {
     return rows.get(rowIndex, fieldName);
   }
 
+  public int size() {
+    int size = 0;
+    for (int i = 0, n = getSchema().fieldsCount(); i < n; ++i) {
+      size += BytesUtil.length(rows.get(rowIndex, i));
+    }
+    return size;
+  }
+
   public Object getObject(final String fieldName) {
     return rows.getObject(rowIndex, fieldName);
   }

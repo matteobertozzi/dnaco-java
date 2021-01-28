@@ -190,6 +190,16 @@ public class RocksDbKvStore extends AbstractKvStore {
         final byte[] value = iter.value();
         iter.next();
 
+        if (SKIP_SYS_ROWS) {
+          if (BytesUtil.hasPrefix(key, 0, key.length, AbstractKvStore.SYS_COUNTERS, 0, AbstractKvStore.SYS_COUNTERS.length)) {
+            continue;
+          }
+
+          if (BytesUtil.hasPrefix(key, 0, key.length, AbstractKvStore.SYS_SCHEMAS, 0, AbstractKvStore.SYS_SCHEMAS.length)) {
+            continue;
+          }
+        }
+
         //Logger.debug("KEY: {} PREFIX: {}", new String(key), new String(prefix));
         if (BytesUtil.prefix(key, 0, key.length, prefix, 0, prefix.length) == prefix.length) {
           this.hasItem = true;
@@ -204,4 +214,6 @@ public class RocksDbKvStore extends AbstractKvStore {
       IOUtil.closeQuietly(this.opts);
     }
   }
+
+  public static boolean SKIP_SYS_ROWS = false;
 }
