@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 import tech.dnaco.collections.paged.PagedByteArray;
+import tech.dnaco.strings.StringUtil;
 
 public class JournalBuffer {
   private final HashMap<String, LogGroup> tenants = new HashMap<>(64);
@@ -85,6 +86,9 @@ public class JournalBuffer {
     private int tail = -1;
 
     private LogGroup(final String tenantId) {
+      if (StringUtil.isEmpty(tenantId)) {
+        throw new IllegalArgumentException("invalid empty tenantId");
+      }
       this.tenantId = tenantId;
     }
 

@@ -96,15 +96,19 @@ public class JournalAsyncWriter implements AutoCloseable {
   }
 
   public void addToLogQueue(final Thread currentThread, final JournalEntry entry) {
-    final int bufSize;
-    try (ThreadLocalData<JournalBuffer> buffer = localBuffers.computeIfAbsent(currentThread, JournalBuffer::new)) {
-      bufSize = buffer.get().add(entry);
-      entry.release();
-    }
+    try {
+      final int bufSize;
+      try (ThreadLocalData<JournalBuffer> buffer = localBuffers.computeIfAbsent(currentThread, JournalBuffer::new)) {
+        bufSize = buffer.get().add(entry);
+        entry.release();
+      }
 
-    if (bufSize >= threadBackPressureSize) {
-      flusherThread.forceFlush();
-      flusherThread.waitForFlush();
+      if (bufSize >= threadBackPressureSize) {
+        flusherThread.forceFlush();
+        flusherThread.waitForFlush();
+      }
+    } catch (Throwable e) {
+      Logger.logToStderr(LogLevel.ERROR, "unable to add entry to the journal: thread={} entry={}", currentThread, entry);
     }
   }
 

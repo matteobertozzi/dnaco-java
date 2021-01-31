@@ -17,7 +17,6 @@
 
 package tech.dnaco.util;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -47,10 +46,13 @@ import com.google.gson.JsonSerializer;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 
+import tech.dnaco.bytes.ByteArrayReader;
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.collections.ArrayUtil;
 import tech.dnaco.collections.HashIndexedArray;
 import tech.dnaco.collections.HashIndexedArrayMap;
+import tech.dnaco.io.BytesInputStream;
+import tech.dnaco.logging.Logger;
 
 public final class JsonUtil {
   public static final String JSON_DATE_FORMAT_PATTERN = "YYYYMMddHHmmss";
@@ -86,16 +88,18 @@ public final class JsonUtil {
     return GSON.fromJson(json, classOfT);
   }
 
-  public static <T> T fromJson(final byte[] json, final Class<T> classOfT) throws IOException {
+  public static <T> T fromJson(final byte[] json, final Class<T> classOfT) {
     return fromJson(json, 0, BytesUtil.length(json), classOfT);
   }
 
-  public static <T> T fromJson(final byte[] json, final int jsonOff, final int jsonLen, final Class<T> classOfT)
-      throws IOException {
+  public static <T> T fromJson(final byte[] json, final int jsonOff, final int jsonLen, final Class<T> classOfT) {
     if (jsonLen == 0) return null;
-    try (ByteArrayInputStream stream = new ByteArrayInputStream(json, jsonOff, jsonLen)) {
+    try (BytesInputStream stream = new ByteArrayReader(json, jsonOff, jsonLen)) {
       try (InputStreamReader reader = new InputStreamReader(stream)) {
         return GSON.fromJson(reader, classOfT);
+      } catch (final IOException e) {
+        Logger.trace(e, "failed to read json");
+        return null;
       }
     }
   }
@@ -331,6 +335,10 @@ public final class JsonUtil {
     public String toString() {
       return h.toString();
     }
+  }
+
+  public interface Jsonable {
+    JsonElement toJson();
   }
 
   public static void main(final String[] args) {

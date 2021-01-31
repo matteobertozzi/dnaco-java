@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.strings.HumansUtil;
 
+// https://github.com/micrometer-metrics/micrometer/blob/master/micrometer-core/src/main/java/io/micrometer/core/instrument/binder/jvm/JvmGcMetrics.java
 public final class JvmGcMetrics extends TelemetryCollectorGroup {
   public static final JvmGcMetrics INSTANCE = new JvmGcMetrics();
 

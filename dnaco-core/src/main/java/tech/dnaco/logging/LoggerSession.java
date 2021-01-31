@@ -40,6 +40,10 @@ public class LoggerSession {
     this.traceId = traceId;
   }
 
+  public static LoggerSession newSession(final String tenantId, LoggerSession session) {
+    return newSession(tenantId, session.getModuleId(), session.getOwnerId(), session.getLevel(), session.getTraceId());
+  }
+
   public static LoggerSession newSession(final String projectId, final String moduleId,
       final String groupId, final LogLevel level, final long traceId) {
     return new LoggerSession(projectId, moduleId, groupId, level, traceId);

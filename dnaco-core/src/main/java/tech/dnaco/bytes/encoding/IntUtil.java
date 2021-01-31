@@ -31,11 +31,11 @@ public final class IntUtil {
   }
 
   public static int size(final int v) {
-    return (getWidth(v) + 7) / 8;
+    return (getWidth(v) + 7) >> 3;
   }
 
   public static int size(final long v) {
-    return (getWidth(v) + 7) / 8;
+    return (getWidth(v) + 7) >> 3;
   }
 
   public static int unsignedVarLongSize(long v) {

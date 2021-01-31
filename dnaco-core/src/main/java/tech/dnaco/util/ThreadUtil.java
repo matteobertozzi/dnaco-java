@@ -163,4 +163,11 @@ public final class ThreadUtil {
     }
     return false;
   }
+
+  public static void runInThreads(final int count, final Runnable runnable) {
+    final Thread[] threads = new Thread[count];
+    for (int i = 0; i < count; ++i) threads[i] = new Thread(runnable);
+    for (int i = 0; i < count; ++i) threads[i].start();
+    for (int i = 0; i < count; ++i) shutdown(threads[i]);
+  }
 }

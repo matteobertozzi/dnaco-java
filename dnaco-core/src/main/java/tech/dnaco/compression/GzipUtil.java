@@ -17,9 +17,11 @@
 
 package tech.dnaco.compression;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public final class GzipUtil {
@@ -50,6 +52,14 @@ public final class GzipUtil {
         gz.write(data);
       }
       return out.toByteArray();
+    }
+  }
+
+  public static byte[] uncompress(final byte[] gzData) throws IOException {
+    try (ByteArrayInputStream in = new ByteArrayInputStream(gzData)) {
+      try (GZIPInputStream gz = new GZIPInputStream(in)) {
+        return gz.readAllBytes();
+      }
     }
   }
 

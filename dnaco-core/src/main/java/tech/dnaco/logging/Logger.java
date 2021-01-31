@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import tech.dnaco.journal.JournalAsyncWriter;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.strings.StringFormat;
+import tech.dnaco.strings.StringUtil;
 
 public final class Logger {
   public static final HashSet<String> EXCLUDE_CLASSES = new HashSet<>(128);
@@ -272,6 +273,9 @@ public final class Logger {
 
     // entry header fields
     final LoggerSession session = getSession();
+    if (StringUtil.isEmpty(session.getTenantId())) {
+      throw new RuntimeException("invalid session: " + session + ": " + format);
+    }
     entry.setTenantId(session.getTenantId());
     entry.setModule(session.getModuleId());
     entry.setOwner(session.getOwnerId());

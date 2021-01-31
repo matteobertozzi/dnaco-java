@@ -349,6 +349,20 @@ public class LruCache<TKey, TValue> {
   }
 
   public static void main(final String[] args) {
+    final SecureRandom localRand = new SecureRandom();
+    final int BOUND = 128;
+    final LruCache<String, String> lru = new LruCache<>(8, BOUND);
+    for (int i = 0; i < 100_000_000; ++i) {
+      final String key = "k" + localRand.nextInt(BOUND * 2);
+      if (lru.get(key) == null) {
+        lru.put(key, key);
+      }
+    }
+
+    //testPerf();
+  }
+
+  private static void testPerf() {
     final int NLOOKUPS = 1000_000;
 
     final SecureRandom rand = new SecureRandom();
