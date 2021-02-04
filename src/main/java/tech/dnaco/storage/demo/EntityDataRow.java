@@ -110,9 +110,8 @@ public class EntityDataRow {
   public static EntityDataRow fromMap(final EntitySchema schema, final Map<String, Object> kvs) {
     final EntityDataRows rows = new EntityDataRows(schema).newRow();
     for (final Entry<String, Object> entry: kvs.entrySet()) {
-      rows.add(entry.getKey(), entry.getValue());
+      rows.addObject(entry.getKey(), entry.getValue());
     }
-    System.out.println(" --> SET ROW: " + rows);
     return new EntityDataRow(rows, 0);
   }
 

@@ -20,19 +20,19 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>tech.dnaco</groupId>
+      <artifactId>dnaco-rpc</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
+    
     <!-- ===============[ Gulliver libs ]=============== -->
     <dependency>
       <groupId>com.gullivernet.server.netty</groupId>
       <artifactId>gulliver-server-netty</artifactId>
       <version>${gulliver.server}</version>
     </dependency>
-<!--
-    <dependency>
-      <groupId>com.gullivernet.mdc</groupId>
-      <artifactId>gulliver-mdc-database</artifactId>
-      <version>8.0.0-SNAPSHOT</version>
-    </dependency>
--->
+
     <!-- https://mvnrepository.com/artifact/org.rocksdb/rocksdbjni -->
     <!-- DROP ME PLEASE! -->
     <dependency>

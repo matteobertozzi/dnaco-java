@@ -87,7 +87,7 @@ public class EntityDataRows {
     add(fieldIndex, value);
   }
 
-  public void add(final String fieldName, final Object value) {
+  public void addObject(final String fieldName, final Object value) {
     final int fieldIndex = schema.getFieldIndex(fieldName);
     if (schema.isKey(fieldName)) {
       final EntityDataType type = schema.getFieldType(fieldIndex);

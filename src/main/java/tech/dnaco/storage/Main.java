@@ -21,9 +21,13 @@ import tech.dnaco.logging.LogFileWriter;
 import tech.dnaco.logging.LogUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.LoggerSession;
+import tech.dnaco.net.ServiceEventLoop;
+import tech.dnaco.net.rpc.DnacoRpcDispatcher;
+import tech.dnaco.net.rpc.DnacoRpcObjectMapper;
+import tech.dnaco.net.rpc.DnacoRpcService;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
-import tech.dnaco.storage.net.HttpStorageHandler;
-import tech.dnaco.storage.net.StorageServiceHandler;
+import tech.dnaco.storage.net.EntityStorageHttpHandler;
+import tech.dnaco.storage.net.EntityStorageRpcHandler;
 import tech.dnaco.storage.wal.Wal;
 import tech.dnaco.storage.wal.WalFileWriter;
 import tech.dnaco.telemetry.JvmMetrics;
@@ -60,29 +64,32 @@ public final class Main {
     final BuildInfo buildInfo = BuildInfo.loadInfoFromManifest("dnaco-storage-server");
     JvmMetrics.INSTANCE.setBuildInfo(buildInfo);
 
-    // Wal Writer Replay
-    Wal.INSTANCE.replay();
-
     try (ServerEventLoop eventLoop = new ServerEventLoop(conf.getEloopBossGroups(), conf.getEloopWorkerGroups())) {
+      final ServiceEventLoop rpcEventLoop = new ServiceEventLoop(eventLoop.getServerUnixChannelClass(),
+        eventLoop.getClientUnixChannelClass(), eventLoop.getServerChannelClass(), eventLoop.getClientChannelClass(),
+        eventLoop.getWorkerGroup(), eventLoop.getBossGroup());
+
+      final DnacoRpcDispatcher dispatcher = new DnacoRpcDispatcher(DnacoRpcObjectMapper.RPC_CBOR_OBJECT_MAPPER);
+      dispatcher.addHandler(new EntityStorageRpcHandler());
+
       final ServerInfo serverInfo = new ServerInfo()
           .setServiceUrl("goal.mobiledatacollection.it")
           .setProductName("dnaco-storage");
 
       // Setup the Storage Service
-      final DnacoServer service = new DnacoServer(serverInfo);
-      service.addListener(new DnacoServicePacketHandler(new StorageServiceHandler()));
 
       // Setup the HTTP Service
       final UriRoutesBuilder routes = new UriRoutesBuilder();
       routes.addHandler(new DirectTracesHandler());
       routes.addHandler(new DirectMetricsHandler());
-      routes.addHandler(new HttpStorageHandler());
+      routes.addHandler(new EntityStorageHttpHandler());
 
       final NettyHttpServer httpServer = new NettyHttpServer(serverInfo);
       httpServer.setHttpRoutes(routes, true);
 
       // Start the Storage Service
-      service.start(eventLoop, new DnacoServerConfig().setPort(conf.getStorageServicePort()));
+      final DnacoRpcService service = new DnacoRpcService(dispatcher);
+      service.bindTcpService(rpcEventLoop, conf.getStorageServicePort());
 
       // Start the HTTP Service
       httpServer.start(eventLoop, new NettyHttpServerConfig()
@@ -94,22 +101,15 @@ public final class Main {
       final AtomicBoolean running = new AtomicBoolean(true);
       ShutdownUtil.addShutdownHook("StorageService", running, service, httpServer);
 
-      // Setup the WAL writer
-      try (JournalAsyncWriter walWriter = new JournalAsyncWriter("StorageWal")) {
-        Wal.INSTANCE.setWalWriter(walWriter);
-        walWriter.registerWriter(new WalFileWriter());
-        walWriter.start(conf.getStorageWalFlushIntervalMs());
-
-        // main loop...
-        long lastMetricsDump = System.nanoTime();
-        while (running.get()) {
-          final long now = System.nanoTime();
-          if ((now - lastMetricsDump) > TimeUnit.MINUTES.toNanos(5)) {
-            metricsDump();
-            lastMetricsDump = now;
-          }
-          ThreadUtil.sleep(250);
+      // main loop...
+      long lastMetricsDump = System.nanoTime();
+      while (running.get()) {
+        final long now = System.nanoTime();
+        if ((now - lastMetricsDump) > TimeUnit.MINUTES.toNanos(5)) {
+          metricsDump();
+          lastMetricsDump = now;
         }
+        ThreadUtil.sleep(250);
       }
 
       // wait "forever" (until ctrl+c)

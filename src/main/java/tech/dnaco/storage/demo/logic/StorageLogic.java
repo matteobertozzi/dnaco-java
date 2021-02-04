@@ -81,10 +81,14 @@ public final class StorageLogic {
     return transactions.computeIfAbsent(txnId, (k) -> newTxn);
   }
 
-  public EntitySchema getEntitySchema(final String entityName) {
+  public EntitySchema getOrCreateEntitySchema(final String entityName) {
     final EntitySchema schema = storage.getSchema(entityName);
     if (schema == null) return new EntitySchema(entityName);
     return schema;
+  }
+
+  public EntitySchema getEntitySchema(final String entityName) {
+    return storage.getSchema(entityName);
   }
 
   public void registerSchema(final EntitySchema schema) throws Exception {
@@ -191,7 +195,7 @@ public final class StorageLogic {
     final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
     if (oldTxnRow != null) {
       if (oldTxnRow.getOperation() != Operation.DELETE) {
-        storage.put(row, txn.getTxnId());
+        storage.delete(row, txn.getTxnId());
       }
       return true;
     }
@@ -204,7 +208,7 @@ public final class StorageLogic {
       return true;
     }
 
-    storage.put(row, txn.getTxnId());
+    storage.delete(row, txn.getTxnId());
     return true;
   }
 
@@ -259,9 +263,9 @@ public final class StorageLogic {
       txn.setState(Transaction.State.PREPARED);
 
       // commit
-      Logger.debug("COMMIT {}", txn.getTxnId());
+      //Logger.debug("COMMIT {}", txn.getTxnId());
       storage.scanRow(txnKeyPrefix, (row) -> {
-        System.out.println(" ----> COMMIT: " + row);
+        //System.out.println(" ----> COMMIT: " + row);
         row.setTimestamp(timestamp);
         row.setSeqId(commitSeqId);
         storage.put(row, null);
@@ -319,8 +323,10 @@ public final class StorageLogic {
   }
 
   public EntityDataRow getRow(final Transaction txn, final EntityDataRow row) throws Exception {
-    final EntityDataRow txnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
-    if (txnRow != null) return (txnRow.getOperation() == Operation.DELETE) ? null : txnRow;
+    if (txn != null) {
+      final EntityDataRow txnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
+      if (txnRow != null) return (txnRow.getOperation() == Operation.DELETE) ? null : txnRow;
+    }
 
     final EntityDataRow masterRow = storage.getRow(row.buildRowKey());
 	  return isRowActive(masterRow) ? masterRow : null;
@@ -358,7 +364,7 @@ public final class StorageLogic {
     final MemoryKvStore kvStore = new MemoryKvStore("project");
     final StorageLogic storage = new StorageLogic(kvStore);
 
-    final EntitySchema schema = storage.getEntitySchema("tst_entity");
+    final EntitySchema schema = storage.getOrCreateEntitySchema("tst_entity");
     schema.update("k1", EntityDataType.INT);
     schema.update("k2", EntityDataType.INT);
     schema.update("v", EntityDataType.INT);

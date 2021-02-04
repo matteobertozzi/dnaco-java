@@ -154,7 +154,7 @@ public abstract class AbstractKvStore {
   }
 
   // ================================================================================
-  //  Put Related
+  //  Put/Delete Related
   // ================================================================================
   public abstract void put(final ByteArraySlice key, final byte[] value) throws Exception;
   public abstract void delete(final ByteArraySlice key) throws Exception;
@@ -185,6 +185,31 @@ public abstract class AbstractKvStore {
       final byte[] val = row.get(field);
       //Logger.debug("prepare {} {}", field, row);
       if (val != null) consumer.accept(key, val);
+    }
+  }
+
+  public void delete(final EntityDataRow row, final String txnId) throws Exception {
+    final EntitySchema schema = row.getSchema();
+    final byte[] rowKey = row.buildRowKey(txnId);
+
+    final List<String> fields = schema.getNonKeyFields();
+    for (int i = fields.size() - 1; i >= 0; --i) {
+      final String field = fields.get(i);
+      final ByteArraySlice key = new RowKeyBuilder(rowKey).add(field).slice();
+      if (schema.isSysField(field)) {
+        final byte[] val = row.get(field);
+        //System.out.println("DEL-PUT " + key);
+        this.put(key, val);
+      } else {
+        //System.out.println("DELETE " + key);
+        this.delete(key);
+      }
+    }
+  }
+
+  public void delete(final EntityDataRows rows, final String txnId) throws Exception {
+    for (int row = 0, n = rows.rowCount(); row < n; ++row) {
+      delete(new EntityDataRow(rows, row), txnId);
     }
   }
 
@@ -290,16 +315,16 @@ public abstract class AbstractKvStore {
   // ================================================================================
   //  Key Util
   // ================================================================================
-  public static final ByteArraySlice prefixEndKey(final ByteArraySlice prefix) throws Exception {
+  public static ByteArraySlice prefixEndKey(final ByteArraySlice prefix) throws Exception {
     return new ByteArraySlice(prefixEndKey(prefix.buffer()));
   }
 
-  public static final byte[] prefixEndKey(final byte[] prefix) throws Exception {
+  public static byte[] prefixEndKey(final byte[] prefix) throws Exception {
     final byte[] endKey = Arrays.copyOf(prefix, prefix.length);
     return increaseOne(endKey);
   }
 
-  private static final byte[] increaseOne(final byte[] bytes) throws Exception {
+  private static byte[] increaseOne(final byte[] bytes) throws Exception {
     final byte BYTE_MAX_VALUE = (byte) 0xff;
     assert bytes.length > 0;
     final byte last = bytes[bytes.length - 1];

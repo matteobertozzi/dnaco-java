@@ -186,7 +186,7 @@ public final class EntityData {
     } else if (rawValue.get(0) == EntityDataType.NULL.ordinal()) {
       return null;
     }
-    throw new IllegalArgumentException("expected NULL or BYTES, got " + rawValue.get(0) + ": " + rawValue);
+    throw new IllegalArgumentException("expected NULL or BYTES, got " + rawValue.get(0) + " " + EntityDataType.values()[rawValue.get(0)] + ": " + rawValue);
   }
 
   public static byte[] encodeString(final Object value) {

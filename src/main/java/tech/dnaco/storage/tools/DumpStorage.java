@@ -9,7 +9,7 @@ import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
-import tech.dnaco.storage.net.HttpStorageHandler.CachedScannerResults;
+import tech.dnaco.storage.net.EntityStorage.CachedScannerResults;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.telemetry.CounterMap;
 
@@ -61,7 +61,7 @@ public class DumpStorage {
     final String entity = "ATG_CUSTOMERS";
     final String[] groups = new String[] { "BACKOFFICE" };
 
-      final EntitySchema schema = storage.getEntitySchema(entity);
+      final EntitySchema schema = storage.getOrCreateEntitySchema(entity);
       if (schema == null) throw new UnsupportedOperationException();
 
       final Transaction txn = storage.getTransaction(null);

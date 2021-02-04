@@ -98,6 +98,17 @@ public class EntitySchema {
     return nonKeyFields;
   }
 
+  public boolean isSysField(final String name) {
+    switch (name) {
+      case SYS_FIELD_OPERATION:
+      case SYS_FIELD_TIMESTAMP:
+      case SYS_FIELD_SEQID:
+      case SYS_FIELD_GROUP:
+        return true;
+    }
+    return false;
+  }
+
   public boolean isKey(final int fieldIndex) {
     return isKey(fields.get(fieldIndex));
   }
