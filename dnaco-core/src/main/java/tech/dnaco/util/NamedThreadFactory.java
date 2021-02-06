@@ -45,8 +45,12 @@ public class NamedThreadFactory implements ThreadFactory {
     return (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
   }
 
+  protected String newThreadName() {
+    return namePrefix + threadNumber.getAndIncrement();
+  }
+
   @Override
   public Thread newThread(final Runnable r) {
-    return new Thread(group, r, namePrefix + threadNumber.getAndIncrement());
+    return new Thread(group, r, newThreadName());
   }
 }

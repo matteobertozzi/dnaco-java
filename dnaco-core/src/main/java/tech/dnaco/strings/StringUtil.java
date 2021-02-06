@@ -527,12 +527,9 @@ public final class StringUtil {
 
   public static boolean equals(final String a, final int aOff, final int aLen,
       final String b, final int bOff, final int bLen) {
-    //System.out.println("A-OFF: " + aOff + " A-LEN:" + aLen);
-    //System.out.println("A-OFF: " + bOff + " B-LEN:" + bLen);
     if (aLen != bLen) return false;
 
     for (int i = 0; i < aLen; ++i) {
-      //System.out.println(" -> [" + (aOff + i) + "/" + (bOff + i) + "] -> " + a.charAt(aOff + i) + " -> " + b.charAt(bOff + i));
       if (a.charAt(aOff + i) != b.charAt(bOff + i)) {
         return false;
       }

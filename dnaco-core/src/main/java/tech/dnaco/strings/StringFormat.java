@@ -57,7 +57,7 @@ public final class StringFormat {
       final Object[] args, final int argsOff, final int argsLen) {
     if (argsLen == 0) {
       msgBuilder.append(format);
-      return 0;
+      return 1;
     }
 
     int argsIndex = argsOff;

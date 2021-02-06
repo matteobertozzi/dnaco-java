@@ -67,28 +67,27 @@ public final class LogTraceBuffer {
     private static final int TRACES_MASK = 7;
     private static final int ENTRIES_MASK = 7;
 
-    private final LogEntry[] entries = new LogEntry[1 + ENTRIES_MASK];
+    private final String[] entries = new String[1 + ENTRIES_MASK];
     private final String[] traces = new String[1 + TRACES_MASK];
     private String currentProjectId;
     private long nextEntries = 0;
     private long nextTraces = 0;
 
     public void add(final String projectId, final LogEntry entry) {
-      // non posso tenere la log entry, perche' i parametri possono avere weak ref
-    }
+      if (true) return;
 
-    public void addBad(final String projectId, final LogEntry entry) {
+      // non posso tenere la log entry, perche' i parametri possono avere weak ref
       if (!(entry instanceof LogEntryMessage)) return;
 
-      if (!StringUtil.equals(currentProjectId, projectId)) {
+      if (currentProjectId != null && !StringUtil.equals(currentProjectId, projectId)) {
         flushTraces(currentProjectId);
         this.currentProjectId = projectId;
       }
 
       final int index = Math.toIntExact(nextEntries++ & ENTRIES_MASK);
-      this.entries[index] = entry;
+      this.entries[index] = entry.toHumanReport(new StringBuilder(80)).toString();
 
-      if (((LogEntryMessage)entry).getLevel().ordinal() <= LogLevel.ERROR.ordinal()) {
+      if (LogLevel.ERROR.compareTo(((LogEntryMessage)entry).getLevel()) >= 0) {
         flushTraces(projectId);
       }
     }

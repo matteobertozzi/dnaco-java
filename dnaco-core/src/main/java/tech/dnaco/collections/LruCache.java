@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiPredicate;
 
+import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.util.BitUtil;
 import tech.dnaco.util.ThreadUtil;
@@ -39,6 +40,10 @@ public class LruCache<TKey, TValue> {
   private CacheItemNode[] entries;
   private CacheItemNode lruHead;
   private int count = 0;
+
+  private long cacheHit = 0;
+  private long cacheMiss = 0;
+  private long cacheExpired = 0;
 
   public LruCache(final int initialCapacity, final int maxSize) {
     this(initialCapacity, maxSize, null);
@@ -75,6 +80,12 @@ public class LruCache<TKey, TValue> {
       node = entries[node.lruPrev];
     } while (node != entries[lruHead.lruPrev]);
     System.out.println();
+
+    for (int i = 0; i < entries.length; ++i) {
+      if (i > 0) System.out.print(" ");
+      System.out.print(i + ":" + entries[i].getKey() + ":" + entries[i].getValue());
+    }
+    System.out.println();
   }
 
   public int size() {
@@ -86,17 +97,21 @@ public class LruCache<TKey, TValue> {
     }
   }
 
-  public TValue get(final TKey key) {
+  public LruCacheStats getStats() {
     lock.lock();
     try {
-      final CacheItemNode node = findEntry(key, hashCode(key));
-      if (node == null) return null;
+      return new LruCacheStats(cacheHit, cacheMiss, cacheExpired);
+    } finally {
+      lock.unlock();
+    }
+  }
 
-      if (expirationIntervalNs > 0 && node.isExpired(System.nanoTime())) {
-        node.clear();
-        moveToLruTail(node);
-        return null;
-      }
+  public TValue get(final TKey key) {
+    final int keyHash = hashCode(key);
+    lock.lock();
+    try {
+      final CacheItemNode node = findOrEvict(key, keyHash);
+      if (node == null) return null;
 
       moveToLruFront(node);
       return node.getValue();
@@ -106,10 +121,11 @@ public class LruCache<TKey, TValue> {
   }
 
   public TValue put(final TKey key, final TValue value) {
+    final long expirationNs = expirationIntervalNs < 0 ? Long.MAX_VALUE : (System.nanoTime() + expirationIntervalNs);
+
+    final int keyHash = hashCode(key);
     lock.lock();
     try {
-      final long expirationNs = expirationIntervalNs < 0 ? Long.MAX_VALUE : (System.nanoTime() + expirationIntervalNs);
-      final int keyHash = hashCode(key);
       final CacheItemNode node = findEntry(key, keyHash);
       if (node == null) {
         insertNewEntry(keyHash, key, value, expirationNs);
@@ -132,15 +148,17 @@ public class LruCache<TKey, TValue> {
         entries[i].clear();
       }
       Arrays.fill(buckets, -1);
+      count = 0;
     } finally {
       lock.unlock();
     }
   }
 
   public TValue evict(final TKey key) {
+    final int keyHash = hashCode(key);
     lock.lock();
     try {
-      return remove(key);
+      return remove(key, keyHash);
     } finally {
       lock.unlock();
     }
@@ -151,8 +169,8 @@ public class LruCache<TKey, TValue> {
     try {
       for (int i = 0; i < entries.length; ++i) {
         final CacheItemNode node = entries[i];
-        if (node != null && predicate.test(node.getKey(), node.getValue())) {
-          remove(node.getKey());
+        if (node != null && !node.isEmpty() && predicate.test(node.getKey(), node.getValue())) {
+          remove(node.getKey(), node.keyHash);
         }
       }
     } finally {
@@ -174,7 +192,6 @@ public class LruCache<TKey, TValue> {
   private CacheItemNode findEntry(final Object key, final int keyHash) {
     for (int i = buckets[targetBucket(keyHash)]; i >= 0; i = entries[i].hashNext) {
       final CacheItemNode entry = entries[i];
-      //System.out.println(" -> " + i);
       if (entry.keyHash == keyHash && Objects.equals(entry.key, key)) {
         return entry;
       }
@@ -192,15 +209,16 @@ public class LruCache<TKey, TValue> {
       // no-op
       newFromFreeSlot++;
     } else if (count >= maxSize) {
-      remove(entries[lruHead.lruPrev].getKey());
+      final CacheItemNode entry = entries[lruHead.lruPrev];
+      remove(entry.getKey(), entry.keyHash);
       newFromEviction++;
     } else {
       final long startTime = System.nanoTime();
       final int newCapacity = entries.length << 1;
-      if (newCapacity < 0) throw new IllegalStateException("HashMap too big size=" + entries.length);
+      if (newCapacity < 0) throw new IllegalStateException("LruCacheMap too big. size=" + entries.length);
       resize(newCapacity);
       newFromResize++;
-      System.out.println("RESIZE " + newCapacity + " -> " + HumansUtil.humanTimeNanos(System.nanoTime() - startTime));
+      Logger.debug("RESIZE {} -> {}", newCapacity, HumansUtil.humanTimeNanos(System.nanoTime() - startTime));
     }
 
     final CacheItemNode node = entries[lruHead.lruPrev];
@@ -213,9 +231,13 @@ public class LruCache<TKey, TValue> {
     count++;
   }
 
+  private static final int MAX_BUCKETS_COUNT = 16 << 10;
   private void resize(final int newSize) {
+    // resize buckets up to MAX_BUCKETS_COUNT
+    if (buckets.length < MAX_BUCKETS_COUNT) {
+      buckets = new int[Math.min(newSize, MAX_BUCKETS_COUNT)];
+    }
     // reset buckets
-    if (newSize < 8192) buckets = new int[newSize];
     Arrays.fill(buckets, -1);
 
     // reassign entries
@@ -236,26 +258,49 @@ public class LruCache<TKey, TValue> {
     }
   }
 
-  private TValue remove(final TKey key) {
-    final int hashCode = hashCode(key);
+  private TValue remove(final TKey key, final int hashCode) {
     final int bucket = targetBucket(hashCode);
     int last = -1;
     for (int i = buckets[bucket]; i >= 0; last = i, i = entries[i].hashNext) {
       final CacheItemNode node = entries[i];
       if (node.keyHash == hashCode && Objects.equals(node.key, key)) {
-        if (last < 0) {
-          buckets[bucket] = node.hashNext;
-        } else {
-          entries[last].hashNext = node.hashNext;
-        }
-        final TValue oldValue = node.getValue();
-        node.clear();
-        moveToLruTail(node);
-        count--;
-        return oldValue;
+        return removeNode(node, bucket, last);
       }
     }
     return null;
+  }
+
+  private CacheItemNode findOrEvict(final TKey key, final int hashCode) {
+    final int bucket = targetBucket(hashCode);
+    int last = -1;
+    for (int i = buckets[bucket]; i >= 0; last = i, i = entries[i].hashNext) {
+      final CacheItemNode node = entries[i];
+      if (node.keyHash == hashCode && Objects.equals(node.key, key)) {
+        if (expirationIntervalNs > 0 && node.isExpired(System.nanoTime())) {
+          removeNode(node, bucket, last);
+          cacheExpired++;
+          cacheMiss++;
+          return null;
+        }
+        cacheHit++;
+        return node;
+      }
+    }
+    cacheMiss++;
+    return null;
+  }
+
+  private TValue removeNode(final CacheItemNode node, final int bucket, final int last) {
+    if (last < 0) {
+      buckets[bucket] = node.hashNext;
+    } else {
+      entries[last].hashNext = node.hashNext;
+    }
+    final TValue oldValue = node.getValue();
+    node.clear();
+    moveToLruTail(node);
+    count--;
+    return oldValue;
   }
 
   // ====================================================================================================
@@ -348,17 +393,51 @@ public class LruCache<TKey, TValue> {
     }
   }
 
-  public static void main(final String[] args) {
-    final SecureRandom localRand = new SecureRandom();
-    final int BOUND = 128;
-    final LruCache<String, String> lru = new LruCache<>(8, BOUND);
-    for (int i = 0; i < 100_000_000; ++i) {
-      final String key = "k" + localRand.nextInt(BOUND * 2);
-      if (lru.get(key) == null) {
-        lru.put(key, key);
-      }
+  public static final class LruCacheStats {
+    private final long cacheHit;
+    private final long cacheMiss;
+    private final long cacheExpired;
+
+    private LruCacheStats(final long cacheHit, final long cacheMiss, final long cacheExpired) {
+      this.cacheHit = cacheHit;
+      this.cacheMiss = cacheMiss;
+      this.cacheExpired = cacheExpired;
     }
 
+    public int getCacheHitRatio() {
+      return Math.round(100 * (((float)cacheHit) / (cacheHit + cacheMiss)));
+    }
+
+    public int cacheMissRatio() {
+      return Math.round(100 * (((float)cacheMiss) / (cacheHit + cacheMiss)));
+    }
+
+    public long getCacheHit() {
+      return cacheHit;
+    }
+
+    public long getCacheMiss() {
+      return cacheMiss;
+    }
+
+    public long getCacheExpired() {
+      return cacheExpired;
+    }
+
+    @Override
+    public String toString() {
+      return "LruCacheStats [cacheHit=" + cacheHit + ", cacheMiss=" + cacheMiss + ", cacheExpired=" + cacheExpired + "]";
+    }
+  }
+
+  public static void main(final String[] args) {
+    final LruCache<String, String> lru = new LruCache<>(8, 8);
+    for (int i = 0; i < 16; ++i) lru.put("K" + i, "V" + i);
+    lru.dump();
+    lru.clear();
+    lru.dump();
+    for (int i = 16; i < 32; ++i) lru.put("K" + i, "V" + i);
+    lru.dump();
     //testPerf();
   }
 
@@ -369,7 +448,7 @@ public class LruCache<TKey, TValue> {
 
     for (int z = 0; z < 1024; ++z) {
       final int maxSize = BitUtil.nextPow2(rand.nextInt(1 << 20));
-      final LruCache<String, String> lru = new LruCache<>(4, maxSize);
+      final LruCache<String, String> lru = new LruCache<>(4, maxSize, Duration.ofSeconds(1));
       final Thread[] thread = new Thread[16];
       for (int i = 0; i < thread.length; ++i) {
         thread[i] = new Thread(() -> {
@@ -385,7 +464,11 @@ public class LruCache<TKey, TValue> {
       for (int i = 0; i < thread.length; ++i) thread[i].start();
       for (int i = 0; i < thread.length; ++i) ThreadUtil.shutdown(thread[i]);
       final long elapsed = System.nanoTime() - startTime;
-      System.out.println("[T] " + lru.size() + " -> " + HumansUtil.humanTimeNanos(elapsed)
+      System.out.println("[T] " + lru.size()
+        + " cacheHit=" + lru.cacheHit
+        + " cacheMiss=" + lru.cacheMiss
+        + " cacheExpired=" + lru.cacheExpired
+        + " -> " + HumansUtil.humanTimeNanos(elapsed)
         + " -> " + HumansUtil.humanRate((thread.length * NLOOKUPS) / (double)TimeUnit.NANOSECONDS.toSeconds(elapsed)));
     }
   }
