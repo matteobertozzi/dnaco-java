@@ -7,15 +7,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.gullivernet.server.http.HttpRouters.UriRoutesBuilder;
 import com.gullivernet.server.http.direct.DirectMetricsHandler;
 import com.gullivernet.server.http.direct.DirectTracesHandler;
-import com.gullivernet.server.netty.dnaco.DnacoServer;
-import com.gullivernet.server.netty.dnaco.DnacoServerConfig;
-import com.gullivernet.server.netty.dnaco.packets.DnacoServicePacketHandler;
 import com.gullivernet.server.netty.eloop.ServerEventLoop;
 import com.gullivernet.server.netty.http.NettyHttpServer;
 import com.gullivernet.server.netty.http.NettyHttpServerConfig;
 import com.gullivernet.server.util.stats.ServerInfo;
 
-import tech.dnaco.journal.JournalAsyncWriter;
 import tech.dnaco.logging.LogAsyncWriter;
 import tech.dnaco.logging.LogFileWriter;
 import tech.dnaco.logging.LogUtil;
@@ -28,8 +24,7 @@ import tech.dnaco.net.rpc.DnacoRpcService;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.net.EntityStorageHttpHandler;
 import tech.dnaco.storage.net.EntityStorageRpcHandler;
-import tech.dnaco.storage.wal.Wal;
-import tech.dnaco.storage.wal.WalFileWriter;
+import tech.dnaco.storage.net.EntityStorageScheduled;
 import tech.dnaco.telemetry.JvmMetrics;
 import tech.dnaco.telemetry.TelemetryCollectorRegistry;
 import tech.dnaco.util.BuildInfo;
@@ -71,6 +66,8 @@ public final class Main {
 
       final DnacoRpcDispatcher dispatcher = new DnacoRpcDispatcher(DnacoRpcObjectMapper.RPC_CBOR_OBJECT_MAPPER);
       dispatcher.addHandler(new EntityStorageRpcHandler());
+
+      eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.HOURS, new EntityStorageScheduled());
 
       final ServerInfo serverInfo = new ServerInfo()
           .setServiceUrl("goal.mobiledatacollection.it")

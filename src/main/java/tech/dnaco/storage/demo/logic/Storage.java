@@ -5,9 +5,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.util.IdLock;
 
-public class Storage {
+public final class Storage {
   private static final ConcurrentHashMap<String, StorageLogic> projects = new ConcurrentHashMap<>();
   private static final IdLock projectLocks = new IdLock();
+
+  private Storage() {
+    // no-op
+  }
 
   public static StorageLogic getInstance(final String projectId) throws Exception {
     final StorageLogic storage = projects.get(projectId);

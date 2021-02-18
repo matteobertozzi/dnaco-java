@@ -34,9 +34,17 @@ import tech.dnaco.storage.net.models.Scanner;
 import tech.dnaco.storage.net.models.TransactionCommitRequest;
 import tech.dnaco.storage.net.models.TransactionStatusResponse;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.CounterMap;
+import tech.dnaco.telemetry.TelemetryCollector;
 
 public final class EntityStorage {
   public static final EntityStorage INSTANCE = new EntityStorage();
+
+  private final CounterMap opsCount = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_COUNT)
+    .setName("entity_storage_ops_count")
+    .setLabel("Entity Storage Ops Count")
+    .register(new CounterMap());
 
   // ================================================================================
   //  Modification Handlers
@@ -58,6 +66,8 @@ public final class EntityStorage {
 
   public TransactionStatusResponse updateEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    opsCount.inc(request.getTenantId());
+
     final long startTime = System.nanoTime();
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
@@ -100,6 +110,8 @@ public final class EntityStorage {
 
   public TransactionStatusResponse deleteEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    opsCount.inc(request.getTenantId());
+
     final long startTime = System.nanoTime();
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
@@ -133,6 +145,8 @@ public final class EntityStorage {
 
   public TransactionStatusResponse commit(final TransactionCommitRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    opsCount.inc(request.getTenantId());
+
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
 
     final Transaction txn = storage.getTransaction(request.getTxnId());
@@ -169,6 +183,7 @@ public final class EntityStorage {
 
   private TransactionStatusResponse modify(final ModificationRequest request, final Operation operation) throws Exception {
     final long startTime = System.nanoTime();
+    opsCount.inc(request.getTenantId());
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
 
@@ -225,6 +240,7 @@ public final class EntityStorage {
   public Scanner scanEntity(final ScanRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
     VerifyArg.verifyNotEmpty("groups", request.getGroups());
+    opsCount.inc(request.getTenantId());
 
     final long startTime = System.nanoTime();
 
@@ -267,6 +283,7 @@ public final class EntityStorage {
   public Scanner scanAll(final ScanRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
     VerifyArg.verifyNotEmpty("groups", request.getGroups());
+    opsCount.inc(request.getTenantId());
 
     final long startTime = System.nanoTime();
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
@@ -318,6 +335,9 @@ public final class EntityStorage {
 
   public ScanResult scanNext(final ScanNextRequest request) {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    VerifyArg.verifyNotEmpty("scannerId", request.getScannerId());
+    opsCount.inc(request.getTenantId());
+
     final Queue<ScanResult> results = scanResults.get(request.getScannerId());
     if (results == null) return ScanResult.EMPTY_RESULT;
 
@@ -371,6 +391,7 @@ public final class EntityStorage {
   public CountResult countEntity(final CountRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
     VerifyArg.verifyNotEmpty("groups", request.getGroups());
+    opsCount.inc(request.getTenantId());
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
 

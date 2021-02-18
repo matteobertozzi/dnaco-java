@@ -42,6 +42,7 @@ import tech.dnaco.storage.demo.EntitySchema;
 import tech.dnaco.storage.demo.EntitySchema.Operation;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.storage.demo.driver.AbstractKvStore;
+import tech.dnaco.storage.demo.driver.AbstractKvStore.KeyValConsumer;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.RowPredicate;
 import tech.dnaco.storage.demo.driver.MemoryKvStore;
 import tech.dnaco.strings.StringUtil;
@@ -299,6 +300,10 @@ public final class StorageLogic {
   // ================================================================================
   //  Scan related
   // ================================================================================
+  public void scanAll(final KeyValConsumer consumer) throws Exception {
+    storage.scanPrefix(new ByteArraySlice(), consumer);
+  }
+
   public PeekIterator<EntityDataRow> scanRow(final Transaction txn, final ByteArraySlice prefix) throws Exception {
     if (txn == null) {
       return new FilteredIterator<>(storage.scanRow(prefix), StorageLogic::isRowActive);
