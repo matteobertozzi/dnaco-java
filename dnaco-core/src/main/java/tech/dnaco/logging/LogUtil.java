@@ -37,14 +37,15 @@ public final class LogUtil {
   // ===============================================================================================
   //  Logger TraceId related
   // ===============================================================================================
-  private static final AtomicLong traceId = new AtomicLong(System.currentTimeMillis() - 1577836800L);
+  private static final long START_SEC = ((System.currentTimeMillis() - 1609455600000L) / 1000);
+  private static final AtomicLong traceId = new AtomicLong(0);
 
   public static void setTraceId(final long startValue) {
     traceId.set(startValue);
   }
 
   public static long nextTraceId() {
-    return traceId.incrementAndGet();
+    return (traceId.incrementAndGet() << 29) | START_SEC;
   }
 
   public static String toTraceId(final long traceId) {

@@ -130,17 +130,20 @@ public final class BaseN {
   //  BaseN encoder/decoder
   // ================================================================================
   public static String encodeBaseN(final long value, final char[] dictionary) {
-    final int base = dictionary.length;
-    long remaining = value < 0 ? -value : value;
+    if (value >= 0) {
+      final int base = dictionary.length;
+      long remaining = value;
 
-    final StringBuilder result = new StringBuilder();
-    do {
-      final int d = (int) (remaining % base);
-      remaining /= base;
+      final StringBuilder result = new StringBuilder();
+      do {
+        final int d = (int) (remaining % base);
+        remaining /= base;
 
-      result.append(dictionary[d]);
-    } while (remaining != 0);
-    return result.reverse().toString();
+        result.append(dictionary[d]);
+      } while (remaining != 0);
+      return result.reverse().toString();
+    }
+    return encodeBaseN(BigInteger.valueOf(value), dictionary);
   }
 
   public static String encodeBaseN(final BigInteger value, final char[] dictionary) {
@@ -379,7 +382,7 @@ public final class BaseN {
     }
   }
 
-  public static void main(String[] args) throws Exception {
+  public static void main(final String[] args) throws Exception {
     for (int i = 0; i < 10; ++i) {
       final MessageDigest h = MessageDigest.getInstance("SHA3-256");
       h.update(RandData.generateBytes(512));
