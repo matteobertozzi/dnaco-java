@@ -17,9 +17,8 @@
 
 package tech.dnaco.telemetry;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.util.JsonUtil;
 
 public class TelemetryCollectorDefinition {

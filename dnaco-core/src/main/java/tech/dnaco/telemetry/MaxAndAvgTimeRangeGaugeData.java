@@ -17,10 +17,9 @@
 
 package tech.dnaco.telemetry;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 import tech.dnaco.collections.ArrayUtil;
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.strings.StringUtil;
@@ -119,15 +118,15 @@ public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
     return report;
   }
 
-  public static void main(String[] args) {
-    long[] vAvg = new long[100];
-    long[] vMax = new long[100];
+  public static void main(final String[] args) {
+    final long[] vAvg = new long[100];
+    final long[] vMax = new long[100];
     for (int i = 0; i < vMax.length; ++i) {
       vAvg[i] = Math.round(Math.random() * 100);
       vMax[i] = Math.round(vAvg[i] + Math.random() * 50);
     }
 
-    MaxAndAvgTimeRangeGaugeData data = new MaxAndAvgTimeRangeGaugeData(System.currentTimeMillis(), 5000, vAvg, vMax);
+    final MaxAndAvgTimeRangeGaugeData data = new MaxAndAvgTimeRangeGaugeData(System.currentTimeMillis(), 5000, vAvg, vMax);
     System.out.println(data.toHumanChartReport(new StringBuilder(), HumansUtil.HUMAN_TIME_NANOS));
   }
 }

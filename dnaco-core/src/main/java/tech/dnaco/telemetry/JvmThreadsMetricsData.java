@@ -1,8 +1,7 @@
 package tech.dnaco.telemetry;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-
+import tech.dnaco.data.JsonFormatUtil.JsonArray;
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
 import tech.dnaco.strings.HumansTableView;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.strings.StringUtil;
@@ -11,7 +10,7 @@ import tech.dnaco.util.JsonUtil;
 public class JvmThreadsMetricsData implements TelemetryCollectorData {
   private final JvmThreadInfo[] threadInfo;
 
-	public JvmThreadsMetricsData(JvmThreadInfo[] threadInfo) {
+	public JvmThreadsMetricsData(final JvmThreadInfo[] threadInfo) {
     this.threadInfo = threadInfo;
 	}
 
@@ -25,7 +24,7 @@ public class JvmThreadsMetricsData implements TelemetryCollectorData {
 	}
 
 	@Override
-	public StringBuilder toHumanReport(StringBuilder report, HumanLongValueConverter humanConverter) {
+	public StringBuilder toHumanReport(final StringBuilder report, final HumanLongValueConverter humanConverter) {
 		final HumansTableView table = new HumansTableView();
     table.addColumns("state", "name", "group", "type", "priority");
     for (int i = 0; i < threadInfo.length; ++i) {

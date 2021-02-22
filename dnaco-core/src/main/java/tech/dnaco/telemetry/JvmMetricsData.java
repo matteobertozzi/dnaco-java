@@ -3,9 +3,8 @@ package tech.dnaco.telemetry;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;

@@ -1,8 +1,7 @@
 package tech.dnaco.telemetry;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
-
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonPrimitive;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 
 public class GaugeData implements TelemetryCollectorData {

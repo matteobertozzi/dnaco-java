@@ -17,8 +17,7 @@
 
 package tech.dnaco.telemetry;
 
-import com.google.gson.JsonElement;
-
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 
 public interface TelemetryCollectorData {

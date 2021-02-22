@@ -1,7 +1,6 @@
 package tech.dnaco.tracing;
 
-import com.google.gson.JsonObject;
-
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.logging.LogUtil;
 
 public class TaskTracer extends SimpleTraceSpan {

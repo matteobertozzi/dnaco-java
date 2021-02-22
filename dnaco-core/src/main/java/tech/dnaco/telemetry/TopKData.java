@@ -20,11 +20,10 @@ package tech.dnaco.telemetry;
 import java.util.Arrays;
 import java.util.List;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 import tech.dnaco.collections.ArrayUtil;
+import tech.dnaco.data.JsonFormatUtil.JsonArray;
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.logging.LogUtil;
 import tech.dnaco.strings.HumansTableView;
 import tech.dnaco.strings.HumansUtil;

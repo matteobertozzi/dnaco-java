@@ -19,9 +19,8 @@ package tech.dnaco.telemetry;
 
 import java.util.Formatter;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 
@@ -56,7 +55,7 @@ public class CounterMapData implements TelemetryCollectorData {
 
   @Override
   public JsonElement toJson() {
-    final JsonObject json = new JsonObject();
+    final JsonObject json = new JsonObject(keys.length);
     if (keys != null) {
       for (int i = 0; i < keys.length; ++i) {
         json.addProperty(keys[i], events[i]);
@@ -88,8 +87,8 @@ public class CounterMapData implements TelemetryCollectorData {
     return report;
   }
 
-  public static void main(String[] args) {
-    CounterMap m = new CounterMap();
+  public static void main(final String[] args) {
+    final CounterMap m = new CounterMap();
     for (int i = 0; i < 10; ++i) {
       m.inc("test-" + (i % 5));
     }

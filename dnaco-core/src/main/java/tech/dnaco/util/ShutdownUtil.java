@@ -52,6 +52,7 @@ public final class ShutdownUtil {
         final long startTime = System.nanoTime();
         Logger.info("{} shutdown hook!", name);
         for (int i = 0; i < services.length; ++i) {
+          Logger.debug("sending stop signal to: {}", services[i]);
           services[i].sendStopSignal();
         }
         running.set(false);

@@ -22,9 +22,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.strings.StringUtil;
 

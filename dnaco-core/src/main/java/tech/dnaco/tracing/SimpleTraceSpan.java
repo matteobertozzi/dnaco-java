@@ -2,8 +2,7 @@ package tech.dnaco.tracing;
 
 import java.util.Arrays;
 
-import com.google.gson.JsonObject;
-
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.logging.LogUtil;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.JsonUtil;

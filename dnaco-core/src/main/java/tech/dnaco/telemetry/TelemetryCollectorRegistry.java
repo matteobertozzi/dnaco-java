@@ -20,8 +20,7 @@ package tech.dnaco.telemetry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.google.gson.JsonObject;
-
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.strings.StringUtil;
 
 public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {

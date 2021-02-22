@@ -25,13 +25,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
-
 import tech.dnaco.collections.ArrayUtil;
 import tech.dnaco.compression.GzipUtil;
+import tech.dnaco.data.JsonFormatUtil.JsonArray;
+import tech.dnaco.data.JsonFormatUtil.JsonElement;
+import tech.dnaco.data.JsonFormatUtil.JsonNull;
+import tech.dnaco.data.JsonFormatUtil.JsonObject;
 import tech.dnaco.strings.StringUtil;
 
 public class Jwt {
@@ -203,7 +202,6 @@ public class Jwt {
     final int headEof = jwt.indexOf('.', offset);
     if (headEof < 0) throw new JwtException("invalid jwt: " + jwt);
     final byte[] rawJwtHead = b64.decode(jwt.substring(offset, headEof));
-    System.out.println(new String(rawJwtHead));
     final JwtHeader jwtHeader = JsonUtil.fromJson(rawJwtHead, JwtHeader.class);
 
     // parse body
@@ -211,7 +209,6 @@ public class Jwt {
     if (bodyEof < 0) throw new JwtException("invalid jwt: " + jwt);
     byte[] rawJwtBody = b64.decode(jwt.substring(headEof + 1, bodyEof));
     if (offset == 3) rawJwtBody = GzipUtil.uncompress(rawJwtBody);
-    System.out.println(new String(rawJwtBody));
     final JsonObject jwtBody = JsonUtil.fromJson(rawJwtBody, JsonObject.class);
 
     // parse signature
@@ -261,6 +258,10 @@ public class Jwt {
     private String typ;
     private String kid;
     private String alg;
+
+    public JwtHeader() {
+      // no-op (deserializer)
+    }
 
     public JwtHeader(final String kid, final String alg) {
       this("JWT", kid, alg);
