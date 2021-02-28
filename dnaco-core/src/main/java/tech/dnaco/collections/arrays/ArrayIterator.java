@@ -39,16 +39,16 @@ public class ArrayIterator<T> implements Iterator<T> {
     this.nextIndex = 0;
   }
 
-	@Override
-	public boolean hasNext() {
-		return nextIndex < length;
-	}
+  @Override
+  public boolean hasNext() {
+    return nextIndex < length;
+  }
 
-	@Override
-	public T next() {
+  @Override
+  public T next() {
     if (nextIndex < length) {
       return array[offset + nextIndex++];
     }
-		throw new NoSuchElementException();
-	}
+    throw new NoSuchElementException();
+  }
 }

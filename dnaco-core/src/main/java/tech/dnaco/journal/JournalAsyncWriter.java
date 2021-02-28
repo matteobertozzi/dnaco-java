@@ -132,9 +132,9 @@ public class JournalAsyncWriter implements AutoCloseable {
       } finally {
         lock.unlock();
       }
-	  }
+    }
 
-	  private void forceFlush() {
+    private void forceFlush() {
       if (lock.tryLock()) {
         try {
           flushIntervalCond.signalAll();

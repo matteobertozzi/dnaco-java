@@ -17,46 +17,20 @@
 
 package tech.dnaco.telemetry;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.TimeUnit;
 
-public class Gauge implements TelemetryCollector {
-  private final AtomicLong counter = new AtomicLong();
-
-  public long inc() {
-    return counter.incrementAndGet();
-  }
-
-  public long inc(final long amount) {
-    return counter.addAndGet(amount);
-  }
-
-  public long dec() {
-    return counter.decrementAndGet();
-  }
-
-  public long dec(final long amount) {
-    return counter.addAndGet(-amount);
-  }
-
-  public void set(final long newValue) {
-    counter.set(newValue);
-  }
-
-  public long get() {
-    return counter.get();
-  }
-
-  public long getAndReset() {
-    return counter.getAndSet(0);
+public class TimeRangeGauge extends TimeRangeCounter {
+  public TimeRangeGauge(final long maxInterval, final long window, final TimeUnit unit) {
+    super(maxInterval, window, unit);
   }
 
   @Override
-  public String getType() {
-    return "GAUGE";
+  protected long computeNewValue(final long newValue) {
+    return getPrevValue() + newValue;
   }
 
   @Override
-  public TelemetryCollectorData getSnapshot() {
-    return new GaugeData(counter.get());
+  protected void injectZeros(final long now) {
+    injectZeros(now, true);
   }
 }

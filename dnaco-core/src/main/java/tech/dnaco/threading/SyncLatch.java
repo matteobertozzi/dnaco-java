@@ -43,7 +43,7 @@ public class SyncLatch {
   private static final class Sync extends AbstractQueuedSynchronizer {
     private static final long serialVersionUID = -3717842958437054687L;
 
-	  private Sync() {
+    private Sync() {
       setState(1);
     }
 
@@ -51,16 +51,16 @@ public class SyncLatch {
       setState(1);
     }
 
-    protected int tryAcquireShared(int acquires) {
+    protected int tryAcquireShared(final int acquires) {
       return (getState() == 0) ? 1 : -1;
     }
 
-    protected boolean tryReleaseShared(int releases) {
+    protected boolean tryReleaseShared(final int releases) {
       // Decrement count; signal when transition to zero
       for (;;) {
-        int c = getState();
+        final int c = getState();
         if (c == 0) return false;
-        int nextc = c - 1;
+        final int nextc = c - 1;
         if (compareAndSetState(c, nextc))
           return nextc == 0;
       }

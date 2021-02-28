@@ -26,25 +26,25 @@ import tech.dnaco.logging.Logger;
 public class NoOpTracingProvider implements TracingProvider {
   private static final AtomicLong nextId = new AtomicLong();
 
-	@Override
-	public TraceId newTraceId() {
+  @Override
+  public TraceId newTraceId() {
     final long v = nextId.incrementAndGet();
-		return new TraceId(v, v);
-	}
+    return new TraceId(v, v);
+  }
 
-	@Override
-	public SpanId newSpanId() {
+  @Override
+  public SpanId newSpanId() {
     final long v = nextId.incrementAndGet();
-		return new SpanId(v);
-	}
+    return new SpanId(v);
+  }
 
-	@Override
-	public void addTaskTraces(final TaskTracer taskTracer) {
+  @Override
+  public void addTaskTraces(final TaskTracer taskTracer) {
     Logger.debug("Upload Task: {}", taskTracer);
-	}
+  }
 
-	@Override
-	public void addSpanTraces(final Span span) {
+  @Override
+  public void addSpanTraces(final Span span) {
     Logger.debug("Upload Span: {}", span);
-	}
+  }
 }

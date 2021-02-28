@@ -20,8 +20,8 @@ package tech.dnaco.telemetry;
 import tech.dnaco.tracing.TraceId;
 
 public class ConcurrentTopK extends TopK {
-	public ConcurrentTopK(final TopType type, final int k) {
-		super(type, k);
+  public ConcurrentTopK(final TopType type, final int k) {
+    super(type, k);
   }
 
   @Override

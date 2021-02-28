@@ -61,13 +61,13 @@ public class ConcurrentHistogram implements TelemetryCollector {
     }
   }
 
-	@Override
-	public String getType() {
-		return "HISTOGRAM";
-	}
+  @Override
+  public String getType() {
+    return "HISTOGRAM";
+  }
 
-	@Override
-	public TelemetryCollectorData getSnapshot() {
+  @Override
+  public TelemetryCollectorData getSnapshot() {
     final int nBounds = bounds.length;
     int index = 0;
     long nEvents = 0;
@@ -88,5 +88,5 @@ public class ConcurrentHistogram implements TelemetryCollector {
       snapshotEvents[i] = events.get(i);
     }
     return new HistogramData(snapshotBounds, snapshotEvents);
-	}
+  }
 }

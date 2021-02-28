@@ -37,17 +37,17 @@ public class ArraySet<T> extends AbstractSet<T> {
     this.length = length;
   }
 
-	@Override
-	public int size() {
-		return length;
-	}
+  @Override
+  public int size() {
+    return length;
+  }
 
   public boolean isNotEmpty() {
     return length != 0;
   }
 
-	@Override
-	public Iterator<T> iterator() {
-		return new ArrayIterator<>(array, offset, length);
-	}
+  @Override
+  public Iterator<T> iterator() {
+    return new ArrayIterator<>(array, offset, length);
+  }
 }

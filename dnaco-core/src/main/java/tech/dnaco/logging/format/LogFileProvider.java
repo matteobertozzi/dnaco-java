@@ -25,15 +25,15 @@ import tech.dnaco.logging.LoggingProvider;
 
 public class LogFileProvider extends JournalAsyncWriter implements LoggingProvider {
   public LogFileProvider() {
-		super("Logger");
+    super("Logger");
   }
 
   public void start() {
     super.start(2500);
   }
 
-	@Override
-	public void addToLog(final Thread thread, final LogEntry entry) {
+  @Override
+  public void addToLog(final Thread thread, final LogEntry entry) {
     addToLogQueue(thread, entry);
-	}
+  }
 }

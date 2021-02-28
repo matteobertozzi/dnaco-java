@@ -29,14 +29,14 @@ public class TaskTracer implements AutoCloseable {
     this.traceId = traceId;
   }
 
-	@Override
-	public void close() {
-		Tracer.closeTask(this);
-	}
+  @Override
+  public void close() {
+    Tracer.closeTask(this);
+  }
 
-	public TraceId getTraceId() {
-		return traceId;
-	}
+  public TraceId getTraceId() {
+    return traceId;
+  }
 
   // ================================================================================
   //  Spans related

@@ -45,10 +45,10 @@ public class LogFormatV0 implements LogFormat {
     (byte) 0x08, (byte) 0xf0, (byte) 0x9c, (byte) 0x1b, (byte) 0xb1, (byte) 0x31, (byte) 0x07, (byte) 0x2b
   };
 
-	@Override
-	public int getVersion() {
-		return 0;
-	}
+  @Override
+  public int getVersion() {
+    return 0;
+  }
 
   // ===============================================================================================
   //  LogEntry related
@@ -69,7 +69,7 @@ public class LogFormatV0 implements LogFormat {
     }
   }
 
-	@Override
+  @Override
   public void writeEntryMessage(final PagedByteArray buffer, final LogEntryMessage entry) {
     // level 1byte
     buffer.add((entry.hasException() ? 1 << 7 : 0) | (entry.getLevel().ordinal() & 0xff));
@@ -129,19 +129,19 @@ public class LogFormatV0 implements LogFormat {
     }
   }
 
-	@Override
-	public void writeEntryData(final PagedByteArray buffer, final LogEntryData entry) {
-		// TODO Auto-generated method stub
+  @Override
+  public void writeEntryData(final PagedByteArray buffer, final LogEntryData entry) {
+    // TODO Auto-generated method stub
 
-	}
+  }
 
   // ===============================================================================================
   //  Writer related
   // ===============================================================================================
-	@Override
-	public LogEntryWriter newEntryWriter() {
-		return new DeltaWriter();
-	}
+  @Override
+  public LogEntryWriter newEntryWriter() {
+    return new DeltaWriter();
+  }
 
   private final class DeltaWriter implements LogEntryWriter {
     private byte[] lastModule;
@@ -228,9 +228,9 @@ public class LogFormatV0 implements LogFormat {
   // ===============================================================================================
   //  Reader related
   // ===============================================================================================
-	@Override
-	public LogEntryReader newEntryReader(final InputStream stream) throws IOException {
-		// read magic
+  @Override
+  public LogEntryReader newEntryReader(final InputStream stream) throws IOException {
+    // read magic
     final byte[] magic = new byte[FLUSH_MAGIC.length];
     IOUtil.readNBytes(stream, magic, 0, magic.length);
 
@@ -239,7 +239,7 @@ public class LogFormatV0 implements LogFormat {
     if (!BytesUtil.equals(FLUSH_MAGIC, magic)) return null;
 
     return new DeltaReader();
-	}
+  }
 
   private final class DeltaReader implements LogEntryReader {
     private String threadName;

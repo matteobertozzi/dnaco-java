@@ -33,22 +33,22 @@ public class MergeIterator<T> implements PeekIterator<T> {
     }
   }
 
-	@Override
-	public boolean hasNext() {
-		return !queue.isEmpty();
-	}
+  @Override
+  public boolean hasNext() {
+    return !queue.isEmpty();
+  }
 
   @Override
-	public T peek() {
+  public T peek() {
     final PeekIterator<T> iter = queue.peek();
     return iter != null ? iter.peek() : null;
   }
 
-	@Override
-	public T next() {
+  @Override
+  public T next() {
     final PeekIterator<T> nextIter = queue.remove();
     final T next = nextIter.next();
     if (nextIter.hasNext()) queue.add(nextIter);
-		return next;
+    return next;
   }
 }

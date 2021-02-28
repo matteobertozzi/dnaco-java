@@ -20,8 +20,8 @@ package tech.dnaco.telemetry;
 import java.util.concurrent.TimeUnit;
 
 public class ConcurrentTimeRangeGauge extends ConcurrentTimeRangeCounter {
-	public ConcurrentTimeRangeGauge(final long maxInterval, final long window, final TimeUnit unit) {
-		super(maxInterval, window, unit);
+  public ConcurrentTimeRangeGauge(final long maxInterval, final long window, final TimeUnit unit) {
+    super(maxInterval, window, unit);
   }
 
   @Override

@@ -57,7 +57,7 @@ public interface LogFormat {
     boolean fetchEntryHead(InputStream stream, LogEntryType type) throws IOException;
     LogEntry fetchEntryData(InputStream stream) throws IOException;
     void skipEntryData(InputStream stream) throws IOException;
-	  LogEntryHeader getEntryHeader();
+    LogEntryHeader getEntryHeader();
   }
 
   final class LogEntryHeader {
@@ -92,6 +92,7 @@ public interface LogFormat {
    */
   class LogJournalEntryHeader {
     public int type;
+
     public long timestamp;
     public long traceIdHi;
     public long traceIdLo;

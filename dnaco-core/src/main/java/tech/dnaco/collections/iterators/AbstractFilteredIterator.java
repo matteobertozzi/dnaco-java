@@ -32,10 +32,10 @@ public abstract class AbstractFilteredIterator<TIn, TOut> implements PeekIterato
     this.initialized = false;
   }
 
-	@Override
-	public boolean hasNext() {
+  @Override
+  public boolean hasNext() {
     initializeIfNot();
-		return hasItem;
+    return hasItem;
   }
 
   @Override
@@ -44,8 +44,8 @@ public abstract class AbstractFilteredIterator<TIn, TOut> implements PeekIterato
     return nextItem;
   }
 
-	@Override
-	public TOut next() {
+  @Override
+  public TOut next() {
     initializeIfNot();
 
     if (!hasItem) {

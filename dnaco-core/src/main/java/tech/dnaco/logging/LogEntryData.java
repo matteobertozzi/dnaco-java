@@ -33,8 +33,8 @@ public class LogEntryData extends LogEntry {
   private String label;
 
   @Override
-	public LogEntryType getType() {
-		return LogEntryType.DATA;
+  public LogEntryType getType() {
+    return LogEntryType.DATA;
   }
 
   public String getDataType() {

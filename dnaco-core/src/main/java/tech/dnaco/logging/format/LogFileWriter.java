@@ -85,8 +85,8 @@ public class LogFileWriter implements JournalWriter {
     this.deleteDays = deleteDays;
   }
 
-	@Override
-	public void writeBuffers(final String tenantId, final List<JournalBuffer> buffers) {
+  @Override
+  public void writeBuffers(final String tenantId, final List<JournalBuffer> buffers) {
     final ZonedDateTime now = ZonedDateTime.now();
 
     final File logDayDir = new File(logDir, LOG_FOLDER_DATE_FORMAT.format(now));
