@@ -19,7 +19,12 @@
 
 package tech.dnaco.logging;
 
+import tech.dnaco.collections.arrays.ArrayUtil;
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.logging.LogUtil.LogLevel;
+import tech.dnaco.logging.format.LogFormat;
+import tech.dnaco.strings.StringFormat;
+import tech.dnaco.strings.StringUtil;
 
 public class LogEntryMessage extends LogEntry {
   private String exception;
@@ -31,5 +36,70 @@ public class LogEntryMessage extends LogEntry {
   @Override
   public LogEntryType getType() {
     return LogEntryType.MESSAGE;
+  }
+
+  public boolean hasException() {
+    return StringUtil.isNotEmpty(exception);
+  }
+
+  public String getException() {
+    return exception;
+  }
+
+  public void setException(final Throwable exception) {
+    setException(exception != null ? LogUtil.stackTraceToString(exception) : null);
+  }
+
+  public void setException(final String exception) {
+    this.exception = exception;
+  }
+
+  public String getClassAndMethod() {
+    return classAndMethod;
+  }
+
+  public void setClassAndMethod(final String classAndMethod) {
+    this.classAndMethod = classAndMethod;
+  }
+
+  public String getMsgFormat() {
+    return msgFormat;
+  }
+
+  public void setMsgFormat(final String msgFormat) {
+    this.msgFormat = msgFormat;
+  }
+
+  public boolean hasMsgArgs() {
+    return msgArgs != null;
+  }
+
+  public String[] getMsgArgs() {
+    return msgArgs;
+  }
+
+  public void setMsgArgs(final String[] msgArgs) {
+    this.msgArgs = ArrayUtil.isNotEmpty(msgArgs) ? msgArgs : null;
+  }
+
+  public LogLevel getLevel() {
+    return level;
+  }
+
+  public void setLevel(final LogLevel level) {
+    this.level = level;
+  }
+
+  public StringBuilder humanReport(final StringBuilder report) {
+    super.humanReport(report);
+    report.append(" ").append(level).append(" ").append(classAndMethod).append(" - ");
+    StringFormat.applyFormat(report, msgFormat, msgArgs);
+    if (exception != null) report.append(" - ").append(exception);
+    return report;
+  }
+
+  @Override
+  public void writeData(final PagedByteArray buffer) {
+    LogFormat.CURRENT.writeEntryMessage(buffer, this);
   }
 }

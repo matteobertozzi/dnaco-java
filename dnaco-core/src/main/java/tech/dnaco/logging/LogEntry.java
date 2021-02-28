@@ -19,17 +19,23 @@
 
 package tech.dnaco.logging;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
+import tech.dnaco.journal.JournalEntry;
+import tech.dnaco.logging.format.LogFormat;
 import tech.dnaco.tracing.SpanId;
 import tech.dnaco.tracing.TraceId;
 
-public abstract class LogEntry {
+public abstract class LogEntry implements JournalEntry {
   public static final DateTimeFormatter LOG_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
   public enum LogEntryType { FLUSH, RESET, MESSAGE, DATA }
 
-  private Thread thread;
+  private String thread;
   private String tenantId;
   private String module;
   private String owner;
@@ -40,7 +46,88 @@ public abstract class LogEntry {
 
   public abstract LogEntryType getType();
 
+  @Override
+  public void release() {
+    // no-op
+  }
+
+  public String getThread() {
+    return thread;
+  }
+
+  public void setThread(final Thread thread) {
+    setThread(thread.getName());
+  }
+
+  public void setThread(final String thread) {
+    this.thread = thread;
+  }
+
+  @Override
+  public String getTenantId() {
+    return tenantId;
+  }
+
+  public void setTenantId(final String tenantId) {
+    this.tenantId = tenantId;
+  }
+
+  public String getModule() {
+    return module;
+  }
+
+  public void setModule(final String module) {
+    this.module = module;
+  }
+
+  public String getOwner() {
+    return owner;
+  }
+
+  public void setOwner(final String owner) {
+    this.owner = owner;
+  }
+
+  public long getTimestamp() {
+    return timestamp;
+  }
+
+  public void setTimestamp(final long timestamp) {
+    this.timestamp = timestamp;
+  }
+
+  public TraceId getTraceId() {
+    return traceId;
+  }
+
+  public void setTraceId(final TraceId traceId) {
+    this.traceId = traceId;
+  }
+
+  public SpanId getSpanId() {
+    return spanId;
+  }
+
+  public void setSpanId(final SpanId spanId) {
+    this.spanId = spanId;
+  }
+
+  @Override
+  public void write(final PagedByteArray buffer) {
+    LogFormat.writeJournalHeader(buffer, this);
+    final int offset = buffer.size();
+    buffer.addFixed32(0);
+    writeData(buffer);
+    buffer.setFixed32(offset, buffer.size() - (offset + 4));
+  }
+
+  protected abstract void writeData(PagedByteArray buffer);
+
   public StringBuilder humanReport(final StringBuilder report) {
+    final ZonedDateTime zdt = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault());
+    report.append(LOG_DATE_FORMAT.format(zdt));
+    report.append(" [").append(traceId).append(":").append(spanId).append(":").append(thread);
+    report.append(":").append(tenantId).append(":").append(module).append(":").append(owner).append("]");
     return report;
   }
 }

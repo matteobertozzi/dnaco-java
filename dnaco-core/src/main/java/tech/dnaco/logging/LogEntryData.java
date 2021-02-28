@@ -21,6 +21,8 @@ package tech.dnaco.logging;
 
 import java.util.ArrayList;
 
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
+import tech.dnaco.logging.format.LogFormat;
 import tech.dnaco.strings.HumansTableView;
 
 public class LogEntryData extends LogEntry {
@@ -170,5 +172,20 @@ public class LogEntryData extends LogEntry {
       }
       tableView.addHumanView(report);
     }
+  }
+
+  public StringBuilder humanReport(final StringBuilder report) {
+    super.humanReport(report);
+    report.append(" - ").append(dataType);
+    report.append(" - ").append(label).append("\n");
+    for (final Data data: this.dataEntries) {
+      data.addToHumanReport(report);
+    }
+    return report;
+  }
+
+  @Override
+  public void writeData(final PagedByteArray buffer) {
+    LogFormat.CURRENT.writeEntryData(buffer, this);
   }
 }

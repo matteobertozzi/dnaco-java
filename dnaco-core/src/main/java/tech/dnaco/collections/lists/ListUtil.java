@@ -63,6 +63,7 @@ public final class ListUtil {
     return records.subList(offset, endIndex);
   }
 
+  @SafeVarargs
   public static <T> List<T> concat(final List<T>... lists) {
     if(ArrayUtil.isEmpty(lists)) return Collections.emptyList();
 

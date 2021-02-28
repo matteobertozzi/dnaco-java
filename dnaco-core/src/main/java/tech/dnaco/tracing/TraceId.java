@@ -24,6 +24,8 @@ import tech.dnaco.strings.BaseN;
 import tech.dnaco.util.RandData;
 
 public class TraceId implements Comparable<TraceId> {
+  public static final TraceId NULL_TRACE_ID = new TraceId(0, 0);
+
   private static final char TRACE_ID_SEPARATOR = '-';
 
   private final long hi;

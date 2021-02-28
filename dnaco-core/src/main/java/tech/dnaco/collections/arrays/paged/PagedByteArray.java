@@ -149,6 +149,15 @@ public class PagedByteArray {
     }
   }
 
+  public void addBlob8(final String value) {
+    addBlob8(value.getBytes());
+  }
+
+  public void addBlob8(final byte[] value) {
+    add(value.length & 0xff);
+    add(value);
+  }
+
   public void setFixed32(final int offset, final int value) {
     setFixed(offset, 4, value);
   }
@@ -196,6 +205,15 @@ public class PagedByteArray {
       result += ((long)get(offset + i) & 0xff) << (i << 3);
     }
     return result;
+  }
+
+  public byte[] getBlob8(final int offset) {
+    final int buflen = get(offset) & 0xff;
+    final byte[] buffer = new byte[buflen];
+    for (int i = 0; i < buflen; ++i) {
+      buffer[i] = (byte) get(offset + i + 1);
+    }
+    return buffer;
   }
 
   // ================================================================================

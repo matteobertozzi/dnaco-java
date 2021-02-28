@@ -109,7 +109,7 @@ public class JournalAsyncWriter implements AutoCloseable {
         flusherThread.waitForFlush();
       }
     } catch (final Throwable e) {
-      Logger.logToStderr(LogLevel.ERROR, "unable to add entry to the journal: thread={} entry={}", currentThread, entry);
+      Logger.logToStderr(LogLevel.ERROR, e, "unable to add entry to the journal: thread={} entry={}", currentThread, entry);
     }
   }
 

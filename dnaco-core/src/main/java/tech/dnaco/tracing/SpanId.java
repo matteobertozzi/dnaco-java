@@ -26,6 +26,8 @@ import tech.dnaco.strings.BaseN;
 import tech.dnaco.util.RandData;
 
 public final class SpanId implements Comparable<SpanId> {
+  public static final SpanId NULL_SPAN_ID = new SpanId(0);
+
   private final long spanId;
   private String encoded;
 

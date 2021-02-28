@@ -56,7 +56,7 @@ public final class Tracer {
 
   public static TraceId getCurrentTraceId() {
     final TaskTracer task = getCurrentTask();
-    return task != null ? task.getTraceId() : null;
+    return task != null ? task.getTraceId() : TraceId.NULL_TRACE_ID;
   }
 
   public static TaskTracer getTask(final TraceId traceId) {
@@ -84,7 +84,7 @@ public final class Tracer {
 
   public static SpanId getCurrentSpanId() {
     final Span span = getCurrentSpan();
-    return span != null ? span.getSpanId() : null;
+    return span != null ? span.getSpanId() : SpanId.NULL_SPAN_ID;
   }
 
   protected static void setLocalSpan(final Span span) {

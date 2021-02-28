@@ -28,8 +28,7 @@ import java.util.function.Supplier;
 
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.strings.StringFormat;
-import tech.dnaco.tracing.SpanId;
-import tech.dnaco.tracing.TraceId;
+import tech.dnaco.time.TimeUtil;
 import tech.dnaco.tracing.Tracer;
 
 public final class Logger {
@@ -189,8 +188,8 @@ public final class Logger {
     log(LogLevel.TRACE, null, format, args);
   }
 
-  public static void add(final LogEntry entry) {
-    provider.addToLog(entry);
+  public static void add(final Thread thread, final LogEntry entry) {
+    provider.addToLog(thread, entry);
   }
 
   // ===============================================================================================
@@ -259,19 +258,29 @@ public final class Logger {
 
   private static void logRaw(final LogLevel level, final Throwable exception,
       final String format, final String[] args) {
-    // skipFrames = 4 -> [0: lookupLineClassAndMethod(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
-    final String method = LogUtil.lookupLineClassAndMethod(4);
+    final long timestamp = TimeUtil.currentUtcMillis();
+    final Thread thread = Thread.currentThread();
 
-    final TraceId traceId = Tracer.getCurrentTraceId();
-    final SpanId spanId = Tracer.getCurrentSpanId();
+    // skipFrames = 4 -> [0: lookupLineClassAndMethod(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
+    final String classAndMethod = LogUtil.lookupLineClassAndMethod(4);
 
     final LogEntryMessage entry = new LogEntryMessage();
-    add(entry);
+    // --- LogEntry ---
+    entry.setThread(thread);
+    entry.setTenantId("TENA"); // TODO
+    entry.setModule("MODU");   // TODO
+    entry.setOwner("OWNA");    // TODO
+    entry.setTimestamp(timestamp);
+    entry.setTraceId(Tracer.getCurrentTraceId());
+    entry.setSpanId(Tracer.getCurrentSpanId());
+    // --- LogEntryMessage ---
+    entry.setLevel(level);
+    entry.setClassAndMethod(classAndMethod);
+    entry.setMsgFormat(format);
+    entry.setMsgArgs(args);
+    entry.setException(exception);
 
-    STDOUT.printf("[%s:%s] %s %s: %s%n",
-        traceId, spanId, level, method,
-        args != null ? StringFormat.format(format, (Object[])args) : format);
-    if (exception != null) exception.printStackTrace(STDOUT);
+    add(thread, entry);
   }
 
   // ===============================================================================================
@@ -285,7 +294,7 @@ public final class Logger {
     }
 
     @Override
-    public void addToLog(final LogEntry entry) {
+    public void addToLog(final Thread thread, final LogEntry entry) {
       STDOUT.println(entry.humanReport(new StringBuilder(160)));
     }
   }
