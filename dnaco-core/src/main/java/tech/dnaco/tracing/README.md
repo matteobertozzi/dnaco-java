@@ -15,14 +15,15 @@ try (TaskTracer task = Tracer.newTask()) {
 
 A Task contains one or more span. Aside passing around the TaskTracer you can always get the current local-thread task, set more attributes and start spans.
 ```java
-Span span = Tracer.getCurrentTask().startSpan();
-try {
-  ...
-  span.addEvent("event").setAttribute("x", 10);
-  ...
-  span.completed()
-} catch (Exception e) {
-  span.failed(e)
+try (Span span = Tracer.getCurrentTask().startSpan()) {
+  try {
+    ...
+    span.addEvent("event").setAttribute("x", 10);
+    ...
+    span.completed()
+  } catch (Exception e) {
+    span.failed(e)
+  }
 }
 ```
 

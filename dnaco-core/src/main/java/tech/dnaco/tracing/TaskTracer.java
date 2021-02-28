@@ -41,12 +41,22 @@ public class TaskTracer implements AutoCloseable {
   // ================================================================================
   //  Spans related
   // ================================================================================
+  public Span startRootSpan() {
+    return startRootSpan(null);
+  }
+
+  public Span startRootSpan(final SpanId parentSpanId) {
+    final Span span = new RootSpan(traceId, parentSpanId, Tracer.getProvider().newSpanId());
+    Tracer.setLocalSpan(span);
+    return span;
+  }
+
   public Span startSpan() {
     return startSpan(null);
   }
 
   public Span startSpan(final SpanId parentSpanId) {
-    final Span span = new Span(parentSpanId, Tracer.getProvider().newSpanId());
+    final Span span = new Span(traceId, parentSpanId, Tracer.getProvider().newSpanId());
     Tracer.setLocalSpan(span);
     return span;
   }
@@ -55,7 +65,11 @@ public class TaskTracer implements AutoCloseable {
   //  Attributes related
   // ================================================================================
   public boolean hasAttributes() {
-    return !attributes.isEmpty();
+    return attributes.isNotEmpty();
+  }
+
+  public StringObjectMap getAttributes() {
+    return attributes;
   }
 
   public TaskTracer setAttribute(final String key, final Object value) {

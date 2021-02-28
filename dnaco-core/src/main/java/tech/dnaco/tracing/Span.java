@@ -20,6 +20,7 @@
 package tech.dnaco.tracing;
 
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.collections.maps.StringObjectMap;
 import tech.dnaco.logging.LogUtil;
@@ -30,43 +31,59 @@ public class Span implements AutoCloseable {
   private final ArrayList<SpanEvent> events = new ArrayList<>(0);
 
   private final String callerMethod;
+  private final TraceId traceId;
   private final SpanId parentSpanId;
   private final SpanId spanId;
-  private final long startTs;
+  private final long startTime;
+  private final long startNs;
 
   private Throwable exception;
-  private long endTs = -1;
+  private long elapsedNs = -1;
 
-  protected Span(final SpanId parentSpanId, final SpanId spanId) {
+  protected Span(final TraceId traceId, final SpanId parentSpanId, final SpanId spanId) {
     this.callerMethod = LogUtil.lookupLineClassAndMethod(2);
+    this.traceId = traceId;
     this.parentSpanId = parentSpanId;
     this.spanId = spanId;
-    this.startTs = TimeUtil.currentUtcMillis();
+    this.startTime = TimeUtil.currentUtcMillis();
+    this.startNs = System.nanoTime();
   }
 
   @Override
   public void close() {
-    if (endTs < 0) {
+    if (!isCompleted()) {
       // try (Span span = Tracer.newSpan()) { ... }
       completed();
     }
     Tracer.closeSpan(this);
   }
 
-  public SpanId getSpanId() {
-    return spanId;
+  public TraceId getTraceId() {
+    return traceId;
   }
 
   public SpanId getParentSpanId() {
     return parentSpanId;
   }
 
-  public long getStartTs() {
-    return startTs;
+  public SpanId getSpanId() {
+    return spanId;
   }
 
-  public long getEndTs() {
-    return endTs;
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public long getEndTime() {
+    return startTime + TimeUnit.NANOSECONDS.toMillis(elapsedNs);
+  }
+
+  protected long getStartNs() {
+    return startNs;
+  }
+
+  public long getElapsedNs() {
+    return elapsedNs;
   }
 
   public String getCallerMethod() {
@@ -77,7 +94,11 @@ public class Span implements AutoCloseable {
   //  Attributes related
   // ================================================================================
   public boolean hasAttributes() {
-    return !attributes.isEmpty();
+    return attributes.isNotEmpty();
+  }
+
+  public StringObjectMap getAttributes() {
+    return attributes;
   }
 
   public Span setAttribute(final String key, final Object value) {
@@ -101,8 +122,8 @@ public class Span implements AutoCloseable {
   // ================================================================================
   //  Completion related
   // ================================================================================
-  public boolean isEnded() {
-    return endTs > 0;
+  public boolean isCompleted() {
+    return elapsedNs >= 0;
   }
 
   public boolean hasException() {
@@ -114,16 +135,17 @@ public class Span implements AutoCloseable {
   }
 
   public void completed() {
-    this.endTs = TimeUtil.currentUtcMillis();
+    this.elapsedNs = System.nanoTime() - startNs;
+    this.exception = null;
   }
 
   public void failed(final Throwable exception) {
-    this.endTs = TimeUtil.currentUtcMillis();
+    this.elapsedNs = System.nanoTime() - startNs;
     this.exception = exception;
   }
 
   @Override
   public String toString() {
-    return "Span [parentSpanId=" + parentSpanId + ", spanId=" + spanId + ", startTs=" + startTs + "]";
+    return "Span [parentSpanId=" + parentSpanId + ", spanId=" + spanId + ", startTs=" + startTime + "]";
   }
 }

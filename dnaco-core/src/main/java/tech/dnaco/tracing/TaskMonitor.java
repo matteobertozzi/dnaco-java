@@ -19,7 +19,16 @@
 
 package tech.dnaco.tracing;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import tech.dnaco.collections.maps.StringObjectMap;
 import tech.dnaco.logging.Logger;
+import tech.dnaco.strings.HumansTableView;
+import tech.dnaco.strings.HumansUtil;
 
 public final class TaskMonitor {
   public static final TaskMonitor INSTANCE = new TaskMonitor();
@@ -27,52 +36,76 @@ public final class TaskMonitor {
     Logger.EXCLUDE_CLASSES.add(TaskMonitor.class.getName());
   }
 
+  private static final Set<RootSpan> runningTasks = ConcurrentHashMap.newKeySet(128);
+  private static final RootSpan[] recentlyCompletedTracers = new RootSpan[16];
+  private static final AtomicLong recentlyCompletedIndex = new AtomicLong(0);
+
   private TaskMonitor() {
     // no-op
   }
 
-  /*
-  public void addActiveTasksToHumanReport(final StringBuilder report) {
-    final ArrayList<TaskTracer> activeTasks = new ArrayList<>(Tracer.getActiveTasks());
+  protected static void addRunningTask(final RootSpan task) {
+    runningTasks.add(task);
+  }
+
+  protected static void addCompletedTask(final RootSpan task) {
+    runningTasks.remove(task);
+
+    final int index = (int) (recentlyCompletedIndex.incrementAndGet() & (recentlyCompletedTracers.length - 1));
+    recentlyCompletedTracers[index] = task;
+  }
+
+  public static List<RootSpan> getRecentlyCompletedTasks() {
+    final ArrayList<RootSpan> tasks = new ArrayList<>(recentlyCompletedTracers.length);
+    for (int i = 0; i < recentlyCompletedTracers.length; ++i) {
+      if (recentlyCompletedTracers[i] == null) continue;
+      tasks.add(recentlyCompletedTracers[i]);
+    }
+    tasks.sort((a, b) -> Long.compare(b.getStartTime(), a.getStartTime()));
+    return tasks;
+  }
+
+  public StringBuilder addActiveTasksToHumanReport(final StringBuilder report) {
+    final ArrayList<RootSpan> activeTasks = new ArrayList<>(runningTasks);
     activeTasks.sort((a, b) -> Long.compare(b.getStartTime(), a.getStartTime()));
 
     final HumansTableView table = new HumansTableView();
-    table.addColumns("Thread", "ProjectId", "TraceId", "Queue Time", "Run Time", "Name");
+    table.addColumns("Thread", "TenantId", "TraceId", "Queue Time", "Run Time", "Name");
 
     final long now = System.nanoTime();
-    for (final TaskTracer task: activeTasks) {
-      final long queueTime = task.getLongData(TraceAttrs.TRACE_QUEUE_TIME, -1);
+    for (final RootSpan task: activeTasks) {
+      final StringObjectMap attrs = task.getAttributes();
+      final long queueTime = attrs.getLong(TraceAttributes.QUEUE_TIME, -1);
+      final long elapsed = now - task.getStartNs();
 
-      table.addRow(task.getThread().getName(),
-        task.getStringData(TraceAttrs.TRACE_TENANT_ID),
-        LogUtil.toTraceId(task.getTraceId()),
+      table.addRow(attrs.getString(TraceAttributes.THREAD_NAME, null),
+        attrs.getString(TraceAttributes.TENANT_ID, null),
+        task.getTraceId() + ":" + task.getParentSpanId() + ":" + task.getSpanId(),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",
-        HumansUtil.humanTimeNanos(task.getElapsedNs(now)),
-        task.getLabel());
+        HumansUtil.humanTimeNanos(elapsed),
+        attrs.getString(TraceAttributes.LABEL, task.getCallerMethod()));
     }
 
-    table.addHumanView(report);
+    return table.addHumanView(report);
   }
 
-  public void addRecentlyCompletedTasksToHumanReport(final StringBuilder report) {
-    final List<TaskTracer> tasks = Tracer.getRecentlyCompletedTasks();
-
+  public StringBuilder addRecentlyCompletedTasksToHumanReport(final StringBuilder report) {
     final HumansTableView table = new HumansTableView();
-    table.addColumns("Thread", "ProjectId", "TraceId", "Start Time", "Queue Time", "Execution Time", "Name");
+    table.addColumns("Thread", "TenantId", "TraceId", "Start Time", "Queue Time", "Execution Time", "Name");
 
-    for (final TaskTracer task: tasks) {
-      final long queueTime = task.getLongData(TraceAttrs.TRACE_QUEUE_TIME, -1);
+    for (final RootSpan task: getRecentlyCompletedTasks()) {
+      final StringObjectMap attrs = task.getAttributes();
+      final long queueTime = attrs.getLong(TraceAttributes.QUEUE_TIME, -1);
 
-      table.addRow(task.getThread().getName(),
-        task.getStringData(TraceAttrs.TRACE_TENANT_ID),
-        LogUtil.toTraceId(task.getTraceId()),
+      table.addRow(attrs.getString(TraceAttributes.THREAD_NAME, null),
+        attrs.getString(TraceAttributes.TENANT_ID, null),
+        task.getTraceId() + ":" + task.getParentSpanId() + ":" + task.getSpanId(),
         HumansUtil.humanDate(task.getStartTime()),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",
         HumansUtil.humanTimeNanos(task.getElapsedNs()),
-        task.getLabel());
+        attrs.getString(TraceAttributes.LABEL, task.getCallerMethod()));
     }
 
-    table.addHumanView(report);
+    return table.addHumanView(report);
   }
-  */
 }

@@ -1,6 +1,6 @@
 package tech.dnaco.tracing;
 
-public class StandardAttributes {
+public final class TraceAttributes {
   public static final String HOST_ID = "host.id";
   public static final String HOST_NAME = "host.name";
   public static final String HOST_TYPE = "host.type";
@@ -21,7 +21,12 @@ public class StandardAttributes {
   public static final String PROCESS_RUNTIME_NAME = "process.runtime.name";
   public static final String PROCESS_RUNTIME_VERSION = "process.runtime.version";
 
-  private StandardAttributes() {
+  public static final String LABEL = "label";
+  public static final String TENANT_ID = "tenant.id";
+  public static final String QUEUE_TIME = "queue.time";
+  public static final String THREAD_NAME = "thread.name";
+
+  private TraceAttributes() {
     // no-op
   }
 }
