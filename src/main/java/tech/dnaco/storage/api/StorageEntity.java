@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tech.dnaco.bytes.ByteArraySlice;
-import tech.dnaco.collections.ArrayUtil;
-import tech.dnaco.collections.IntArrayList;
+import tech.dnaco.collections.arrays.ArrayUtil;
+import tech.dnaco.collections.arrays.IntArray;
 import tech.dnaco.storage.blocks.BlockEntry;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 
@@ -29,7 +29,7 @@ public class StorageEntity {
     final int rowCount = data.rowCount();
 
     final ArrayList<BlockEntry> entries = new ArrayList<>(rowCount * data.fields.length);
-    final IntArrayList errors = new IntArrayList(rowCount);
+    final IntArray errors = new IntArray(rowCount);
     int inserted = 0;
 
     for (int i = 0; i < rowCount; ++i) {
@@ -60,7 +60,7 @@ public class StorageEntity {
     final int rowCount = data.rowCount();
 
     final ArrayList<BlockEntry> entries = new ArrayList<>(rowCount * data.fields.length);
-    final IntArrayList errors = new IntArrayList(rowCount);
+    final IntArray errors = new IntArray(rowCount);
     int inserted = 0;
 
     for (int i = 0; i < rowCount; ++i) {
@@ -86,7 +86,7 @@ public class StorageEntity {
     final int rowCount = data.rowCount();
 
     final ArrayList<BlockEntry> entries = new ArrayList<>(rowCount * data.fields.length);
-    final IntArrayList errors = new IntArrayList(rowCount);
+    final IntArray errors = new IntArray(rowCount);
     int updated = 0;
 
     for (int i = 0; i < rowCount; ++i) {
@@ -116,9 +116,9 @@ public class StorageEntity {
       return this;
     }
 
-    private WriteResult setErrors(final IntArrayList errors) {
+    private WriteResult setErrors(final IntArray errors) {
       this.errors = errors.size();
-      this.error_details = errors.toArray();
+      this.error_details = errors.drain();
       return this;
     }
 

@@ -3,7 +3,7 @@ package tech.dnaco.storage;
 import java.io.File;
 import java.util.UUID;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gullivernet.commons.util.JsonConfig;
 
 import tech.dnaco.logging.LogUtil.LogLevel;
@@ -15,21 +15,21 @@ public class StorageConfig extends JsonConfig {
   public final String SERVICE_INSTANCE_ID = UUID.randomUUID().toString();
 
   // Service Logger properties
-  @SerializedName("logs.dir") private File logDir;
-  @SerializedName("logs.level") private LogLevel logLevel;
-  @SerializedName("logs.cleaner.interval.days") private int logCleanerIntervalDays;
+  @JsonProperty("logs.dir") private File logDir;
+  @JsonProperty("logs.level") private LogLevel logLevel;
+  @JsonProperty("logs.cleaner.interval.days") private int logCleanerIntervalDays;
 
   // Event Loop properties
-  @SerializedName("eloop.boss.groups") private int eloopBossGroups;
-  @SerializedName("eloop.worker.groups") private int eloopWorkerGroups;
+  @JsonProperty("eloop.boss.groups") private int eloopBossGroups;
+  @JsonProperty("eloop.worker.groups") private int eloopWorkerGroups;
 
   // Services properties
-  @SerializedName("storage.service.port") private int storageServicePort;
-  @SerializedName("storage.http.port") private int storageHttpPort;
+  @JsonProperty("storage.service.port") private int storageServicePort;
+  @JsonProperty("storage.http.port") private int storageHttpPort;
 
   // Storage properties
-  @SerializedName("storage.dir") private File storageDir;
-  @SerializedName("storage.wal.flush.interval.ms") private int storageWalFlushIntervalMs;
+  @JsonProperty("storage.dir") private File storageDir;
+  @JsonProperty("storage.wal.flush.interval.ms") private int storageWalFlushIntervalMs;
 
 
   private StorageConfig() {

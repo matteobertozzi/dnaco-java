@@ -12,11 +12,10 @@ import com.gullivernet.server.netty.http.NettyHttpServer;
 import com.gullivernet.server.netty.http.NettyHttpServerConfig;
 import com.gullivernet.server.util.stats.ServerInfo;
 
-import tech.dnaco.logging.LogAsyncWriter;
-import tech.dnaco.logging.LogFileWriter;
-import tech.dnaco.logging.LogUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.LoggerSession;
+import tech.dnaco.logging.format.LogFileProvider;
+import tech.dnaco.logging.format.LogFileWriter;
 import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.rpc.DnacoRpcDispatcher;
 import tech.dnaco.net.rpc.DnacoRpcObjectMapper;
@@ -27,9 +26,10 @@ import tech.dnaco.storage.net.EntityStorageRpcHandler;
 import tech.dnaco.storage.net.EntityStorageScheduled;
 import tech.dnaco.telemetry.JvmMetrics;
 import tech.dnaco.telemetry.TelemetryCollectorRegistry;
+import tech.dnaco.threading.ShutdownUtil;
+import tech.dnaco.threading.ThreadUtil;
+import tech.dnaco.tracing.TraceId;
 import tech.dnaco.util.BuildInfo;
-import tech.dnaco.util.ShutdownUtil;
-import tech.dnaco.util.ThreadUtil;
 
 public final class Main {
   public static void main(final String[] args) throws Exception {
@@ -44,12 +44,12 @@ public final class Main {
     RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
 
     // Setup Logger using ServiceConfig
-    final LogAsyncWriter logWriter;
+    final LogFileProvider logWriter;
     Logger.setDefaultLevel(StorageConfig.INSTANCE.getLogLevel());
     if (conf.hasDiskLogger()) {
-      logWriter = new LogAsyncWriter();
+      logWriter = new LogFileProvider();
       logWriter.registerWriter(new LogFileWriter(conf.getLogsDir(), conf.getLogCleanerIntervalDays()));
-      Logger.setWriter(logWriter);
+      Logger.setProvider(logWriter);
       logWriter.start();
     } else {
       logWriter = null;
@@ -122,7 +122,7 @@ public final class Main {
   }
 
   private static void metricsDump() {
-    Logger.setSession(LoggerSession.newSession("metrics", "metrics", "metrics", Logger.getDefaultLevel(), LogUtil.nextTraceId()));
+    Logger.setSession(LoggerSession.newSession("metrics", "metrics", "metrics", Logger.getDefaultLevel(), TraceId.NULL_TRACE_ID));
     try {
       Logger.raw(TelemetryCollectorRegistry.INSTANCE.humanReport());
     } catch (final Throwable e) {

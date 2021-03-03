@@ -1,6 +1,6 @@
 package tech.dnaco.storage.net.models;
 
-import tech.dnaco.collections.ArrayUtil;
+import tech.dnaco.collections.arrays.ArrayUtil;
 
 public class ModificationRequest {
   private String tenantId;

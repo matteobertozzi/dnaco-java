@@ -10,7 +10,7 @@ import com.gullivernet.commons.util.DateUtil;
 import com.gullivernet.commons.util.VerifyArg;
 
 import tech.dnaco.bytes.ByteArraySlice;
-import tech.dnaco.collections.ArrayUtil;
+import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.LoggerSession;
 import tech.dnaco.storage.demo.EntityDataRow;
@@ -34,6 +34,7 @@ import tech.dnaco.storage.net.models.Scanner;
 import tech.dnaco.storage.net.models.TransactionCommitRequest;
 import tech.dnaco.storage.net.models.TransactionStatusResponse;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.telemetry.CounterMap;
 import tech.dnaco.telemetry.TelemetryCollector;
 
@@ -66,6 +67,7 @@ public final class EntityStorage {
 
   public TransactionStatusResponse updateEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
     final long startTime = System.nanoTime();
@@ -110,6 +112,7 @@ public final class EntityStorage {
 
   public TransactionStatusResponse deleteEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
     final long startTime = System.nanoTime();
@@ -183,6 +186,7 @@ public final class EntityStorage {
 
   private TransactionStatusResponse modify(final ModificationRequest request, final Operation operation) throws Exception {
     final long startTime = System.nanoTime();
+    verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
@@ -239,7 +243,7 @@ public final class EntityStorage {
 
   public Scanner scanEntity(final ScanRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
-    VerifyArg.verifyNotEmpty("groups", request.getGroups());
+    verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
     final long startTime = System.nanoTime();
@@ -282,7 +286,7 @@ public final class EntityStorage {
   private final ConcurrentHashMap<String, Queue<ScanResult>> scanResults = new ConcurrentHashMap<>();
   public Scanner scanAll(final ScanRequest request) throws Exception {
     Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
-    VerifyArg.verifyNotEmpty("groups", request.getGroups());
+    verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
     final long startTime = System.nanoTime();
@@ -414,7 +418,16 @@ public final class EntityStorage {
     return result;
   }
 
-  private static ByteArraySlice rowKeyEntityGroup(final EntitySchema schema, final String groupId) {
+  public static ByteArraySlice rowKeyEntityGroup(final EntitySchema schema, final String groupId) {
     return new RowKeyBuilder().add(groupId).add(schema.getEntityName()).addKeySeparator().slice();
+  }
+
+  private static void verifyGroups(final String[] groups) {
+    VerifyArg.verifyNotEmpty("groups", groups);
+    for (int i = 0; i < groups.length; ++i) {
+      if (StringUtil.isEmpty(groups[i])) {
+        throw new IllegalArgumentException("groups[" + i + "] = " + groups[i]);
+      }
+    }
   }
 }

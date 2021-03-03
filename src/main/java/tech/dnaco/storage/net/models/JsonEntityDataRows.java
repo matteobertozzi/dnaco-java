@@ -2,7 +2,7 @@ package tech.dnaco.storage.net.models;
 
 import java.util.Arrays;
 
-import tech.dnaco.collections.HashIndexedArray;
+import tech.dnaco.collections.sets.HashIndexedArray;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
 import tech.dnaco.storage.demo.EntityDataType;

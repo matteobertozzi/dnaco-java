@@ -39,6 +39,9 @@ public class DumpStorage {
     final CounterMap schemaOperations = new CounterMap();
     final long startTime = System.nanoTime();
     storage.scanRow(txn, new RowKeyBuilder().slice(), (row) -> {
+      if (row.getSchema().getEntityName().equals("ATG_CONFIG_PACKAGES")) {
+        System.out.println("ROW: " + row);
+      }
       schemaMap.inc(row.getSchema().getEntityName());
       schemaSize.inc(row.getSchema().getEntityName(), row.size());
       schemaGroups.inc((String)row.getObject(EntitySchema.SYS_FIELD_GROUP));

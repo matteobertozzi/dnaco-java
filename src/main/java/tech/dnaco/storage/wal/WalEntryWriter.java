@@ -2,7 +2,7 @@ package tech.dnaco.storage.wal;
 
 import java.io.FileOutputStream;
 
-import tech.dnaco.collections.paged.PagedByteArray;
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
 
 public class WalEntryWriter implements AutoCloseable {
   @Override

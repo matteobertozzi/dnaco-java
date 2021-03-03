@@ -4,12 +4,13 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.gullivernet.commons.collections.IdLock;
+import com.gullivernet.commons.collections.IdLock.IdLockEntry;
+
 import tech.dnaco.storage.StorageConfig;
 import tech.dnaco.storage.blocks.BlockEntry;
 import tech.dnaco.storage.blocks.BlockManager;
 import tech.dnaco.storage.memstore.MemStore;
-import tech.dnaco.util.IdLock;
-import tech.dnaco.util.IdLock.IdLockEntry;
 
 public final class Storage {
   private static final ConcurrentHashMap<String, Storage> projectStorage = new ConcurrentHashMap<>(128);

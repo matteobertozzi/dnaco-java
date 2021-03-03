@@ -1,6 +1,6 @@
 package tech.dnaco.storage.wal;
 
-import tech.dnaco.collections.paged.PagedByteArray;
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.journal.JournalEntry;
 
 public class WalEntry implements JournalEntry {

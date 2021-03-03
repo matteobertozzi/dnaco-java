@@ -24,7 +24,7 @@ import tech.dnaco.bytes.ByteArrayReader;
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesSlice;
 import tech.dnaco.bytes.encoding.IntDecoder;
-import tech.dnaco.collections.ArrayUtil;
+import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.io.ByteBufferInputStream;
 import tech.dnaco.storage.encoding.BitDecoder;
 import tech.dnaco.storage.encoding.DeltaByteDecoder;

@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
-import tech.dnaco.collections.ByteArray;
+import tech.dnaco.collections.arrays.ByteArray;
 
 // https://sqlite.org/src4/file?name=src/varint.c&ci=trunk
 public final class RowKeyUtil {

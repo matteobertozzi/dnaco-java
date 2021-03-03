@@ -126,6 +126,14 @@ public abstract class AbstractKvStore {
     schemas.put(schema.getEntityName(), schema);
   }
 
+  public void dropSchema(final String entityName) throws Exception {
+    final RowKeyBuilder key = new RowKeyBuilder();
+    key.add("__SYS__");
+    key.add("schema");
+    key.add(entityName);
+    delete(key.slice());
+  }
+
   public EntitySchema getSchema(final byte[] entityName) {
     return getSchema(new String(entityName));
   }
@@ -281,8 +289,8 @@ public abstract class AbstractKvStore {
 
       byte[] nextKey = this.peekNext().getKey().buffer();
       final ByteArraySlice rowKey = RowKeyUtil.keyWithoutLastComponent(nextKey);
-      final List<byte[]> keyParts = RowKeyUtil.decodeKey(rowKey.buffer());
       //System.out.println(" ----> ROW KEY: " + rowKey);
+      final List<byte[]> keyParts = RowKeyUtil.decodeKey(rowKey.buffer());
 
       final EntityDataRows rows;
       if (BytesUtil.hasPrefix(keyParts.get(0), 0, keyParts.get(0).length, EntityDataRows.SYS_TXN_PREFIX, 0, EntityDataRows.SYS_TXN_PREFIX.length)) {

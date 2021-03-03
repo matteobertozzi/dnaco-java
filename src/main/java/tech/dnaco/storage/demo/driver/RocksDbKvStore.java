@@ -43,6 +43,7 @@ import tech.dnaco.io.IOUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
+import tech.dnaco.storage.demo.EntitySchema;
 
 public class RocksDbKvStore extends AbstractKvStore {
   private static BlockBasedTableConfig tableConfig = null;
@@ -196,6 +197,10 @@ public class RocksDbKvStore extends AbstractKvStore {
           }
 
           if (BytesUtil.hasPrefix(key, 0, key.length, AbstractKvStore.SYS_SCHEMAS, 0, AbstractKvStore.SYS_SCHEMAS.length)) {
+            continue;
+          }
+
+          if (BytesUtil.hasPrefix(key, 0, key.length, EntitySchema.SYS_TXN_PREFIX.getBytes(), 0, EntitySchema.SYS_TXN_PREFIX.length())) {
             continue;
           }
         }

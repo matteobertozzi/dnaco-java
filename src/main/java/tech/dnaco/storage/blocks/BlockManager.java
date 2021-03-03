@@ -27,7 +27,7 @@ import java.util.function.Predicate;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
-import tech.dnaco.collections.ArrayUtil;
+import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.io.IOUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.blocks.BlockEntryMergeIterator.BlockEntryMergeOptions;

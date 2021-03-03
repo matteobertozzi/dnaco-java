@@ -27,10 +27,10 @@ import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.ByteArrayWriter;
 import tech.dnaco.bytes.encoding.IntEncoder;
 import tech.dnaco.bytes.encoding.IntUtil;
-import tech.dnaco.collections.ArrayUtil;
-import tech.dnaco.collections.IntArrayList;
-import tech.dnaco.collections.LongArrayList;
-import tech.dnaco.hash.XXHash;
+import tech.dnaco.collections.arrays.ArrayUtil;
+import tech.dnaco.collections.arrays.IntArray;
+import tech.dnaco.collections.arrays.LongArray;
+import tech.dnaco.data.hashes.XXHash;
 import tech.dnaco.storage.encoding.BitEncoder;
 import tech.dnaco.storage.encoding.DeltaBytesEncoder;
 import tech.dnaco.storage.encoding.IntArrayEncoder;
@@ -71,7 +71,7 @@ public class BlockWriter {
   private final DeltaBytesEncoder keyDeltaEncoder;
 
   private final HashIndexWriter hashIndex = new HashIndexWriter();
-  private final IntArrayList index = new IntArrayList(1 << 10);
+  private final IntArray index = new IntArray(1 << 10);
   private final BlockStats stats = new BlockStats();
   private int restartBlockSize = Integer.MAX_VALUE;
 
@@ -156,7 +156,7 @@ public class BlockWriter {
   }
 
   private static final class HashIndexWriter {
-    private final LongArrayList hashes = new LongArrayList(16 << 10);
+    private final LongArray hashes = new LongArray(16 << 10);
 
     public void reset() {
       hashes.reset();

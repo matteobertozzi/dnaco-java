@@ -96,6 +96,10 @@ public final class StorageLogic {
     storage.registerSchema(schema);
   }
 
+  public void dropSchema(final String entityName) throws Exception {
+    storage.dropSchema(entityName);
+  }
+
   // ================================================================================
   //  Modification related
   // ================================================================================

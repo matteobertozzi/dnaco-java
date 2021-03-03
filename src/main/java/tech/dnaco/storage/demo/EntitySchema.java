@@ -23,14 +23,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.google.gson.JsonObject;
-
 import tech.dnaco.bytes.ByteArraySlice;
-import tech.dnaco.collections.HashIndexedArray;
-import tech.dnaco.collections.IndexedHashSet;
+import tech.dnaco.collections.sets.HashIndexedArray;
+import tech.dnaco.collections.sets.IndexedHashSet;
+import tech.dnaco.data.json.JsonObject;
+import tech.dnaco.data.json.JsonUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.StringUtil;
-import tech.dnaco.util.JsonUtil;
 
 public class EntitySchema {
   public enum Operation { INSERT, UPSERT, UPDATE, DELETE }

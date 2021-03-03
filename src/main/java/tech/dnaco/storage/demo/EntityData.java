@@ -19,14 +19,13 @@
 
 package tech.dnaco.storage.demo;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.bytes.encoding.IntEncoder;
-import tech.dnaco.util.JsonUtil;
+import tech.dnaco.data.json.JsonArray;
+import tech.dnaco.data.json.JsonElement;
+import tech.dnaco.data.json.JsonObject;
+import tech.dnaco.data.json.JsonUtil;
 
 public final class EntityData {
   private EntityData() {

@@ -2,8 +2,9 @@ package tech.dnaco.storage.demo.logic;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.gullivernet.commons.collections.IdLock;
+
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
-import tech.dnaco.util.IdLock;
 
 public final class Storage {
   private static final ConcurrentHashMap<String, StorageLogic> projects = new ConcurrentHashMap<>();
