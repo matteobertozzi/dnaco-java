@@ -39,11 +39,6 @@ public class NoOpTracingProvider implements TracingProvider {
   }
 
   @Override
-  public void addTaskTraces(final TaskTracer taskTracer) {
-    Logger.debug("Upload Task: {}", taskTracer);
-  }
-
-  @Override
   public void addSpanTraces(final Span span) {
     Logger.debug("Upload Span: {}", span);
   }

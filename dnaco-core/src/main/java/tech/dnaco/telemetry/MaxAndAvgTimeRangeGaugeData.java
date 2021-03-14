@@ -21,18 +21,20 @@ import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
+@SerializeWithSnakeCase
 public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
   private final long window;
   private final long lastInterval;
-  private final long[] vAvg;
-  private final long[] vMax;
+  private final long[] avg;
+  private final long[] max;
 
   public MaxAndAvgTimeRangeGaugeData(final long lastInterval, final long window, final long[] vAvg, final long[] vMax) {
     this.window = window;
     this.lastInterval = lastInterval;
-    this.vAvg = vAvg;
-    this.vMax = vMax;
+    this.avg = vAvg;
+    this.max = vMax;
   }
 
   public long getWindow() {
@@ -40,7 +42,7 @@ public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
   }
 
   public long getFirstInterval() {
-    return lastInterval - (vMax.length * window);
+    return lastInterval - (max.length * window);
   }
 
   public long getLastInterval() {
@@ -48,11 +50,11 @@ public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
   }
 
   public long[] getAvg() {
-    return vAvg;
+    return avg;
   }
 
   public long[] getMax() {
-    return vMax;
+    return max;
   }
 
   @Override
@@ -60,9 +62,9 @@ public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
     report.append("window ").append(HumansUtil.humanTimeMillis(window));
     report.append(" - ").append(HumansUtil.localFromEpochMillis(getFirstInterval()));
     report.append(" - [");
-    for (int i = 0, n = ArrayUtil.length(vMax); i < n; ++i) {
+    for (int i = 0, n = ArrayUtil.length(max); i < n; ++i) {
       if (i > 0) report.append(',');
-      report.append(humanConverter.toHuman(vAvg[i])).append('/').append(humanConverter.toHuman(vMax[i]));
+      report.append(humanConverter.toHuman(avg[i])).append('/').append(humanConverter.toHuman(max[i]));
     }
     report.append("] - ");
     report.append(HumansUtil.localFromEpochMillis(getLastInterval()));
@@ -71,13 +73,13 @@ public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
   }
 
   public StringBuilder toHumanChartReport(final StringBuilder report, final HumanLongValueConverter humanConverter) {
-    final int numEvents = ArrayUtil.length(vMax);
+    final int numEvents = ArrayUtil.length(max);
     long avgSum = 0;
     long maxValue = 0;
 
     for (int i = 0; i < numEvents; ++i) {
-      avgSum += vAvg[i];
-      maxValue = Math.max(maxValue, vMax[i]);
+      avgSum += avg[i];
+      maxValue = Math.max(maxValue, max[i]);
     }
     final double mult = 100.0 / maxValue;
 
@@ -88,14 +90,14 @@ public class MaxAndAvgTimeRangeGaugeData implements TelemetryCollectorData {
     report.append("---------------------------------------------------------------------------\n");
     long interval = getLastInterval();
     for (int i = numEvents - 1; i >= 0; --i) {
-      final long avgMarks = Math.round(mult * vAvg[i] / 5 + 0.5);
-      final long maxMarks = Math.round(mult * (vMax[i] - vAvg[i]) / 5 + 0.5);
+      final long avgMarks = Math.round(mult * avg[i] / 5 + 0.5);
+      final long maxMarks = Math.round(mult * (max[i] - avg[i]) / 5 + 0.5);
 
       report.append(HumansUtil.humanDate(interval));
       report.append(String.format(" %7s/%-7s %6.2f%% |",
-        humanConverter.toHuman(vAvg[i]),
-        humanConverter.toHuman(vMax[i]),
-        ((double) vMax[i] / maxValue) * 100.0f));
+        humanConverter.toHuman(avg[i]),
+        humanConverter.toHuman(max[i]),
+        ((double) max[i] / maxValue) * 100.0f));
       StringUtil.append(report, '=', avgMarks);
       StringUtil.append(report, '#', maxMarks);
       report.append('\n');

@@ -19,6 +19,10 @@
 
 package tech.dnaco.collections.maps;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
+
 public class StringObjectMap extends OrderedHashMap<String, Object> {
   public StringObjectMap() {
     super(0);
@@ -26,6 +30,34 @@ public class StringObjectMap extends OrderedHashMap<String, Object> {
 
   public StringObjectMap(final int initialSize) {
     super(initialSize);
+  }
+
+  public StringObjectMap(final Map<String, Object> properties) {
+    this(properties.entrySet());
+  }
+
+  public StringObjectMap(final Collection<Entry<String, Object>> entries) {
+    super(entries.size());
+    for (final Entry<String, Object> entry: entries) {
+      put(entry.getKey(), entry.getValue());
+    }
+  }
+
+  public static StringObjectMap singletonMap(final String key, final Object value) {
+    return new StringObjectMap(Map.of(key, value));
+  }
+
+  public static StringObjectMap fromKeyValues(final String[] key, final Object[] value) {
+    final StringObjectMap map = new StringObjectMap(key.length);
+    for (int i = 0; i < key.length; ++i) {
+      map.put(key[i], value[i]);
+    }
+    return map;
+  }
+
+  @Override
+  protected boolean keyEquals(final Object a, final Object b) {
+    return Objects.equals(a, b);
   }
 
   // ================================================================================

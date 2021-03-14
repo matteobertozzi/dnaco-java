@@ -17,13 +17,20 @@
 
 package tech.dnaco.collections.maps;
 
+import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.function.Function;
 
+import tech.dnaco.collections.arrays.ArraySet;
 import tech.dnaco.collections.sets.HashIndexedArray;
 
-public class HashIndexedArrayMap<K, V> {
+public class HashIndexedArrayMap<K, V> extends AbstractMap<K, V> {
   private final HashIndexedArray<K> keyIndex;
   private final V[] values;
 
@@ -55,15 +62,15 @@ public class HashIndexedArrayMap<K, V> {
     return keyIndex;
   }
 
-  public K[] keySet() {
+  public K[] keys() {
     return keyIndex.keySet();
   }
 
-  public V[] values() {
+  public V[] valuesArray() {
     return values;
   }
 
-  public boolean containsKey(final K key) {
+  public boolean containsKey(final Object key) {
     return keyIndex.contains(key);
   }
 
@@ -71,7 +78,7 @@ public class HashIndexedArrayMap<K, V> {
     return keyIndex.get(index);
   }
 
-  public V get(final K key) {
+  public V get(final Object key) {
     final int index = keyIndex.getIndex(key);
     return index < 0 ? null : get(index);
   }
@@ -127,5 +134,65 @@ public class HashIndexedArrayMap<K, V> {
     }
     dict.append("}");
     return dict.toString();
+  }
+
+  @Override
+  public Set<K> keySet() {
+    return new ArraySet<>(keys());
+  }
+
+  @Override
+  public Collection<V> values() {
+    return new ArraySet<>(values);
+  }
+
+  @Override
+  public Set<Entry<K, V>> entrySet() {
+    return new EntrySet<>(this);
+  }
+
+  private static final class EntrySet<K, V> extends AbstractSet<Map.Entry<K, V>> {
+    private final HashIndexedArrayMap<K, V> map;
+
+    private EntrySet(final HashIndexedArrayMap<K, V> map) {
+      this.map = map;
+    }
+
+    @Override
+    public Iterator<Entry<K, V>> iterator() {
+      return new EntryIterator<>(map);
+    }
+
+    @Override
+    public int size() {
+      return map.size();
+    }
+  }
+
+  private static final class EntryIterator<K, V> implements Iterator<Map.Entry<K, V>> {
+    private final HashIndexedArrayMap<K, V> map;
+    private int index;
+
+    private EntryIterator(final HashIndexedArrayMap<K, V> map) {
+      this.map = map;
+      this.index = 0;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return index < map.size();
+    }
+
+    @Override
+    public Entry<K, V> next() {
+      if (index >= map.size()) {
+        throw new NoSuchElementException();
+      }
+
+      final K k = map.getKey(index);
+      final V v = map.get(index);
+      index++;
+      return new SimpleImmutableEntry<>(k, v);
+    }
   }
 }

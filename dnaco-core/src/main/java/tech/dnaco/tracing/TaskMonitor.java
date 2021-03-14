@@ -23,12 +23,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import tech.dnaco.collections.maps.StringObjectMap;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansTableView;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.CounterMap;
+import tech.dnaco.telemetry.TelemetryCollector;
 
 public final class TaskMonitor {
   public static final TaskMonitor INSTANCE = new TaskMonitor();
@@ -36,26 +40,48 @@ public final class TaskMonitor {
     Logger.EXCLUDE_CLASSES.add(TaskMonitor.class.getName());
   }
 
-  private static final Set<RootSpan> runningTasks = ConcurrentHashMap.newKeySet(128);
-  private static final RootSpan[] recentlyCompletedTracers = new RootSpan[16];
-  private static final AtomicLong recentlyCompletedIndex = new AtomicLong(0);
+  private final CopyOnWriteArrayList<Consumer<Span>> taskCompletedListeners = new CopyOnWriteArrayList<>();
+
+  private final Set<RootSpan> runningTasks = ConcurrentHashMap.newKeySet(128);
+  private final RootSpan[] recentlyCompletedTracers = new RootSpan[16];
+  private final AtomicLong recentlyCompletedIndex = new AtomicLong(0);
+
+  private final CounterMap tenantCpuTime = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_TIME_NANOS)
+    .setName("tenant.cpu.time")
+    .setLabel("Tenant CPU Time")
+    .register(new CounterMap());
 
   private TaskMonitor() {
     // no-op
   }
 
-  protected static void addRunningTask(final RootSpan task) {
+  public void addTaskCompletedListener(final Consumer<Span> consumer) {
+    this.taskCompletedListeners.add(consumer);
+  }
+
+  protected void addRunningTask(final RootSpan task) {
     runningTasks.add(task);
   }
 
-  protected static void addCompletedTask(final RootSpan task) {
+  protected void addCompletedTask(final RootSpan task) {
     runningTasks.remove(task);
 
     final int index = (int) (recentlyCompletedIndex.incrementAndGet() & (recentlyCompletedTracers.length - 1));
     recentlyCompletedTracers[index] = task;
+
+    // keep track of cpu time per tenant
+    tenantCpuTime.inc(task.getAttributes().getString(TraceAttributes.TENANT_ID, "unknown"), task.getElapsedNs());
+
+    // call listeners
+    if (!taskCompletedListeners.isEmpty()) {
+      for (final Consumer<Span> consumer: taskCompletedListeners) {
+        consumer.accept(task);
+      }
+    }
   }
 
-  public static List<RootSpan> getRecentlyCompletedTasks() {
+  public List<RootSpan> getRecentlyCompletedTasks() {
     final ArrayList<RootSpan> tasks = new ArrayList<>(recentlyCompletedTracers.length);
     for (int i = 0; i < recentlyCompletedTracers.length; ++i) {
       if (recentlyCompletedTracers[i] == null) continue;
@@ -91,7 +117,7 @@ public final class TaskMonitor {
 
   public StringBuilder addRecentlyCompletedTasksToHumanReport(final StringBuilder report) {
     final HumansTableView table = new HumansTableView();
-    table.addColumns("Thread", "TenantId", "TraceId", "Start Time", "Queue Time", "Execution Time", "Name");
+    table.addColumns("Thread", "TenantId", "TraceId", "Start Time", "Queue Time", "Execution Time", "Name", "Status");
 
     for (final RootSpan task: getRecentlyCompletedTasks()) {
       final StringObjectMap attrs = task.getAttributes();
@@ -103,7 +129,8 @@ public final class TaskMonitor {
         HumansUtil.humanDate(task.getStartTime()),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",
         HumansUtil.humanTimeNanos(task.getElapsedNs()),
-        attrs.getString(TraceAttributes.LABEL, task.getCallerMethod()));
+        attrs.getString(TraceAttributes.LABEL, task.getCallerMethod()),
+        task.getStatus());
     }
 
     return table.addHumanView(report);

@@ -19,15 +19,27 @@
 
 package tech.dnaco.tracing;
 
+import tech.dnaco.logging.Logger;
+import tech.dnaco.logging.LoggerSession;
+
 class RootSpan extends Span {
+  static {
+    Logger.EXCLUDE_CLASSES.add(RootSpan.class.getName());
+  }
+
 	protected RootSpan(final TraceId traceId, final SpanId parentSpanId, final SpanId spanId) {
 		super(traceId, parentSpanId, spanId);
-    TaskMonitor.addRunningTask(this);
+
+    final LoggerSession session = Logger.getSession();
+    if (session != null) {
+      setAttribute(TraceAttributes.TENANT_ID, session.getTenantId());
+      setAttribute(TraceAttributes.MODULE, session.getModuleId());
+      setAttribute(TraceAttributes.OWNER, session.getOwnerId());
+    }
 	}
 
   @Override
   public void close() {
     super.close();
-    TaskMonitor.addCompletedTask(this);
   }
 }

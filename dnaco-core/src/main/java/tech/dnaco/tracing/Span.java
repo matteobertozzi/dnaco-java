@@ -24,29 +24,46 @@ import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.collections.maps.StringObjectMap;
 import tech.dnaco.logging.LogUtil;
+import tech.dnaco.logging.Logger;
+import tech.dnaco.logging.LoggerSession;
 import tech.dnaco.time.TimeUtil;
 
 public class Span implements AutoCloseable {
+  static {
+    Logger.EXCLUDE_CLASSES.add(Span.class.getName());
+  }
+
+  public enum SpanStatus { IN_PROGRESS, OK, SYSTEM_FAILURE, USER_FAILURE }
+
   private final StringObjectMap attributes = new StringObjectMap();
   private final ArrayList<SpanEvent> events = new ArrayList<>(0);
 
-  private final String callerMethod;
-  private final TraceId traceId;
-  private final SpanId parentSpanId;
-  private final SpanId spanId;
-  private final long startTime;
-  private final long startNs;
+  private String threadName;
+  private String callerMethod;
+  private TraceId traceId;
+  private SpanId parentSpanId;
+  private SpanId spanId;
+  private long startTime;
+  private transient long startNs;
 
-  private Throwable exception;
+  private String exception;
+  private SpanStatus status;
   private long elapsedNs = -1;
+
+  protected Span() {
+    // no-op (deserialization)
+  }
 
   protected Span(final TraceId traceId, final SpanId parentSpanId, final SpanId spanId) {
     this.callerMethod = LogUtil.lookupLineClassAndMethod(2);
+    this.threadName = Thread.currentThread().getName();
     this.traceId = traceId;
     this.parentSpanId = parentSpanId;
     this.spanId = spanId;
     this.startTime = TimeUtil.currentUtcMillis();
     this.startNs = System.nanoTime();
+    this.status = SpanStatus.IN_PROGRESS;
+    Tracer.addSpan(this);
   }
 
   @Override
@@ -86,8 +103,16 @@ public class Span implements AutoCloseable {
     return elapsedNs;
   }
 
+  public long getElapsedNs(final long nowNs) {
+    return nowNs - startNs;
+  }
+
   public String getCallerMethod() {
     return callerMethod;
+  }
+
+  public String getThreadName() {
+    return threadName;
   }
 
   // ================================================================================
@@ -101,8 +126,38 @@ public class Span implements AutoCloseable {
     return attributes;
   }
 
+  @SuppressWarnings("unchecked")
+  public <T> T getAttribute(final String key, final T defaultValue) {
+    final T value = (T) attributes.get(key);
+    return value != null ? value : defaultValue;
+  }
+
   public Span setAttribute(final String key, final Object value) {
     this.attributes.put(key, value);
+    return this;
+  }
+
+  public Span setAttributeIfAbsent(final String key, final Object value) {
+    this.attributes.putIfAbsent(key, value);
+    return this;
+  }
+
+  public String getTenantId() {
+    return getAttribute(TraceAttributes.TENANT_ID, null);
+  }
+
+  public Span setTenantId(final String tenantId) {
+    setAttribute(TraceAttributes.TENANT_ID, tenantId);
+    Logger.setSession(LoggerSession.newSession(tenantId, Logger.getSession()));
+    return this;
+  }
+
+  public String getModule() {
+    return getAttribute(TraceAttributes.MODULE, null);
+  }
+
+  public Span setModule(final String module) {
+    setAttribute(TraceAttributes.MODULE, module);
     return this;
   }
 
@@ -126,22 +181,39 @@ public class Span implements AutoCloseable {
     return elapsedNs >= 0;
   }
 
+  public SpanStatus getStatus() {
+    return status;
+  }
+
   public boolean hasException() {
     return exception != null;
   }
 
-  public Throwable getException() {
+  public String getException() {
     return exception;
   }
 
   public void completed() {
     this.elapsedNs = System.nanoTime() - startNs;
     this.exception = null;
+    this.status = SpanStatus.OK;
   }
 
-  public void failed(final Throwable exception) {
+  public void failed(final boolean sysFailure, final Throwable exception) {
+    this.status = sysFailure ? SpanStatus.SYSTEM_FAILURE : SpanStatus.USER_FAILURE;
     this.elapsedNs = System.nanoTime() - startNs;
-    this.exception = exception;
+    this.exception = LogUtil.stackTraceToString(exception);
+  }
+
+  // ================================================================================
+  //  Sub Span related
+  // ================================================================================
+  public Span startSpan() {
+    return startSpan(null);
+  }
+
+  public Span startSpan(final SpanId parentSpanId) {
+    return new Span(getTraceId(), parentSpanId, Tracer.getProvider().newSpanId());
   }
 
   @Override

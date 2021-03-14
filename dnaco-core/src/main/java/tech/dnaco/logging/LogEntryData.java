@@ -29,21 +29,11 @@ public class LogEntryData extends LogEntry {
   public enum DataType { BINARY, TEXT, JSON, KEY_VALUE, TABLE }
 
   private final ArrayList<Data> dataEntries = new ArrayList<>();
-  private String dataType;
   private String label;
 
   @Override
   public LogEntryType getType() {
     return LogEntryType.DATA;
-  }
-
-  public String getDataType() {
-    return dataType;
-  }
-
-  public LogEntryData setDataType(final String type) {
-    this.dataType = type;
-    return this;
   }
 
   public String getLabel() {
@@ -176,7 +166,6 @@ public class LogEntryData extends LogEntry {
 
   public StringBuilder humanReport(final StringBuilder report) {
     super.humanReport(report);
-    report.append(" - ").append(dataType);
     report.append(" - ").append(label).append("\n");
     for (final Data data: this.dataEntries) {
       data.addToHumanReport(report);

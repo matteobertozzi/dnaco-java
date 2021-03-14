@@ -21,7 +21,9 @@ import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
+@SerializeWithSnakeCase
 public class HistogramData implements TelemetryCollectorData {
   public static final HistogramData EMPTY = new HistogramData(null, null);
 

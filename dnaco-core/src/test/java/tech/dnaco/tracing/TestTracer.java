@@ -30,20 +30,23 @@ public class TestTracer {
   }
 
   @Test
-  public void testTaskTracer() {
-    // create a new task
-    final TaskTracer taskTracer = Tracer.newTask();
-    Assertions.assertEquals(taskTracer, Tracer.getCurrentTask());
-    Assertions.assertEquals(taskTracer, Tracer.getTask(taskTracer.getTraceId()));
-    taskTracer.close();
+  public void testTask() {
+    final Span spanA = Tracer.newTask();
+    Assertions.assertEquals(spanA, Tracer.getCurrentTask());
 
-    // the task is closed, so no thread local
-    Assertions.assertNull(Tracer.getCurrentTask());
+    final Span spanB = Tracer.newTask();
+    Assertions.assertEquals(spanB, Tracer.getCurrentTask());
+  }
 
-    // the task is closed, so we will get a new instance
-    final TaskTracer taskTracer2 = Tracer.getTask(taskTracer.getTraceId());
-    Assertions.assertNotEquals(taskTracer, taskTracer2);
-    Assertions.assertEquals(taskTracer2, Tracer.getCurrentTask());
-    Assertions.assertEquals(taskTracer2, Tracer.getTask(taskTracer.getTraceId()));
+  @Test
+  public void testSpan() {
+    final Span rootSpan = Tracer.newTask();
+    final Span spanA = rootSpan.startSpan();
+    Assertions.assertEquals(rootSpan, Tracer.getCurrentTask());
+    Assertions.assertEquals(spanA, Tracer.getCurrentSpan());
+
+    final Span spanB = rootSpan.startSpan();
+    Assertions.assertEquals(rootSpan, Tracer.getCurrentTask());
+    Assertions.assertEquals(spanB, Tracer.getCurrentSpan());
   }
 }

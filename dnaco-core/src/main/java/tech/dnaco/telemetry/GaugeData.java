@@ -18,7 +18,9 @@
 package tech.dnaco.telemetry;
 
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
+import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
+@SerializeWithSnakeCase
 public class GaugeData implements TelemetryCollectorData {
   private final long value;
 

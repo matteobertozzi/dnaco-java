@@ -26,15 +26,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import tech.dnaco.collections.maps.StringObjectMap;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.strings.StringFormat;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.time.TimeUtil;
+import tech.dnaco.tracing.Span;
+import tech.dnaco.tracing.TraceAttributes;
 import tech.dnaco.tracing.Tracer;
 
 public final class Logger {
   public static final Set<String> EXCLUDE_CLASSES = ConcurrentHashMap.newKeySet();
   static {
-    //EXCLUDE_CLASSES.add(Logger.class.getName());
+    EXCLUDE_CLASSES.add(Logger.class.getName());
 
     // log uncaught exceptions
     final UncaughtExceptionHandler ueh = Thread.getDefaultUncaughtExceptionHandler();
@@ -47,8 +51,24 @@ public final class Logger {
   private static LoggingProvider provider = StdoutLogProvider.INSTANCE;
   private static LogLevel defaultLevel = LogLevel.TRACE;
 
+  private static LogLevel failureLevel = LogLevel.ERROR;
+  private static LoggingProvider failureProvider = null;
+
   private Logger() {
     // no-op
+  }
+
+  private static final ThreadLocal<LoggerSession> localSession = ThreadLocal.withInitial(LoggerSession::newSystemGeneralSession);
+  public static LoggerSession getSession() {
+    return localSession.get();
+  }
+
+  public static void setSession(final LoggerSession session) {
+    localSession.set(session);
+  }
+
+  public static void stopSession() {
+    localSession.remove();
   }
 
   // ===============================================================================================
@@ -61,6 +81,11 @@ public final class Logger {
   @SuppressWarnings("unchecked")
   public static <T extends LoggingProvider> T getProvider() {
     return (T) provider;
+  }
+
+  public static void setFailureProvider(final LogLevel level, final LoggingProvider provider) {
+    Logger.failureLevel = level;
+    Logger.failureProvider = provider;
   }
 
   // ===============================================================================================
@@ -256,10 +281,17 @@ public final class Logger {
     logRaw(level, exception, format, params);
   }
 
+  private static final StringObjectMap EMPTY_MAP = new StringObjectMap(0);
   private static void logRaw(final LogLevel level, final Throwable exception,
       final String format, final String[] args) {
     final long timestamp = TimeUtil.currentUtcMillis();
     final Thread thread = Thread.currentThread();
+    final Span task = Tracer.getCurrentTask();
+    final Span span = Tracer.getCurrentSpan();
+    final StringObjectMap taskAttrs = task != null ? task.getAttributes() : EMPTY_MAP;
+    final StringObjectMap spanAttrs = span != null ? span.getAttributes() : EMPTY_MAP;
+
+    final LoggerSession session = localSession.get();
 
     // skipFrames = 4 -> [0: lookupLineClassAndMethod(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
     final String classAndMethod = LogUtil.lookupLineClassAndMethod(4);
@@ -267,9 +299,9 @@ public final class Logger {
     final LogEntryMessage entry = new LogEntryMessage();
     // --- LogEntry ---
     entry.setThread(thread);
-    entry.setTenantId("TENA"); // TODO
-    entry.setModule("MODU");   // TODO
-    entry.setOwner("OWNA");    // TODO
+    entry.setTenantId(spanAttrs.getString(TraceAttributes.TENANT_ID, taskAttrs.getString(TraceAttributes.TENANT_ID, StringUtil.defaultIfEmpty(session.getTenantId(), "unknown"))));
+    entry.setModule(spanAttrs.getString(TraceAttributes.MODULE, taskAttrs.getString(TraceAttributes.MODULE, StringUtil.defaultIfEmpty(session.getModuleId(), "unknown"))));
+    entry.setOwner(spanAttrs.getString(TraceAttributes.OWNER, taskAttrs.getString(TraceAttributes.OWNER, StringUtil.defaultIfEmpty(session.getOwnerId(), "unknown"))));
     entry.setTimestamp(timestamp);
     entry.setTraceId(Tracer.getCurrentTraceId());
     entry.setSpanId(Tracer.getCurrentSpanId());
@@ -281,6 +313,10 @@ public final class Logger {
     entry.setException(exception);
 
     add(thread, entry);
+
+    if (failureProvider != null && level.ordinal() <= failureLevel.ordinal()) {
+      failureProvider.addToLog(thread, entry);
+    }
   }
 
   // ===============================================================================================
@@ -311,6 +347,7 @@ public final class Logger {
 
     @Override
     public void uncaughtException(final Thread t, final Throwable e) {
+      e.printStackTrace();
       Logger.critical(e, "Uncaught Exception was thrown by thread {}", t.getName());
       if (ueh != null) ueh.uncaughtException(t, e);
     }

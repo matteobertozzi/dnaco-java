@@ -18,6 +18,7 @@
 package tech.dnaco.collections.arrays;
 
 import java.util.Arrays;
+import java.util.function.LongConsumer;
 
 public class LongArray {
   public static final long[] EMPTY_ARRAY = new long[0];
@@ -116,5 +117,11 @@ public class LongArray {
   @Override
   public String toString() {
     return "LongArray [count=" + count + ", items=" + Arrays.toString(items) + "]";
+  }
+
+  public void forEach(final LongConsumer consumer) {
+    for (int i = 0; i < count; ++i) {
+      consumer.accept(items[i]);
+    }
   }
 }

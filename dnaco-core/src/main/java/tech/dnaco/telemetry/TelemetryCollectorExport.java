@@ -18,14 +18,20 @@
 package tech.dnaco.telemetry;
 
 public class TelemetryCollectorExport {
-  public enum TelemetryCollectorType { HISTOGRAM, TIME_RANGE_COUNTER, MAX_AND_AVG_TIME_RANGE_GAUGE, TOP_K, COUNTER_MAP }
-  public enum TelemetryCollectorUnit { TIME_NS, TIME_MS, DATE_NS, DATE_MS, COUNT, SIZE }
+  public enum TelemetryCollectorType {
+    HISTOGRAM, TIME_RANGE_COUNTER, MAX_AND_AVG_TIME_RANGE_GAUGE, TOP_K, COUNTER_MAP, GAUGE,
+    JVM_METRICS, JVM_THREADS,
+  }
+
+  public enum TelemetryCollectorUnit {
+    TIME_NS, TIME_MS, DATE_NS, DATE_MS, COUNT, SIZE, PERCENT
+  }
 
   private String name;
   private String label;
   private String help;
+  private String type;
   private TelemetryCollectorUnit unit;
-  private TelemetryCollectorType type;
   private TelemetryCollectorData data;
 
   public TelemetryCollectorExport() {
@@ -33,12 +39,11 @@ public class TelemetryCollectorExport {
   }
 
   public TelemetryCollectorExport(final String name, final String label, final String help, final String type, final String unit, final TelemetryCollectorData data) {
-    System.out.println(name + " -> " + unit);
     this.name = name;
     this.label = label;
     this.help = help;
-    this.type = TelemetryCollectorType.valueOf(type);
-    this.unit = TelemetryCollectorUnit.valueOf(unit);
+    this.type = type;
+    this.unit = unit != null ? TelemetryCollectorUnit.valueOf(unit) : null;
     this.data = data;
   }
 
@@ -58,7 +63,7 @@ public class TelemetryCollectorExport {
     return unit;
   }
 
-  public TelemetryCollectorType getType() {
+  public String getType() {
     return type;
   }
 

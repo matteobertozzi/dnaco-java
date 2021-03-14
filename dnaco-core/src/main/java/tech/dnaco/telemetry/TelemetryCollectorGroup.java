@@ -19,11 +19,14 @@ package tech.dnaco.telemetry;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.strings.StringUtil;
 
@@ -75,11 +78,16 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
       report.append(" ").append(collectorInfo.getLabel()).append(" (").append(collectorInfo.getName()).append(")").append("\n");
       if (collectorInfo.hasHelp()) report.append(" ").append(collectorInfo.getHelp()).append("\n");
       report.append("======================================================================\n");
+      collectorInfo.asGroup().humanReport(report);
     } else {
       report.append("--- ").append(collectorInfo.label).append(" ---\n");
       report.append(collectorInfo.name).append(": ");
+      try {
+        collectorInfo.getSnapshot().toHumanReport(report, collectorInfo.humanConverter);
+      } catch (final Throwable e) {
+        Logger.error(e, "failed to create human report for {}", collectorInfo.name);
+      }
     }
-    collectorInfo.getSnapshot().toHumanReport(report, collectorInfo.humanConverter);
     report.append('\n');
   }
 
@@ -90,6 +98,12 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
   @SuppressWarnings("unchecked")
   public <T extends TelemetryCollector> T register(final String name, final String label, final String help,
       final HumanLongValueConverter humanConverter, final T collector) {
+    if (!(collector instanceof TelemetryCollectorGroup)) {
+      if (humanConverter == null) {
+        Logger.warn("null human converter for {} {}", name, label);
+      }
+    }
+
     final CollectorInfo newInfo = new CollectorInfo(name, label, help, humanConverter, collector);
     final CollectorInfo oldInfo = collectorMap.putIfAbsent(newInfo.name, newInfo);
     return oldInfo != null ? (T) oldInfo.collector : collector;
@@ -111,7 +125,22 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     return metrics;
   }
 
+  public List<TelemetryCollectorExport> export(final String key) {
+    try {
+      final ArrayList<TelemetryCollectorExport> metrics = new ArrayList<>(collectorMap.size());
+      addToExport(metrics, key, StringUtil.isEmpty(key) ? collectorMap : collectorMap.tailMap(key));
+      return metrics;
+    } catch (final Throwable e) {
+      Logger.error(e, "failed for key {}: {}", key, collectorMap);
+      return Collections.emptyList();
+    }
+  }
+
   public void addToExport(final List<TelemetryCollectorExport> metrics, final String prefix) {
+    addToExport(metrics, prefix, collectorMap);
+  }
+
+  private void addToExport(final List<TelemetryCollectorExport> metrics, final String prefix, final Map<String, CollectorInfo> collectorMap) {
     for (final CollectorInfo collectorInfo: collectorMap.values()) {
       if (collectorInfo.isGroup()) {
         final TelemetryCollectorGroup group = (TelemetryCollectorGroup) collectorInfo.collector;
@@ -146,13 +175,16 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     private transient final HumanLongValueConverter humanConverter;
     private transient final TelemetryCollector collector;
 
-    private CollectorInfo(final String name, final String label, final String help,
+    protected CollectorInfo(final String name, final String label, final String help,
         final HumanLongValueConverter humanConverter, final TelemetryCollector collector) {
       this.name = name;
       this.label = label;
       this.help = help;
       this.humanConverter = humanConverter;
       this.collector = collector;
+      if (this.collector == null) {
+        throw new IllegalArgumentException("collector cannot be null. name=" + name);
+      }
     }
 
     public TelemetryCollectorExport export(final String prefix) {
@@ -163,6 +195,10 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
 
     public boolean isGroup() {
       return collector instanceof TelemetryCollectorGroup;
+    }
+
+    public TelemetryCollectorGroup asGroup() {
+      return (TelemetryCollectorGroup) collector;
     }
 
     public String getName() {

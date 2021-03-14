@@ -21,7 +21,9 @@ import java.util.Formatter;
 
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
+import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
+@SerializeWithSnakeCase
 public class CounterMapData implements TelemetryCollectorData {
   public static final CounterMapData EMPTY = new CounterMapData(null, null);
 

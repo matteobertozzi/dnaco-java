@@ -23,6 +23,7 @@ import java.util.Objects;
 
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.strings.BaseN;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.RandData;
 
 public final class SpanId implements Comparable<SpanId> {
@@ -61,6 +62,10 @@ public final class SpanId implements Comparable<SpanId> {
   }
 
   public static SpanId fromString(final String spanId) {
+    if (StringUtil.isEmpty(spanId)) return null;
+    if (spanId.length() == 16) {
+      return fromBytes(BytesUtil.fromHexString(spanId));
+    }
     return new SpanId(BaseN.decodeBase58(spanId));
   }
 

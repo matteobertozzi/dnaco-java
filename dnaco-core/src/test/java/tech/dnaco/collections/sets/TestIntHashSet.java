@@ -1,5 +1,7 @@
 package tech.dnaco.collections.sets;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
@@ -7,10 +9,10 @@ import java.util.Random;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestLongSet {
+public class TestIntHashSet {
   @Test
   public void testEmpty() {
-    final LongHashSet sset = new LongHashSet();
+    final IntHashSet sset = new IntHashSet();
     Assertions.assertEquals(0, sset.size());
     Assertions.assertTrue(sset.isEmpty());
     Assertions.assertFalse(sset.isNotEmpty());
@@ -20,7 +22,7 @@ public class TestLongSet {
 
   @Test
   public void testSimple() {
-    final LongHashSet sset = new LongHashSet();
+    final IntHashSet sset = new IntHashSet();
     Assertions.assertTrue(sset.add(10));
     Assertions.assertTrue(sset.contains(10));
     Assertions.assertFalse(sset.add(10));
@@ -42,7 +44,7 @@ public class TestLongSet {
 
     final HashSet<Integer> values = new HashSet<>();
 
-    final LongHashSet sset = new LongHashSet();
+    final IntHashSet sset = new IntHashSet();
     for (int i = 0; i < 2000; ++i) {
       final int v = random.nextInt(1000);
       Assertions.assertEquals(values.add(v), sset.add(v));
@@ -69,5 +71,37 @@ public class TestLongSet {
       }
     }
     Assertions.assertEquals(0, sset.size());
+  }
+
+  @Test
+  public void test() {
+    final int TEST_OUT_RANGE = 20_000;
+    final int TEST_IN_RANGE = 10_000;
+
+    final HashSet<Integer> hset = new HashSet<>();
+    final IntHashSet ihset = new IntHashSet();
+    for (int i = 0; i < TEST_IN_RANGE; ++i) {
+      hset.add(i);
+      ihset.add(i);
+    }
+
+    for (final Integer x: hset) {
+      assertEquals(true, ihset.contains(x.intValue()));
+    }
+    for (int i = TEST_IN_RANGE + 1; i < TEST_OUT_RANGE; ++i) {
+      assertEquals(false, ihset.contains(i));
+    }
+
+    for (int i = 0; i < TEST_IN_RANGE; i += 2) {
+      hset.remove(i);
+      ihset.remove(i);
+    }
+    for (final Integer x: hset) {
+      assertEquals(true, ihset.contains(x.intValue()));
+    }
+    for (int i = TEST_IN_RANGE + 1; i < TEST_OUT_RANGE; ++i) {
+      assertEquals(false, ihset.contains(i));
+    }
+    Assertions.assertEquals(TEST_IN_RANGE / 2, ihset.size());
   }
 }

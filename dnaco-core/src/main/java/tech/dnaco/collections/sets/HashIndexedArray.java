@@ -72,7 +72,7 @@ public class HashIndexedArray<K> extends AbstractSet<K> {
     return new ArrayIterator<>(keys);
   }
 
-  public int getIndex(final K key) {
+  public int getIndex(final Object key) {
     final int hashCode = hash(key);
     int index = buckets[hashCode & (buckets.length - 1)];
     while (index >= 0) {

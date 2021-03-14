@@ -17,6 +17,7 @@
 
 package tech.dnaco.telemetry;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,10 +33,11 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
   }
 
   public void updateSystemUsage() {
-    //final long now = System.currentTimeMillis();
+    final long now = System.currentTimeMillis();
     //SystemMetrics.INSTANCE.collect(now);
-    //JvmGcMetrics.INSTANCE.collect(now);
-    //JvmMetrics.INSTANCE.collect(now);
+    JvmMetrics.INSTANCE.collect(now);
+    JvmGcMetrics.INSTANCE.collect(now);
+    JvmThreadsMetrics.INSTANCE.collect(now);
   }
 
   public Set<String> getTenants() {
@@ -52,7 +54,16 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
   }
 
   @Override
+  public void addToExport(final List<TelemetryCollectorExport> metrics, final String prefix) {
+    if (prefix == null) {
+      metrics.add(JvmMetrics.INSTANCE.getCollectorInfo().export(null));
+    }
+    super.addToExport(metrics, prefix);
+  }
+
+  @Override
   public String humanReport(final StringBuilder report) {
+    addJvmHumanReport(report);
     return super.humanReport(report);
   }
 
@@ -60,9 +71,18 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
   public String humanReport(final StringBuilder report, final String key) {
     if (StringUtil.isEmpty(key)) return humanReport(report);
 
+    addJvmHumanReport(report);
+
     final TelemetryCollectorGroup tenantGroup = tenantMap.get(key);
     if (tenantGroup != null) return tenantGroup.humanReport(report);
 
     return super.humanReport(report, key);
+  }
+
+  private void addJvmHumanReport(final StringBuilder report) {
+    JvmMetrics.INSTANCE.getSnapshot().toHumanReport(report, null);
+
+    report.append("\nJVM Threads: ");
+    JvmThreadsMetrics.INSTANCE.getSnapshot().toHumanReport(report, null).append("\n");
   }
 }

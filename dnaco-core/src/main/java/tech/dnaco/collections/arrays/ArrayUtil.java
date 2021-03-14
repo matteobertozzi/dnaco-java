@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
 
+import tech.dnaco.bytes.BytesUtil;
+
 public final class ArrayUtil {
   public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
@@ -56,6 +58,10 @@ public final class ArrayUtil {
   //  PUBLIC Array length related
   // ================================================================================
   public static int length(final byte[] input) {
+    return input == null ? 0 : input.length;
+  }
+
+  public static int length(final char[] input) {
     return input == null ? 0 : input.length;
   }
 
@@ -203,10 +209,60 @@ public final class ArrayUtil {
     return Arrays.copyOfRange(buf, off, off + len);
   }
 
+  public static <T> int countNotNull(final T[] data) {
+    if (data == null) return 0;
+
+    int notNull = 0;
+    for (int i = 0; i < data.length; ++i) {
+      notNull += (data[i] != null) ? 1 : 0;
+    }
+    return notNull;
+  }
+
+  public static <T> T[] copyNotNull(final Object[] src) {
+    return copyNotNull(src, countNotNull(src));
+  }
+
+  public static <T> T[] copyNotNull(final Object[] src, final int notNullCount) {
+    if (src == null) return null;
+    return copyNotNull(src.getClass().getComponentType(), src, notNullCount);
+  }
+
+  public static <T> T[] copyNotNull(final Class<?> clazz, final Object[] src, final int notNullCount) {
+    if (src == null) return null;
+
+    final Class<?> itemType = (clazz == Object.class) ? getElementType(src, clazz) : clazz;
+    final T[] notNull = newArray(notNullCount, itemType);
+    for (int i = 0, count = 0; i < src.length; ++i) {
+      if (src[i] != null) {
+        notNull[count++] = getItemAt(src, i);
+      }
+    }
+    return notNull;
+  }
+
+  private static Class<?> getElementType(final Object[] src, final Class<?> defaultType) {
+    for (int i = 0; i < src.length; ++i) {
+      if (src[i] != null) {
+        return src[i].getClass();
+      }
+    }
+    return defaultType;
+  }
+
   // ================================================================================
   //  PUBLIC Array indexOf helpers
   // ================================================================================
   public static int indexOf(final byte[] buf, final int off, final int len, final byte value) {
+    for (int i = 0; i < len; ++i) {
+      if (buf[off + i] == value) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public static int indexOf(final char[] buf, final int off, final int len, final char value) {
     for (int i = 0; i < len; ++i) {
       if (buf[off + i] == value) {
         return i;
@@ -240,6 +296,52 @@ public final class ArrayUtil {
       }
     }
     return -1;
+  }
+
+  public static int indexOf(final byte[] buf, final byte value) {
+    return indexOf(buf, 0, length(buf), value);
+  }
+
+  public static int indexOf(final char[] buf, final char value) {
+    return indexOf(buf, 0, length(buf), value);
+  }
+
+  public static int indexOf(final int[] buf, final int value) {
+    return indexOf(buf, 0, length(buf), value);
+  }
+
+  public static int indexOf(final long[] buf, final long value) {
+    return indexOf(buf, 0, length(buf), value);
+  }
+
+  public static int indexOf(final byte[][] items, final byte[] value) {
+    for (int i = 0; i < items.length; ++i) {
+      if (BytesUtil.equals(items[i], value)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public static <T> int indexOf(final T[] items, final T value) {
+    for (int i = 0; i < items.length; ++i) {
+      if (Objects.equals(items[i], value)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public static <T> boolean contains(final int[] items, final int value) {
+    return indexOf(items, value) >= 0;
+  }
+
+  public static <T> boolean contains(final long[] items, final long value) {
+    return indexOf(items, value) >= 0;
+  }
+
+  public static <T> boolean contains(final T[] items, final T value) {
+    return indexOf(items, value) >= 0;
   }
 
   // ================================================================================
@@ -314,6 +416,46 @@ public final class ArrayUtil {
 
   public static <T> void removeElementWithShift(final T[] arr, final int index){
     System.arraycopy(arr, index + 1, arr, index, arr.length - (1 + index));
+  }
+
+  public static <T> T[] subarray(final T[] array, int startIndexInclusive, int endIndexExclusive) {
+    if (array == null) return null;
+
+    if (startIndexInclusive < 0) startIndexInclusive = 0;
+    if (endIndexExclusive > array.length) endIndexExclusive = array.length;
+
+    if (startIndexInclusive == 0 && endIndexExclusive == array.length) {
+      return array;
+    }
+
+    final int newSize = endIndexExclusive - startIndexInclusive;
+    final Class<?> type = array.getClass().getComponentType();
+    if (newSize <= 0) {
+      final T[] subarray = newArray(0, type);
+      return subarray;
+    }
+
+    final T[] subarray = newArray(newSize, type);
+    System.arraycopy(array, startIndexInclusive, subarray, 0, newSize);
+    return subarray;
+  }
+
+  public static int[] subarray(final int[] array, int startIndexInclusive, int endIndexExclusive) {
+    if (array == null) return null;
+
+    if (startIndexInclusive < 0) startIndexInclusive = 0;
+    if (endIndexExclusive > array.length) endIndexExclusive = array.length;
+
+    if (startIndexInclusive == 0 && endIndexExclusive == array.length) {
+      return array;
+    }
+
+    final int newSize = endIndexExclusive - startIndexInclusive;
+    if (newSize <= 0) return new int[0];
+
+    final int[] subarray = new int[newSize];
+    System.arraycopy(array, startIndexInclusive, subarray, 0, newSize);
+    return subarray;
   }
 
   // ================================================================================
@@ -402,6 +544,53 @@ public final class ArrayUtil {
       index += len;
     }
     return values;
+  }
+
+  public static <T> T[] addAll(final T[] array1, final T... array2) {
+    if (array1 == null) return clone(array2);
+    if (array2 == null) return clone(array1);
+
+    final Class<?> type1 = array1.getClass().getComponentType();
+    final T[] joinedArray = newArray(array1.length + array2.length, type1);
+    System.arraycopy(array1, 0, joinedArray, 0, array1.length);
+
+    try {
+      System.arraycopy(array2, 0, joinedArray, array1.length, array2.length);
+      return joinedArray;
+    } catch (final ArrayStoreException e) {
+      final Class<?> type2 = array2.getClass().getComponentType();
+      if (!type1.isAssignableFrom(type2)) {
+        throw new IllegalArgumentException("Cannot store " + type2.getName() + " in an array of " + type1.getName(), e);
+      }
+      throw e;
+    }
+  }
+
+  public static <T> T[] clone(final T[] array) {
+    return array == null ? null : array.clone();
+  }
+
+  // ================================================================================
+  //  PUBLIC Array sum helpers
+  // ================================================================================
+  public static long sum(final int[] buf, final int off, final int len) {
+    if (buf == null || len == 0) return 0;
+
+    long sum = 0;
+    for (int i = 0; i < len; ++i) {
+      sum += buf[off + i];
+    }
+    return sum;
+  }
+
+  public static long sum(final long[] buf, final int off, final int len) {
+    if (buf == null || len == 0) return 0;
+
+    long sum = 0;
+    for (int i = 0; i < len; ++i) {
+      sum += buf[off + i];
+    }
+    return sum;
   }
 
   // ================================================================================

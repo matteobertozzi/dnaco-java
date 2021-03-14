@@ -25,7 +25,7 @@ import tech.dnaco.logging.LoggingProvider;
 
 public class LogFileProvider extends JournalAsyncWriter implements LoggingProvider {
   public LogFileProvider() {
-    super("Logger");
+    super("logger");
   }
 
   public void start() {

@@ -40,12 +40,16 @@ public class BuildInfo {
 
   private static final String UNKNOWN = "unknown";
 
-  private final String name;
+  private String name;
   private String version = UNKNOWN;
   private String buildDate = UNKNOWN;
   private String createdBy = UNKNOWN;
   private String gitBranch = UNKNOWN;
   private String gitHash = UNKNOWN;
+
+  public BuildInfo() {
+    // no-op
+  }
 
   public BuildInfo(final String name) {
     this.name = name;

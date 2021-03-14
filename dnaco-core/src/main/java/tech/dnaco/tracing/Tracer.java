@@ -19,11 +19,19 @@
 
 package tech.dnaco.tracing;
 
-public final class Tracer {
-  private static TracingProvider provider = null;
+import java.util.ArrayList;
 
-  private static final ThreadLocal<TaskTracer> localTaskTracer = new ThreadLocal<>();
-  private static final ThreadLocal<Span> localSpan = new ThreadLocal<>();
+import tech.dnaco.logging.Logger;
+
+public final class Tracer {
+  static {
+    Logger.EXCLUDE_CLASSES.add(Tracer.class.getName());
+  }
+
+  private static TracingProvider provider = new NoOpTracingProvider();
+
+  private static final ThreadLocal<RootSpan> localRootSpan = new ThreadLocal<>();
+  private static final ThreadLocal<ArrayList<Span>> localSpan = ThreadLocal.withInitial(ArrayList::new);
 
   private Tracer() {
     // no-op
@@ -44,42 +52,48 @@ public final class Tracer {
   // ================================================================================
   //  Task related
   // ================================================================================
-  public static TaskTracer newTask() {
-    final TaskTracer taskTracer = new TaskTracer(provider.newTraceId());
-    localTaskTracer.set(taskTracer);
-    return taskTracer;
+  public static Span newTask() {
+    final TraceId traceId = provider.newTraceId();
+    return new RootSpan(traceId, null, provider.newSpanId());
   }
 
-  public static TaskTracer getCurrentTask() {
-    return localTaskTracer.get();
+  public static Span newTask(final String label) {
+    final Span span = newTask();
+    span.setAttribute(TraceAttributes.LABEL, label);
+    return span;
+  }
+
+  public static Span getCurrentTask() {
+    return localRootSpan.get();
   }
 
   public static TraceId getCurrentTraceId() {
-    final TaskTracer task = getCurrentTask();
+    final Span task = getCurrentTask();
     return task != null ? task.getTraceId() : TraceId.NULL_TRACE_ID;
   }
 
-  public static TaskTracer getTask(final TraceId traceId) {
-    TaskTracer taskTracer = localTaskTracer.get();
-    if (taskTracer != null) return taskTracer;
-
-    taskTracer = new TaskTracer(traceId);
-    localTaskTracer.set(taskTracer);
-    return taskTracer;
+  public static Span newSubTask(final TraceId traceId) {
+    return newSubTask(traceId, null);
   }
 
-  protected static void closeTask(final TaskTracer taskTracer) {
-    if (localTaskTracer.get() == taskTracer) {
-      localTaskTracer.remove();
-    }
-    provider.addTaskTraces(taskTracer);
+  public static Span newSubTask(final String strTraceId, final String strParentSpanId) {
+    final TraceId traceId = TraceId.fromString(strTraceId);
+    final SpanId spanId = SpanId.fromString(strParentSpanId);
+    return (traceId == null) ? newTask() : newSubTask(traceId, spanId);
+  }
+
+  public static Span newSubTask(final TraceId traceId, final SpanId parentSpanId) {
+    final RootSpan rootSpan = new RootSpan(traceId, parentSpanId, provider.newSpanId());
+    localRootSpan.set(rootSpan);
+    return rootSpan;
   }
 
   // ================================================================================
   //  Span related
   // ================================================================================
   public static Span getCurrentSpan() {
-    return localSpan.get();
+    final ArrayList<Span> spanStack = localSpan.get();
+    return spanStack.isEmpty() ? null : spanStack.get(spanStack.size() - 1);
   }
 
   public static SpanId getCurrentSpanId() {
@@ -87,14 +101,30 @@ public final class Tracer {
     return span != null ? span.getSpanId() : SpanId.NULL_SPAN_ID;
   }
 
-  protected static void setLocalSpan(final Span span) {
-    localSpan.set(span);
+  protected static void addSpan(final Span span) {
+    if (span instanceof RootSpan) {
+      final RootSpan rootSpan = (RootSpan)span;
+      TaskMonitor.INSTANCE.addRunningTask(rootSpan);
+      localRootSpan.set(rootSpan);
+    }
+    localSpan.get().add(span);
   }
 
   protected static void closeSpan(final Span span) {
-    if (localSpan.get() == span) {
-      localSpan.remove();
+    final ArrayList<Span> spanStack = localSpan.get();
+    final Span lastSpan = spanStack.remove(spanStack.size() - 1);
+    if (lastSpan != span) {
+      throw new IllegalArgumentException("expected " + span + " to be the current span. check for missing span.close(): " + spanStack);
     }
     provider.addSpanTraces(span);
+
+    if (span instanceof RootSpan) {
+      final RootSpan rootSpan = (RootSpan)span;
+      if (localRootSpan.get() != rootSpan) {
+        throw new IllegalArgumentException("expected " + rootSpan + " to be the current span. " + localRootSpan.get());
+      }
+      localRootSpan.remove();
+      TaskMonitor.INSTANCE.addCompletedTask(rootSpan);
+    }
   }
 }

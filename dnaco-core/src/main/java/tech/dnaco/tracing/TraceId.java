@@ -21,6 +21,7 @@ package tech.dnaco.tracing;
 
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.strings.BaseN;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.RandData;
 
 public class TraceId implements Comparable<TraceId> {
@@ -67,6 +68,12 @@ public class TraceId implements Comparable<TraceId> {
   }
 
   public static TraceId fromString(final String traceId) {
+    if (StringUtil.isEmpty(traceId)) return null;
+
+    if (traceId.length() == 32) {
+      return fromBytes(BytesUtil.fromHexString(traceId));
+    }
+
     final int separatorIndex = traceId.indexOf(TRACE_ID_SEPARATOR);
     final long hi = BaseN.decodeBase58(traceId, 0, separatorIndex);
     final long lo = BaseN.decodeBase58(traceId, separatorIndex + 1, traceId.length() - 1 - separatorIndex);

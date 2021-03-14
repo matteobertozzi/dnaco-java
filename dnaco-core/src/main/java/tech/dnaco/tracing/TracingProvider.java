@@ -23,6 +23,5 @@ public interface TracingProvider {
   TraceId newTraceId();
   SpanId newSpanId();
 
-  void addTaskTraces(TaskTracer taskTracer);
   void addSpanTraces(Span span);
 }

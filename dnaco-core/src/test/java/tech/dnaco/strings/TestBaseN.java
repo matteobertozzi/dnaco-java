@@ -25,10 +25,10 @@ import org.junit.jupiter.api.Test;
 public class TestBaseN {
   @Test
   public void testLongBaseN() {
-    Assertions.assertEquals("BukQL", BaseN.encodeBase58(123456789));
-    Assertions.assertEquals(123456789, BaseN.decodeBase58("BukQL"));
+    Assertions.assertEquals("bUKpk", BaseN.encodeBase58(123456789));
+    Assertions.assertEquals(123456789, BaseN.decodeBase58("bUKpk"));
 
-    Assertions.assertEquals("jpXCZedGfVQ", BaseN.encodeBase58(-1L));
-    Assertions.assertEquals(BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE), BaseN.decodeBigBase58("jpXCZedGfVQ"));
+    Assertions.assertEquals("JPwcyDCgEup", BaseN.encodeBase58(-1L));
+    Assertions.assertEquals(BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE), BaseN.decodeBigBase58("JPwcyDCgEup"));
   }
 }

@@ -155,6 +155,53 @@ public final class HumansUtil {
   }
 
   // ================================================================================
+  //  Human Timestamp
+  // ================================================================================
+  public static long toHumanTs(final ZonedDateTime dateTime) {
+    return toHumanMinuteTs(dateTime) + dateTime.getSecond();
+  }
+
+  public static long toHumanMinuteTs(final ZonedDateTime dateTime) {
+    return toHumanHourTs(dateTime) + (dateTime.getMinute() * 100L);
+  }
+
+  public static long toHumanHourTs(final ZonedDateTime dateTime) {
+    return toHumanDayTs(dateTime) + (dateTime.getHour() * 10000L);
+  }
+
+  public static long toHumanDayTs(final ZonedDateTime dateTime) {
+    return (dateTime.getYear() * 10000000000L)
+         + (dateTime.getMonthValue() * 100000000L)
+         + (dateTime.getDayOfMonth() * 1000000L);
+  }
+
+  public static ZonedDateTime fromUtcHumanTs(final String humanTs) {
+    return fromUtcHumanTs(Long.parseLong(humanTs));
+  }
+
+  public static ZonedDateTime fromUtcHumanTs(final long humanTs) {
+    return fromHumanTs(humanTs, ZoneOffset.UTC);
+  }
+
+  public static ZonedDateTime fromLocalHumanTs(final String humanTs) {
+    return fromLocalHumanTs(Long.parseLong(humanTs));
+  }
+
+  public static ZonedDateTime fromLocalHumanTs(final long humanTs) {
+    return fromHumanTs(humanTs, ZoneId.systemDefault());
+  }
+
+  public static ZonedDateTime fromHumanTs(final long humanTs, final ZoneId zoneId) {
+    final int year  = (int)((humanTs / 10000000000L) % 10000);
+    final int month = (int)((humanTs / 100000000) % 100);
+    final int day   = (int)((humanTs / 1000000) % 100);
+    final int hour  = (int)((humanTs / 10000) % 100);
+    final int min   = (int)((humanTs / 100) % 100);
+    final int sec   = (int)(humanTs % 100);
+    return ZonedDateTime.of(year, month, day, hour, min, sec, 0, zoneId);
+  }
+
+  // ================================================================================
   // Converters
   // ================================================================================
   public static final HumanLongValueConverter HUMAN_TIME_MILLIS = new HumanTimeConverter(TimeUnit.MILLISECONDS);

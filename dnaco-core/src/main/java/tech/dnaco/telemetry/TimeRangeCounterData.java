@@ -20,7 +20,9 @@ package tech.dnaco.telemetry;
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
+import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
+@SerializeWithSnakeCase
 public class TimeRangeCounterData implements TelemetryCollectorData {
   private final long window;
   private final long lastInterval;

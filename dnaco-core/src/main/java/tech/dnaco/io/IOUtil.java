@@ -95,11 +95,29 @@ public final class IOUtil {
   // ===============================================================================================
   //  Write Types
   // ===============================================================================================
-  public static void writeString(final OutputStream stream, final String name) throws IOException {
-    if (StringUtil.isEmpty(name)) {
+  public static void writeBlob8(final OutputStream stream, final String value) throws IOException {
+    writeBlob8(stream, value != null ? value.getBytes() : null);
+  }
+
+  public static void writeBlob8(final OutputStream stream, final byte[] value) throws IOException {
+    writeBlob8(stream, value, 0, BytesUtil.length(value));
+  }
+
+  public static void writeBlob8(final OutputStream stream, final byte[] value, final int off, final int len)
+      throws IOException {
+    if (len > 255) throw new IllegalArgumentException("value length must fit in 8bit, got " + len);
+
+    stream.write(len);
+    if (len > 0) {
+      stream.write(value, off, len);
+    }
+  }
+
+  public static void writeString(final OutputStream stream, final String value) throws IOException {
+    if (StringUtil.isEmpty(value)) {
       stream.write(0);
     } else {
-      final byte[] blob = name.getBytes();
+      final byte[] blob = value.getBytes();
       IntEncoder.writeUnsignedVarLong(stream, blob.length);
       stream.write(blob);
     }

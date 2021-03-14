@@ -17,16 +17,16 @@
 
 package tech.dnaco.telemetry;
 
-import java.util.Arrays;
 import java.util.List;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.strings.HumansTableView;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
+import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
 public class TopKData implements TelemetryCollectorData {
-  private final List<String> HEADER = Arrays.asList("", "Max Timestamp", "Max", "Min", "Avg", "Freq", "Trace Ids");
+  private static final List<String> HEADER = List.of("", "Max Timestamp", "Max", "Min", "Avg", "Freq", "Trace Ids");
 
   public static final TopKData EMPTY = new TopKData(null);
 
@@ -61,7 +61,7 @@ public class TopKData implements TelemetryCollectorData {
         final StringBuilder traces = new StringBuilder();
         for (int k = 0, kN = ArrayUtil.length(entry.traceIds); k < kN; ++k) {
           if (k > 0) traces.append(", ");
-          traces.append("XXX"); //TODO: LogUtil.toTraceId(entry.traceIds[k]));
+          traces.append(entry.traceIds[k]);
         }
         traceIds = traces.toString();
       } else {
@@ -69,27 +69,28 @@ public class TopKData implements TelemetryCollectorData {
       }
 
       table.addRow(List.of(entry.key, HumansUtil.humanDate(entry.ts),
-        humanConverter.toHuman(entry.vMax), humanConverter.toHuman(entry.vMin),
-        humanConverter.toHuman(entry.vSum / entry.freq), HumansUtil.humanCount(entry.freq),
+        humanConverter.toHuman(entry.max), humanConverter.toHuman(entry.min),
+        humanConverter.toHuman(entry.sum / entry.freq), HumansUtil.humanCount(entry.freq),
         traceIds));
     }
     return table.addHumanView(report.append('\n'));
   }
 
+  @SerializeWithSnakeCase
   public static final class TopEntry {
     private final String key;
-    private final long vMax;
-    private final long vMin;
-    private final long vSum;
+    private final long max;
+    private final long min;
+    private final long sum;
     private final long freq;
     private final long ts;
     private final String[] traceIds;
 
     public TopEntry(final String key, final long ts, final long vMax, final long vMin, final long vSum, final long freq, final String[] traceIds) {
       this.key = key;
-      this.vMax = vMax;
-      this.vMin = vMin;
-      this.vSum = vSum;
+      this.max = vMax;
+      this.min = vMin;
+      this.sum = vSum;
       this.freq = freq;
       this.ts = ts;
       this.traceIds = traceIds;

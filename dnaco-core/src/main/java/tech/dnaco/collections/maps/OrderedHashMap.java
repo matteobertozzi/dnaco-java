@@ -19,16 +19,20 @@
 
 package tech.dnaco.collections.maps;
 
+import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 
 import tech.dnaco.util.BitUtil;
 
-public class OrderedHashMap<K, V> {
+public class OrderedHashMap<K, V> extends AbstractMap<K, V> {
   private static final int MIN_CAPACITY = 16;
 
   private OrderedEntry[] entries;
@@ -52,10 +56,12 @@ public class OrderedHashMap<K, V> {
     Arrays.fill(buckets, -1);
   }
 
+  @Override
   public int size() {
     return count;
   }
 
+  @Override
   public boolean isEmpty() {
     return count == 0;
   }
@@ -64,15 +70,18 @@ public class OrderedHashMap<K, V> {
     return count != 0;
   }
 
+  @Override
   public boolean containsKey(final Object key) {
     return findEntry(key) != null;
   }
 
-  public V get(final K key) {
+  @Override
+  public V get(final Object key) {
     final OrderedEntry entry = findEntry(key);
     return entry != null ? getEntryValue(entry) : null;
   }
 
+  @Override
   public V put(final K key, final V value) {
     final int hashCode = hash(key);
     final OrderedEntry entry = findEntry(key, hashCode);
@@ -86,19 +95,14 @@ public class OrderedHashMap<K, V> {
     return null;
   }
 
-  public void putAll(final Map<K, V> m) {
-    for (final Entry<K, V> entry: m.entrySet()) {
-      put(entry.getKey(), entry.getValue());
-    }
-  }
-
-  public V remove(final K key) {
+  @Override
+  public V remove(final Object key) {
     final int hashCode = hash(key);
     final int bucket = hashCode & (buckets.length - 1);
     int last = -1;
     for (int i = buckets[bucket]; i >= 0; last = i, i = entries[i].next) {
       final OrderedEntry entry = entries[i];
-      if (entry.hash == hashCode && Objects.equals(entry.key, key)) {
+      if (entry.hash == hashCode && keyEquals(entry.key, key)) {
         if (last < 0) {
           buckets[bucket] = entry.next;
         } else {
@@ -192,11 +196,15 @@ public class OrderedHashMap<K, V> {
 
     for (int i = buckets[hashCode & buckets.length - 1]; i >= 0; i = entries[i].next) {
       final OrderedEntry entry = entries[i];
-      if (entry.hash == hashCode && Objects.equals(entry.key, key)) {
+      if (entry.hash == hashCode && keyEquals(entry.key, key)) {
         return entry;
       }
     }
     return null;
+  }
+
+  protected boolean keyEquals(final Object a, final Object b) {
+    return Objects.equals(a, b);
   }
 
   private static int hash(final Object key) {
@@ -252,5 +260,60 @@ public class OrderedHashMap<K, V> {
     private int next;
     private Object key;
     private Object value;
+  }
+
+  @Override
+  public Set<Entry<K, V>> entrySet() {
+    return new EntrySet<>(this);
+  }
+
+  private static final class EntrySet<K, V> extends AbstractSet<Map.Entry<K, V>> {
+    private final OrderedHashMap<K, V> map;
+
+    private EntrySet(final OrderedHashMap<K, V> map) {
+      this.map = map;
+    }
+
+    @Override
+    public Iterator<Entry<K, V>> iterator() {
+      return new EntryIterator<>(map);
+    }
+
+    @Override
+    public int size() {
+      return map.size();
+    }
+  }
+
+  private static final class EntryIterator<K, V> implements Iterator<Map.Entry<K, V>> {
+    private final OrderedHashMap<K, V> map;
+    private int index;
+    private int count;
+
+    private EntryIterator(final OrderedHashMap<K, V> map) {
+      this.map = map;
+      this.index = 0;
+      this.count = 0;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return count < map.count;
+    }
+
+    @Override
+    public Entry<K, V> next() {
+      if (count >= map.count) {
+        throw new NoSuchElementException();
+      }
+
+      OrderedEntry entry = map.entries[index++];
+      while (entry == null || entry.key == null) {
+        entry = map.entries[index++];
+      }
+
+      count++;
+      return new SimpleImmutableEntry<>(map.getEntryKey(entry), map.getEntryValue(entry));
+    }
   }
 }
