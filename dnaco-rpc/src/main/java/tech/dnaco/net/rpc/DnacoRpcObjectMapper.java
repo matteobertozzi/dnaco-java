@@ -31,6 +31,9 @@ public interface DnacoRpcObjectMapper {
   <T> T fromBytes(ByteBuf data, Class<T> type) throws IOException;
   ByteBuf toBytes(Object data, Class<?> type) throws IOException;
 
+  default ByteBuf toBytes(final Object data) throws IOException {
+    return data != null ? toBytes(data, data.getClass()) : null;
+  }
 
   DnacoRpcObjectMapper RPC_CBOR_OBJECT_MAPPER = new DnacoRpcObjectMapper() {
     @Override

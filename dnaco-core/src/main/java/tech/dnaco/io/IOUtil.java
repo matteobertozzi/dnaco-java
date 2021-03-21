@@ -41,6 +41,7 @@ public final class IOUtil {
   //  Close related
   // ===============================================================================================
   public static void closeQuietly(final Closeable closeable) {
+    if (closeable == null) return;
     try {
       closeable.close();
     } catch (final IOException e) {
@@ -49,6 +50,7 @@ public final class IOUtil {
   }
 
   public static void closeQuietly(final AutoCloseable closeable) {
+    if (closeable == null) return;
     try {
       closeable.close();
     } catch (final Exception e) {

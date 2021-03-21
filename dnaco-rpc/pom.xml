@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
@@ -13,6 +12,7 @@
 
   <properties>
     <netty.version>4.1.60.Final</netty.version>
+    <jctools.version>3.3.0</jctools.version>
 
     <junit.version>5.7.1</junit.version>
 
@@ -64,7 +64,7 @@
     <dependency>
       <groupId>org.jctools</groupId>
       <artifactId>jctools-core</artifactId>
-      <version>3.3.0</version>
+      <version>${jctools.version}</version>
     </dependency>
 
     <!-- Unit Tests Related -->

@@ -34,7 +34,7 @@ public final class TelemetryCollectorRegistry extends TelemetryCollectorGroup {
 
   public void updateSystemUsage() {
     final long now = System.currentTimeMillis();
-    //SystemMetrics.INSTANCE.collect(now);
+    SystemMetrics.INSTANCE.collect(now);
     JvmMetrics.INSTANCE.collect(now);
     JvmGcMetrics.INSTANCE.collect(now);
     JvmThreadsMetrics.INSTANCE.collect(now);

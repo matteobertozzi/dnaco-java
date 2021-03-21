@@ -55,6 +55,10 @@ public class DnacoRpcClient extends AbstractClient {
     this.objectMapper = objectMapper;
   }
 
+  public DnacoRpcObjectMapper getObjectMapper() {
+    return objectMapper;
+  }
+
   public <T> T getRpcPacketData(final DnacoRpcPacket packet, final Class<T> dataType) throws IOException {
     return objectMapper.fromBytes(packet.getData(), dataType);
   }

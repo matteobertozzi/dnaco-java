@@ -19,8 +19,8 @@
 
 package tech.dnaco.net.rpc;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.group.ChannelGroup;
 import tech.dnaco.net.AbstractService.AbstractServiceSession;
 
 public class DnacoRpcSession extends AbstractServiceSession {
@@ -49,5 +49,13 @@ public class DnacoRpcSession extends AbstractServiceSession {
 
   public boolean hasDataOfType(final Class<?> classOfT) {
     return data != null && classOfT.isAssignableFrom(data.getClass());
+  }
+
+  public void addToGroup(final ChannelGroup group) {
+    group.add(getChannel());
+  }
+
+  public void removeFromGroup(final ChannelGroup group) {
+    group.remove(getChannel());
   }
 }

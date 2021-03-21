@@ -34,6 +34,7 @@ import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 
 import tech.dnaco.data.json.JsonElementModule;
+import tech.dnaco.data.modules.DataMapperModules;
 import tech.dnaco.data.modules.MapModule;
 import tech.dnaco.data.modules.TraceIdsModule;
 import tech.dnaco.util.Serialization.SerializationName;
@@ -74,6 +75,9 @@ class DataFormatMapper<TFactory extends JsonFactory> {
     registerModule(JsonElementModule.INSTANCE);
     registerModule(TraceIdsModule.INSTANCE);
     registerModule(MapModule.INSTANCE);
+    for (final Module module: DataMapperModules.INSTANCE.getModules()) {
+      registerModule(module);
+    }
   }
 
   public void registerModule(final Module module) {

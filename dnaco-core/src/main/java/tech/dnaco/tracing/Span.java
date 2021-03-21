@@ -20,6 +20,7 @@
 package tech.dnaco.tracing;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.collections.maps.StringObjectMap;
@@ -168,6 +169,10 @@ public class Span implements AutoCloseable {
     return !events.isEmpty();
   }
 
+  public List<SpanEvent> getEvents() {
+    return events;
+  }
+
   public SpanEvent addEvent(final String eventName) {
     final SpanEvent event = new SpanEvent(eventName);
     events.add(event);
@@ -194,15 +199,15 @@ public class Span implements AutoCloseable {
   }
 
   public void completed() {
-    this.elapsedNs = System.nanoTime() - startNs;
-    this.exception = null;
     this.status = SpanStatus.OK;
+    this.exception = null;
+    this.elapsedNs = System.nanoTime() - startNs;
   }
 
   public void failed(final boolean sysFailure, final Throwable exception) {
     this.status = sysFailure ? SpanStatus.SYSTEM_FAILURE : SpanStatus.USER_FAILURE;
+    this.exception = (exception != null) ? LogUtil.stackTraceToString(exception) : null;
     this.elapsedNs = System.nanoTime() - startNs;
-    this.exception = LogUtil.stackTraceToString(exception);
   }
 
   // ================================================================================

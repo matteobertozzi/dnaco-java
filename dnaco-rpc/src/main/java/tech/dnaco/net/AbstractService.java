@@ -181,6 +181,10 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     public EventExecutor executor() {
       return ctx.executor();
     }
+
+    public Channel getChannel() {
+      return ctx.channel();
+    }
   }
 
   private static final AttributeKey<AbstractServiceSession> SESSION_ATTR_KEY = AttributeKey.valueOf("sid");

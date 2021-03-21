@@ -17,6 +17,7 @@
 
 package tech.dnaco.telemetry;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -31,6 +32,7 @@ public class TopK implements TelemetryCollector {
   public enum TopType { COUNT, MIN_MAX }
 
   private final MinMaxEntry[] entries;
+  private final long expirationMs;
   private final int[] buckets;
   private final TopType type;
   private final int k;
@@ -38,10 +40,15 @@ public class TopK implements TelemetryCollector {
   private int entryCount = 0;
 
   public TopK(final TopType type, final int k) {
+    this(type, k, Duration.ofHours(1));
+  }
+
+  public TopK(final TopType type, final int k, final Duration duration) {
     this.k = k;
     this.type = type;
     this.buckets = new int[BitUtil.nextPow2(k)];
     this.entries = new MinMaxEntry[k * 2];
+    this.expirationMs = duration.toMillis();
     this.clear();
   }
 
@@ -91,6 +98,12 @@ public class TopK implements TelemetryCollector {
   }
 
   private void sortAndRebuild(final int toKeepCount) {
+    final long now = TimeUtil.currentUtcMillis();
+    for (int i = 0; i < entryCount; ++i) {
+      if ((now - entries[i].getLastTs()) >= expirationMs) {
+        entries[i].reset();
+      }
+    }
     Arrays.sort(entries, 0, entryCount, comparatorByType());
 
     this.entryCount = toKeepCount;
@@ -164,6 +177,7 @@ public class TopK implements TelemetryCollector {
     private int next;
 
     private long maxTs = 0;
+    private long lastTs = 0;
     private long vMax = Long.MIN_VALUE;
     private long vMin = Long.MAX_VALUE;
     private long vSum = 0;
@@ -181,18 +195,35 @@ public class TopK implements TelemetryCollector {
     public long getMaxValue() { return vMax; }
     public long getMinValue() { return vMin; }
     public long getFrequency() { return freq; }
+    public long getLastTs() { return lastTs; }
+
+    private void reset() {
+      this.maxTs = 0;
+      this.lastTs = 0;
+      this.vMax = Long.MIN_VALUE;
+      this.vMin = Long.MAX_VALUE;
+      this.vSum = 0;
+      this.freq = 0;
+    }
 
     private void add(final long value, final TraceId traceId) {
       if (value >= vMax) {
         vMax = value;
-        maxTs = TimeUtil.currentUtcMillis();
-        if (traceId != null) {
-          traceIds[(int)(traceIdIndex++ & (traceIds.length - 1))] = traceId.toString();
-        }
+        maxTs = lastTs = TimeUtil.currentUtcMillis();
+        addTraceId(traceId);
+      } else if (value >= (vSum / freq)) {
+        lastTs = TimeUtil.currentUtcMillis();
+        addTraceId(traceId);
       }
       vMin = Math.min(vMin, value);
       vSum += value;
       freq++;
+    }
+
+    private void addTraceId(final TraceId traceId) {
+      if (traceId != null) {
+        traceIds[(int)(traceIdIndex++ & (traceIds.length - 1))] = traceId.toString();
+      }
     }
   }
 }

@@ -198,7 +198,7 @@ public final class BytesUtil {
 
   public static int compare(final byte[] a, final int aOff, final int aLen,
       final byte[] b, final int bOff, final int bLen) {
-    return Arrays.compare(a, aOff, aOff + aLen, b, bOff, bOff + bLen);
+    return Arrays.compareUnsigned(a, aOff, aOff + aLen, b, bOff, bOff + bLen);
   }
 
   public static int prefix(final byte[] a, final int aOff, final int aLen,
@@ -210,6 +210,10 @@ public final class BytesUtil {
       }
     }
     return len;
+  }
+
+  public static boolean hasPrefix(final byte[] buf, final byte[] prefix) {
+    return hasPrefix(buf, 0, length(buf), prefix, 0, length(prefix));
   }
 
   public static boolean hasPrefix(final byte[] buf, final int off, final int len,
