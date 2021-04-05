@@ -99,14 +99,17 @@ public class TopK implements TelemetryCollector {
 
   private void sortAndRebuild(final int toKeepCount) {
     final long now = TimeUtil.currentUtcMillis();
+    int validEntries = 0;
     for (int i = 0; i < entryCount; ++i) {
       if ((now - entries[i].getLastTs()) >= expirationMs) {
         entries[i].reset();
+      } else {
+        validEntries++;
       }
     }
     Arrays.sort(entries, 0, entryCount, comparatorByType());
 
-    this.entryCount = toKeepCount;
+    this.entryCount = Math.min(validEntries, toKeepCount);
     for (int i = toKeepCount, n = entries.length; i < n; ++i) {
       entries[i] = null;
     }

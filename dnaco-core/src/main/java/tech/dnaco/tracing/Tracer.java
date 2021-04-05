@@ -59,7 +59,7 @@ public final class Tracer {
 
   public static Span newTask(final String label) {
     final Span span = newTask();
-    span.setAttribute(TraceAttributes.LABEL, label);
+    span.setLabel(label);
     return span;
   }
 

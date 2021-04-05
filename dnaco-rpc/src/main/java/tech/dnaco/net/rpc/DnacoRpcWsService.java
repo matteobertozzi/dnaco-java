@@ -116,7 +116,7 @@ public class DnacoRpcWsService extends AbstractService {
       DnacoRpcPacketUtil.decode(wsFrame.content(), (packet) -> {
 
         try (Span span = Tracer.newSubTask(packet.getTraceId(), packet.getSpanId())) {
-          span.setAttribute(TraceAttributes.LABEL, "handle client packet");
+          span.setLabel("handle client packet");
           span.setAttribute(TraceAttributes.MODULE, getClass().getSimpleName());
           Logger.debug("process binary: {}", packet);
           dispatcher.handlePacket(session, packet);

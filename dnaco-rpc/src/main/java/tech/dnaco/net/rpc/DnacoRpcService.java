@@ -69,7 +69,7 @@ public class DnacoRpcService extends AbstractService {
     protected void channelRead0(final ChannelHandlerContext ctx, final DnacoRpcPacket packet) throws Exception {
       final DnacoRpcSession session = getSession(ctx.channel());
       try (Span span = Tracer.newSubTask(packet.getTraceId(), packet.getSpanId())) {
-        span.setAttribute(TraceAttributes.LABEL, "handle client packets");
+        span.setLabel("handle client packets");
         span.setAttribute(TraceAttributes.MODULE, getClass().getSimpleName());
 
         dispatcher.handlePacket(session, packet);

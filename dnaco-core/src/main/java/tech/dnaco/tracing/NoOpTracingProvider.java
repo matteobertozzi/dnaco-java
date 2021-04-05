@@ -21,8 +21,6 @@ package tech.dnaco.tracing;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import tech.dnaco.logging.Logger;
-
 public class NoOpTracingProvider implements TracingProvider {
   private static final AtomicLong nextId = new AtomicLong();
 
@@ -40,6 +38,6 @@ public class NoOpTracingProvider implements TracingProvider {
 
   @Override
   public void addSpanTraces(final Span span) {
-    Logger.debug("Upload Span: {}", span);
+    // no-op
   }
 }

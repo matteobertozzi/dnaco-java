@@ -109,7 +109,7 @@ public final class TaskMonitor {
         task.getTraceId() + ":" + task.getParentSpanId() + ":" + task.getSpanId(),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",
         HumansUtil.humanTimeNanos(elapsed),
-        attrs.getString(TraceAttributes.LABEL, task.getCallerMethod()));
+        task.getLabel());
     }
 
     return table.addHumanView(report);
@@ -129,7 +129,7 @@ public final class TaskMonitor {
         HumansUtil.humanDate(task.getStartTime()),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",
         HumansUtil.humanTimeNanos(task.getElapsedNs()),
-        attrs.getString(TraceAttributes.LABEL, task.getCallerMethod()),
+        task.getLabel(),
         task.getStatus());
     }
 

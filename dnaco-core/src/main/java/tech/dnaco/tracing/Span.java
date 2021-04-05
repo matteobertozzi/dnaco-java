@@ -47,6 +47,7 @@ public class Span implements AutoCloseable {
   private long startTime;
   private transient long startNs;
 
+  private String label;
   private String exception;
   private SpanStatus status;
   private long elapsedNs = -1;
@@ -63,6 +64,7 @@ public class Span implements AutoCloseable {
     this.spanId = spanId;
     this.startTime = TimeUtil.currentUtcMillis();
     this.startNs = System.nanoTime();
+    this.label = this.callerMethod;
     this.status = SpanStatus.IN_PROGRESS;
     Tracer.addSpan(this);
   }
@@ -114,6 +116,14 @@ public class Span implements AutoCloseable {
 
   public String getThreadName() {
     return threadName;
+  }
+
+  public String getLabel() {
+    return label;
+  }
+
+  public void setLabel(final String label) {
+    this.label = label;
   }
 
   // ================================================================================

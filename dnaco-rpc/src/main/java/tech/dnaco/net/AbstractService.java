@@ -215,7 +215,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
       super.channelActive(ctx);
 
       try (Span span = Tracer.newTask()) {
-        span.setAttribute(TraceAttributes.LABEL, "client connected");
+        span.setLabel("client connected");
         span.setAttribute(TraceAttributes.MODULE, getClass().getSimpleName());
 
         final long count = activeChannels.incrementAndGet();
@@ -235,7 +235,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     @Override
     public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
       try (Span span = Tracer.newTask()) {
-        span.setAttribute(TraceAttributes.LABEL, "client disconnected");
+        span.setLabel("client disconnected");
         span.setAttribute(TraceAttributes.MODULE, getClass().getSimpleName());
 
         final Channel channel = ctx.channel();

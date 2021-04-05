@@ -42,7 +42,6 @@ public final class TraceAttributes {
   public static final String HTTP_URI = "http.uri";
   public static final String HTTP_STATUS_CODE = "http.status_code";
 
-  public static final String LABEL = "label";
   public static final String OWNER = "owner";
   public static final String MODULE = "module";
   public static final String TENANT_ID = "tenant.id";
