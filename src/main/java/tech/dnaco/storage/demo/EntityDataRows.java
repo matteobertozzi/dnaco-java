@@ -96,7 +96,13 @@ public class EntityDataRows {
           add(fieldIndex, ((String)value).getBytes());
           break;
         case INT:
-          add(fieldIndex, String.valueOf(Math.round((Double)value)).getBytes());
+          if (value instanceof Integer) {
+            add(fieldIndex, String.valueOf(value).getBytes());
+          } else if (value instanceof Double) {
+            add(fieldIndex, String.valueOf(Math.round((Double)value)).getBytes());
+          } else {
+            throw new UnsupportedOperationException("expected/int/double for field " + fieldName + " got " + value);
+          }
           break;
         default:
           throw new UnsupportedOperationException();

@@ -24,11 +24,11 @@ import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.net.EntityStorageHttpHandler;
 import tech.dnaco.storage.net.EntityStorageRpcHandler;
 import tech.dnaco.storage.net.EntityStorageScheduled;
+import tech.dnaco.storage.net.EventStorageRpcHandler;
 import tech.dnaco.telemetry.JvmMetrics;
 import tech.dnaco.telemetry.TelemetryCollectorRegistry;
 import tech.dnaco.threading.ShutdownUtil;
 import tech.dnaco.threading.ThreadUtil;
-import tech.dnaco.tracing.TraceId;
 import tech.dnaco.util.BuildInfo;
 
 public final class Main {
@@ -66,6 +66,7 @@ public final class Main {
 
       final DnacoRpcDispatcher dispatcher = new DnacoRpcDispatcher(DnacoRpcObjectMapper.RPC_CBOR_OBJECT_MAPPER);
       dispatcher.addHandler(new EntityStorageRpcHandler());
+      dispatcher.addHandler(new EventStorageRpcHandler());
 
       eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.HOURS, new EntityStorageScheduled());
 
@@ -122,7 +123,7 @@ public final class Main {
   }
 
   private static void metricsDump() {
-    Logger.setSession(LoggerSession.newSession("metrics", "metrics", "metrics", Logger.getDefaultLevel(), TraceId.NULL_TRACE_ID));
+    Logger.setSession(LoggerSession.newSession("metrics", "metrics", "metrics"));
     try {
       Logger.raw(TelemetryCollectorRegistry.INSTANCE.humanReport());
     } catch (final Throwable e) {

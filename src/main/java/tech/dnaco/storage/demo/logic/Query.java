@@ -67,7 +67,7 @@ public final class Query {
           }
         }
         return false;
-      case AND:
+      case AND: {
         final Filter[] andFilter = filter.getFilters();
         for (int i = 0; i < andFilter.length; ++i) {
           if (!process(andFilter[i], row)) {
@@ -75,6 +75,7 @@ public final class Query {
           }
         }
         return true;
+      }
 
       case EQ: return compare(row.getType(filter.getField()), row.getObject(filter.getField()), filter.getValue()) == 0;
       case NE: return compare(row.getType(filter.getField()), row.getObject(filter.getField()), filter.getValue()) != 0;

@@ -12,7 +12,6 @@ import com.gullivernet.commons.util.VerifyArg;
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.logging.Logger;
-import tech.dnaco.logging.LoggerSession;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
 import tech.dnaco.storage.demo.EntitySchema;
@@ -37,6 +36,7 @@ import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.telemetry.CounterMap;
 import tech.dnaco.telemetry.TelemetryCollector;
+import tech.dnaco.tracing.Tracer;
 
 public final class EntityStorage {
   public static final EntityStorage INSTANCE = new EntityStorage();
@@ -51,22 +51,22 @@ public final class EntityStorage {
   //  Modification Handlers
   // ================================================================================
   public TransactionStatusResponse insertEntity(final ModificationRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     return modify(request, Operation.INSERT);
   }
 
   public TransactionStatusResponse upsertEntity(final ModificationRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     return modify(request, Operation.UPSERT);
   }
 
   public TransactionStatusResponse updateEntity(final ModificationRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     return modify(request, Operation.UPDATE);
   }
 
   public TransactionStatusResponse updateEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
@@ -106,12 +106,12 @@ public final class EntityStorage {
   }
 
   public TransactionStatusResponse deleteEntity(final ModificationRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     return modify(request, Operation.DELETE);
   }
 
   public TransactionStatusResponse deleteEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
@@ -147,7 +147,7 @@ public final class EntityStorage {
   }
 
   public TransactionStatusResponse commit(final TransactionCommitRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     opsCount.inc(request.getTenantId());
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
@@ -237,12 +237,12 @@ public final class EntityStorage {
   //  Get/Scan Handlers
   // ================================================================================
   public Scanner getEntity(final ScanRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     return scanEntity(request);
   }
 
   public Scanner scanEntity(final ScanRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
@@ -285,7 +285,7 @@ public final class EntityStorage {
 
   private final ConcurrentHashMap<String, Queue<ScanResult>> scanResults = new ConcurrentHashMap<>();
   public Scanner scanAll(final ScanRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
 
@@ -338,7 +338,7 @@ public final class EntityStorage {
   }
 
   public ScanResult scanNext(final ScanNextRequest request) {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     VerifyArg.verifyNotEmpty("scannerId", request.getScannerId());
     opsCount.inc(request.getTenantId());
 
@@ -393,7 +393,7 @@ public final class EntityStorage {
   }
 
   public CountResult countEntity(final CountRequest request) throws Exception {
-    Logger.setSession(LoggerSession.newSession(request.getTenantId(), Logger.getSession()));
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
     VerifyArg.verifyNotEmpty("groups", request.getGroups());
     opsCount.inc(request.getTenantId());
 
