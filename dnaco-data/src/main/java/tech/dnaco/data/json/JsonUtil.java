@@ -82,6 +82,9 @@ public final class JsonUtil {
     return JsonFormat.INSTANCE.convert(obj, JsonElement.class);
   }
 
+  public static JsonNode toJsonNode(final Object obj) {
+    return JsonFormat.INSTANCE.toTreeNode(obj);
+  }
 
   // ================================================================================
   //  Json Element helpers

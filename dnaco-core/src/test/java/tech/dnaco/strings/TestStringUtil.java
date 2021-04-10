@@ -124,6 +124,54 @@ public class TestStringUtil {
     Assertions.assertArrayEquals(new String[] { "abc", "def" }, StringUtil.splitAndTrimSkipEmptyLines("/abc//def/", "/"));
   }
 
+  @Test
+  public void testLike() {
+    Assertions.assertTrue(StringUtil.like("", "%"));
+    Assertions.assertFalse(StringUtil.like(null, "%"));
+    Assertions.assertFalse(StringUtil.like("", "abc\\_d"));
+
+    Assertions.assertTrue(StringUtil.like("abc_d", "abc\\_d"));
+    Assertions.assertTrue(StringUtil.like("abc%d", "abc\\%%d"));
+    Assertions.assertFalse(StringUtil.like("abcd", "abc\\_d"));
+
+    final String source = "1abcd";
+    Assertions.assertTrue(StringUtil.like(source, "_%d"));
+    Assertions.assertFalse(StringUtil.like(source, "%%a"));
+    Assertions.assertFalse(StringUtil.like(source, "1"));
+    Assertions.assertTrue(StringUtil.like(source, "%d"));
+    Assertions.assertTrue(StringUtil.like(source, "%%%%"));
+    Assertions.assertTrue(StringUtil.like(source, "1%_"));
+    Assertions.assertFalse(StringUtil.like(source, "1%_2"));
+    Assertions.assertFalse(StringUtil.like(source, "1abcdef"));
+    Assertions.assertTrue(StringUtil.like(source, "1abcd"));
+    Assertions.assertFalse(StringUtil.like(source, "1abcde"));
+
+    Assertions.assertTrue(StringUtil.like(source, "_%_"));
+    Assertions.assertTrue(StringUtil.like(source, "_%____"));
+    Assertions.assertTrue(StringUtil.like(source, "_____"));
+    Assertions.assertFalse(StringUtil.like(source, "___"));
+    Assertions.assertFalse(StringUtil.like(source, "__%____"));
+    Assertions.assertFalse(StringUtil.like(source, "1"));
+
+    Assertions.assertFalse(StringUtil.like(source, "a_%b"));
+    Assertions.assertTrue(StringUtil.like(source, "1%"));
+    Assertions.assertFalse(StringUtil.like(source, "d%"));
+    Assertions.assertTrue(StringUtil.like(source, "_%"));
+    Assertions.assertTrue(StringUtil.like(source, "_abc%"));
+    Assertions.assertTrue(StringUtil.like(source, "%d"));
+    Assertions.assertTrue(StringUtil.like(source, "%abc%"));
+    Assertions.assertFalse(StringUtil.like(source, "ab_%"));
+
+    Assertions.assertTrue(StringUtil.like(source, "1ab__"));
+    Assertions.assertTrue(StringUtil.like(source, "1ab__%"));
+    Assertions.assertFalse(StringUtil.like(source, "1ab___"));
+    Assertions.assertTrue(StringUtil.like(source, "%"));
+
+    Assertions.assertFalse(StringUtil.like(null, "1ab___"));
+    Assertions.assertFalse(StringUtil.like(source, null));
+    Assertions.assertFalse(StringUtil.like(source, ""));
+  }
+
   // ================================================================================
   //  String comparison related
   // ================================================================================

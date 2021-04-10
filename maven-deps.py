@@ -25,7 +25,7 @@ import sys
 MVN_REPO_URL = 'https://repo1.maven.org/maven2/'
 TEMPLATE_VAR_PATTERN = re.compile(r'\$\{(.*?)}')
 RE_URL = re.compile(r'href=[\'"]?([^\'" >]+)')
-RE_VERSION = re.compile(r'[0-9]+\.[0-9]+\.[0-9]*[0-9a-zA-Z+\.-]*')
+RE_VERSION = re.compile(r'[0-9]+\.[0-9]+\.*[0-9]*[0-9a-zA-Z+\.-]*')
 Dependency = namedtuple('Dependency', ['group_id', 'artifact_id', 'version'])
 
 def parse_pom(path):
@@ -108,7 +108,7 @@ def dump_deps(pom_path):
     maj_min = parts[0] + '.' + parts[1]
     maj = parts[0]
 
-    latest_maj_min = versions[maj_min][0]
+    latest_maj_min = versions.get(maj_min, [maj_min])[0]
     latest_maj = versions[maj][0]
     latest_next = list(find_next_major(versions, maj))
     if latest_maj_min != dependency.version or latest_maj != dependency.version or latest_next:

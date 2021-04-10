@@ -401,7 +401,7 @@ public final class StringUtil {
   //  String like related
   // ================================================================================
   public static boolean like(final String source, final String exp) {
-    if (StringUtil.isEmpty(source) || StringUtil.isEmpty(exp)) {
+    if (source == null || StringUtil.isEmpty(exp)) {
       return false;
     }
 

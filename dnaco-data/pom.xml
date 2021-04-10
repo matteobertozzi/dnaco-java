@@ -13,7 +13,7 @@
 
   <properties>
     <jackson.version>2.12.2</jackson.version>
-    <zstd.version>1.4.9-1</zstd.version>
+    <zstd.version>1.4.9-4</zstd.version>
 
     <junit.version>5.7.1</junit.version>
 
