@@ -17,13 +17,15 @@
 
 package tech.dnaco.telemetry;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.threading.ThreadUtil;
 import tech.dnaco.time.TimeUtil;
 
 public class MaxAndAvgTimeRangeGauge implements TelemetryCollector {
-  private final long[] ringMax;
-  private final long[] ringAvg;
+  private final long[] ring;
   private final long window;
 
   private long lastInterval;
@@ -36,16 +38,12 @@ public class MaxAndAvgTimeRangeGauge implements TelemetryCollector {
     this.window = unit.toMillis(window);
 
     final int slots = (int) Math.ceil(unit.toMillis(maxInterval) / (float) this.window);
-    this.ringMax = new long[slots];
-    this.ringAvg = new long[slots];
+    this.ring = new long[slots * 2];
     this.clear(TimeUtil.currentUtcMillis());
   }
 
   public void clear(final long now) {
-    for (int i = 0, n = ringAvg.length; i < n; ++i) {
-      ringAvg[i] = 0;
-      ringMax[i] = 0;
-    }
+    Arrays.fill(ring, 0);
     this.setLastInterval(now);
     this.next = 0;
     this.count = 0;
@@ -75,31 +73,32 @@ public class MaxAndAvgTimeRangeGauge implements TelemetryCollector {
 
   @Override
   public MaxAndAvgTimeRangeGaugeData getSnapshot() {
-    saveSnapshot(Math.toIntExact(next % ringMax.length));
+    final int ringSize = ring.length >> 1;
+    saveSnapshot(Math.toIntExact(next % ringSize));
 
-    final int slots = (int) Math.min(next + 1, ringMax.length);
+    final int slots = (int) Math.min(next + 1, ringSize);
     final long[] vMax = new long[slots];
     final long[] vAvg = new long[slots];
     for (int i = 0; i < slots; ++i) {
-      final int ringIndex = Math.toIntExact((next - i) % ringMax.length);
+      final int ringIndex = Math.toIntExact((next - i) % ringSize);
       final int dataOffset = slots - (i + 1);
-      vMax[dataOffset] = ringMax[ringIndex];
-      vAvg[dataOffset] = ringAvg[ringIndex];
+      vAvg[dataOffset] = ring[ringIndex];
+      vMax[dataOffset] = ring[ringIndex + 1];
     }
     return new MaxAndAvgTimeRangeGaugeData(lastInterval, window, vAvg, vMax);
   }
 
   private void saveSnapshot() {
-    saveSnapshot(Math.toIntExact(this.next++ % this.ringAvg.length));
+    saveSnapshot(Math.toIntExact(this.next++ % (ring.length >> 1)));
   }
 
   private void saveSnapshot(final int index) {
     final long avg = this.count > 0 ? (this.sum / this.count) : 0;
-    this.ringAvg[index] = avg;
-    this.ringMax[index] = max;
-    this.count = 1;
-    this.sum = avg;
-    this.max = avg;
+    this.ring[index] = avg;
+    this.ring[index + 1] = max;
+    this.count = 0;
+    this.sum = 0;
+    this.max = 0;
   }
 
   protected void injectZeros(final long now) {
