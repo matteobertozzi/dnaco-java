@@ -37,8 +37,8 @@ import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import tech.dnaco.logging.Logger;
-import tech.dnaco.threading.NamedThreadFactory;
 
 public class ServiceEventLoop implements AutoCloseable {
   private final Class<? extends ServerChannel> serverUnixChannelClass;
@@ -68,24 +68,24 @@ public class ServiceEventLoop implements AutoCloseable {
 
   public ServiceEventLoop(final boolean useNative, final int bossGroups, final int workerGroups) {
     if (useNative && Epoll.isAvailable()) {
-      bossGroup = new EpollEventLoopGroup(bossGroups, new NamedThreadFactory("epollServerBossGroup"));
-      workerGroup = new EpollEventLoopGroup(workerGroups, new NamedThreadFactory("epollServerWorkerGroup"));
+      bossGroup = new EpollEventLoopGroup(bossGroups, new DefaultThreadFactory("epollServerBossGroup"));
+      workerGroup = new EpollEventLoopGroup(workerGroups, new DefaultThreadFactory("epollServerWorkerGroup"));
       serverUnixChannelClass = EpollServerDomainSocketChannel.class;
       clientUnixChannelClass = EpollDomainSocketChannel.class;
       serverChannelClass = EpollServerSocketChannel.class;
       clientChannelClass = EpollSocketChannel.class;
       Logger.info("Using epoll event loop - bossGroup={} workerGroup={}", bossGroups, workerGroups);
     } else if (useNative && KQueue.isAvailable()) {
-      bossGroup = new KQueueEventLoopGroup(bossGroups, new NamedThreadFactory("kqueueServerBossGroup"));
-      workerGroup = new KQueueEventLoopGroup(workerGroups, new NamedThreadFactory("kqueueServerWorkerGroup"));
+      bossGroup = new KQueueEventLoopGroup(bossGroups, new DefaultThreadFactory("kqueueServerBossGroup"));
+      workerGroup = new KQueueEventLoopGroup(workerGroups, new DefaultThreadFactory("kqueueServerWorkerGroup"));
       serverUnixChannelClass = KQueueServerDomainSocketChannel.class;
       clientUnixChannelClass = KQueueDomainSocketChannel.class;
       serverChannelClass = KQueueServerSocketChannel.class;
       clientChannelClass = KQueueSocketChannel.class;
       Logger.info("Using kqueue event loop - bossGroup={} workerGroup={}", bossGroups, workerGroups);
     } else {
-      bossGroup = new NioEventLoopGroup(bossGroups, new NamedThreadFactory("nioServerBossGroup"));
-      workerGroup = new NioEventLoopGroup(workerGroups, new NamedThreadFactory("nioServerWorkerGroup"));
+      bossGroup = new NioEventLoopGroup(bossGroups, new DefaultThreadFactory("nioServerBossGroup"));
+      workerGroup = new NioEventLoopGroup(workerGroups, new DefaultThreadFactory("nioServerWorkerGroup"));
       serverUnixChannelClass = null;
       clientUnixChannelClass = null;
       serverChannelClass = NioServerSocketChannel.class;

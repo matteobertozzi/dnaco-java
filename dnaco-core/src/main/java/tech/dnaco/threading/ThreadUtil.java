@@ -17,6 +17,7 @@
 
 package tech.dnaco.threading;
 
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
@@ -168,7 +169,7 @@ public final class ThreadUtil {
     runInThreads(new NamedThreadFactory(threadName), count, runnable);
   }
 
-  public static void runInThreads(final NamedThreadFactory threadFactory, final int count, final Runnable runnable) {
+  public static void runInThreads(final ThreadFactory threadFactory, final int count, final Runnable runnable) {
     final Thread[] threads = new Thread[count];
     for (int i = 0; i < count; ++i) threads[i] = threadFactory.newThread(runnable);
     for (int i = 0; i < count; ++i) threads[i].start();

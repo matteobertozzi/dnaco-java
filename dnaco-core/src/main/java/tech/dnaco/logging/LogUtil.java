@@ -35,6 +35,8 @@ public final class LogUtil {
   //  Log Levels related
   // ===============================================================================================
   private static final LogLevel[] LOG_LEVELS = LogLevel.values();
+  public static final int LOG_LEVELS_COUNT = LOG_LEVELS.length;
+
   public static LogLevel levelFromOrdinal(final int ordinal) {
     return LOG_LEVELS[ordinal];
   }

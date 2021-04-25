@@ -47,6 +47,7 @@ public class Span implements AutoCloseable {
   private long startTime;
   private transient long startNs;
 
+  private String tenantId;
   private String label;
   private String exception;
   private SpanStatus status;
@@ -154,11 +155,11 @@ public class Span implements AutoCloseable {
   }
 
   public String getTenantId() {
-    return getAttribute(TraceAttributes.TENANT_ID, null);
+    return tenantId;
   }
 
   public Span setTenantId(final String tenantId) {
-    setAttribute(TraceAttributes.TENANT_ID, tenantId);
+    this.tenantId = tenantId;
     Logger.setSession(LoggerSession.newSession(tenantId, Logger.getSession()));
     return this;
   }

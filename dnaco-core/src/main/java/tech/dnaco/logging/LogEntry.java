@@ -35,6 +35,11 @@ public abstract class LogEntry implements JournalEntry {
 
   public enum LogEntryType { FLUSH, RESET, MESSAGE, DATA }
 
+  private static final LogEntryType[] LOG_ENTRY_TYPES = LogEntryType.values();
+  public static LogEntryType entryTypeFromOrdinal(final int ordinal) {
+    return LOG_ENTRY_TYPES[ordinal];
+  }
+
   private String thread;
   private String tenantId;
   private String module;

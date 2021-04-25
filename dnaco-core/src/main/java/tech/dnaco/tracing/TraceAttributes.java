@@ -44,7 +44,6 @@ public final class TraceAttributes {
 
   public static final String OWNER = "owner";
   public static final String MODULE = "module";
-  public static final String TENANT_ID = "tenant.id";
   public static final String QUEUE_TIME = "queue.time";
   public static final String THREAD_NAME = "thread.name";
 

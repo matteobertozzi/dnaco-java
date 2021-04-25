@@ -31,6 +31,7 @@ import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.threading.ShutdownUtil.StopSignal;
 
@@ -45,17 +46,17 @@ public class ClientEventLoop implements AutoCloseable, StopSignal {
 
   public ClientEventLoop(final boolean useNative, final int workerGroups) {
     if (useNative && Epoll.isAvailable()) {
-      workerGroup = new EpollEventLoopGroup(workerGroups);
+      workerGroup = new EpollEventLoopGroup(workerGroups, new DefaultThreadFactory("epollServerWorkerGroup"));
       unixChannelClass = EpollDomainSocketChannel.class;
       channelClass = EpollSocketChannel.class;
       Logger.info("Using epoll event loop - workerGroup={}", workerGroups);
     } else if (useNative && KQueue.isAvailable()) {
-      workerGroup = new KQueueEventLoopGroup(workerGroups);
+      workerGroup = new KQueueEventLoopGroup(workerGroups, new DefaultThreadFactory("kqueueServerWorkerGroup"));
       unixChannelClass = KQueueDomainSocketChannel.class;
       channelClass = KQueueSocketChannel.class;
       Logger.info("Using kqueue event loop - workerGroup={}", workerGroups);
     } else {
-      workerGroup = new NioEventLoopGroup(workerGroups);
+      workerGroup = new NioEventLoopGroup(workerGroups, new DefaultThreadFactory("nioServerWorkerGroup"));
       unixChannelClass = null;
       channelClass = NioSocketChannel.class;
       Logger.info("Using NIO event loop - workerGroup={}", workerGroups);

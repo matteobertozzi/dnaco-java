@@ -19,6 +19,7 @@
 
 package tech.dnaco.time;
 
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 public final class TimeUtil {
@@ -49,6 +50,9 @@ public final class TimeUtil {
 
   public interface ClockProvider {
     long currentUtcMillis();
+    long epochMillis();
+    long epochNanos();
+
     long currentNanos();
   }
 
@@ -56,6 +60,19 @@ public final class TimeUtil {
     @Override
     public long currentUtcMillis() {
       return System.currentTimeMillis();
+    }
+
+    @Override
+    public long epochMillis() {
+      return System.currentTimeMillis();
+    }
+
+    @Override
+    public long epochNanos() {
+      final Instant now = Instant.now();
+      final long seconds = now.getEpochSecond();
+      final long nanosFromSecond = now.getNano();
+      return (seconds * 1_000_000_000L) + nanosFromSecond;
     }
 
     @Override
@@ -70,6 +87,16 @@ public final class TimeUtil {
     @Override
     public long currentUtcMillis() {
       return TimeUnit.NANOSECONDS.toMillis(nanos);
+    }
+
+    @Override
+    public long epochMillis() {
+      return TimeUnit.NANOSECONDS.toMillis(nanos);
+    }
+
+    @Override
+    public long epochNanos() {
+      return nanos;
     }
 
     @Override

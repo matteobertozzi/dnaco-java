@@ -138,15 +138,19 @@ public class DnacoRpcClient extends AbstractClient {
 
   public ClientPromise<Void> sendEvent(final ByteBuf eventId, final Object msg) {
     try {
-      final DnacoRpcEvent event = DnacoRpcEvent.alloc(Tracer.getCurrentTraceId(), Tracer.getCurrentSpanId(),
-        pkgId.incrementAndGet(), 0,
-        eventId,
-        objectMapper.toBytes(msg, msg.getClass()));
-      writeAndFlush(event);
-      return newCompletedPromise(null);
+      return sendEvent(eventId, objectMapper.toBytes(msg, msg.getClass()));
     } catch (final Throwable e) {
       return newFailedPromise(e);
     }
+  }
+
+  public ClientPromise<Void> sendEvent(final ByteBuf eventId, final ByteBuf msg) {
+    final DnacoRpcEvent event = DnacoRpcEvent.alloc(Tracer.getCurrentTraceId(), Tracer.getCurrentSpanId(),
+      pkgId.incrementAndGet(), 0,
+      eventId,
+      msg);
+    writeAndFlush(event);
+    return newCompletedPromise(null);
   }
 
   public void subscribeToEvent(final String eventId, final EventConsumer consumer) {

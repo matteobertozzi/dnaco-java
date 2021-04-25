@@ -127,7 +127,9 @@ public class TestStringUtil {
   @Test
   public void testLike() {
     Assertions.assertTrue(StringUtil.like("", "%"));
+    Assertions.assertTrue(StringUtil.like("", ""));
     Assertions.assertFalse(StringUtil.like(null, "%"));
+    Assertions.assertFalse(StringUtil.like(null, ""));
     Assertions.assertFalse(StringUtil.like("", "abc\\_d"));
 
     Assertions.assertTrue(StringUtil.like("abc_d", "abc\\_d"));

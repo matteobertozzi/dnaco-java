@@ -31,6 +31,7 @@ import tech.dnaco.collections.maps.StringObjectMap;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansTableView;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.telemetry.CounterMap;
 import tech.dnaco.telemetry.TelemetryCollector;
 
@@ -71,7 +72,7 @@ public final class TaskMonitor {
     recentlyCompletedTracers[index] = task;
 
     // keep track of cpu time per tenant
-    tenantCpuTime.inc(task.getAttributes().getString(TraceAttributes.TENANT_ID, "unknown"), task.getElapsedNs());
+    tenantCpuTime.inc(StringUtil.defaultIfEmpty(task.getTenantId(), "unknown"), task.getElapsedNs());
 
     // call listeners
     if (!taskCompletedListeners.isEmpty()) {
@@ -105,7 +106,7 @@ public final class TaskMonitor {
       final long elapsed = now - task.getStartNs();
 
       table.addRow(attrs.getString(TraceAttributes.THREAD_NAME, null),
-        attrs.getString(TraceAttributes.TENANT_ID, null),
+        task.getTenantId(),
         task.getTraceId() + ":" + task.getParentSpanId() + ":" + task.getSpanId(),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",
         HumansUtil.humanTimeNanos(elapsed),
@@ -124,7 +125,7 @@ public final class TaskMonitor {
       final long queueTime = attrs.getLong(TraceAttributes.QUEUE_TIME, -1);
 
       table.addRow(attrs.getString(TraceAttributes.THREAD_NAME, null),
-        attrs.getString(TraceAttributes.TENANT_ID, null),
+        task.getTenantId(),
         task.getTraceId() + ":" + task.getParentSpanId() + ":" + task.getSpanId(),
         HumansUtil.humanDate(task.getStartTime()),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",

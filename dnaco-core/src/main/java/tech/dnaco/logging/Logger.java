@@ -290,6 +290,7 @@ public final class Logger {
     final Span span = Tracer.getCurrentSpan();
     final StringObjectMap taskAttrs = task != null ? task.getAttributes() : EMPTY_MAP;
     final StringObjectMap spanAttrs = span != null ? span.getAttributes() : EMPTY_MAP;
+    final String tenantId = StringUtil.defaultIfEmpty(span != null ? span.getTenantId() : null, task != null ? task.getTenantId() : null);
 
     final LoggerSession session = localSession.get();
 
@@ -299,7 +300,7 @@ public final class Logger {
     final LogEntryMessage entry = new LogEntryMessage();
     // --- LogEntry ---
     entry.setThread(thread);
-    entry.setTenantId(spanAttrs.getString(TraceAttributes.TENANT_ID, taskAttrs.getString(TraceAttributes.TENANT_ID, StringUtil.defaultIfEmpty(session.getTenantId(), "unknown"))));
+    entry.setTenantId(StringUtil.defaultIfEmpty(tenantId, StringUtil.defaultIfEmpty(session.getTenantId(), "unknown")));
     entry.setModule(spanAttrs.getString(TraceAttributes.MODULE, taskAttrs.getString(TraceAttributes.MODULE, StringUtil.defaultIfEmpty(session.getModuleId(), "unknown"))));
     entry.setOwner(spanAttrs.getString(TraceAttributes.OWNER, taskAttrs.getString(TraceAttributes.OWNER, StringUtil.defaultIfEmpty(session.getOwnerId(), "unknown"))));
     entry.setTimestamp(timestamp);

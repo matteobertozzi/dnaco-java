@@ -20,8 +20,6 @@ package tech.dnaco.telemetry;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
-import tech.dnaco.strings.HumansUtil;
-import tech.dnaco.threading.ThreadUtil;
 import tech.dnaco.time.TimeUtil;
 
 public class MaxAndAvgTimeRangeGauge implements TelemetryCollector {
@@ -74,13 +72,13 @@ public class MaxAndAvgTimeRangeGauge implements TelemetryCollector {
   @Override
   public MaxAndAvgTimeRangeGaugeData getSnapshot() {
     final int ringSize = ring.length >> 1;
-    saveSnapshot(Math.toIntExact(next % ringSize));
+    saveSnapshot(Math.toIntExact(next % ringSize) * 2, false);
 
     final int slots = (int) Math.min(next + 1, ringSize);
     final long[] vMax = new long[slots];
     final long[] vAvg = new long[slots];
     for (int i = 0; i < slots; ++i) {
-      final int ringIndex = Math.toIntExact((next - i) % ringSize);
+      final int ringIndex = Math.toIntExact((next - i) % ringSize) * 2;
       final int dataOffset = slots - (i + 1);
       vAvg[dataOffset] = ring[ringIndex];
       vMax[dataOffset] = ring[ringIndex + 1];
@@ -89,16 +87,18 @@ public class MaxAndAvgTimeRangeGauge implements TelemetryCollector {
   }
 
   private void saveSnapshot() {
-    saveSnapshot(Math.toIntExact(this.next++ % (ring.length >> 1)));
+    saveSnapshot(Math.toIntExact(this.next++ % (ring.length >> 1)) * 2, true);
   }
 
-  private void saveSnapshot(final int index) {
+  private void saveSnapshot(final int index, final boolean reset) {
     final long avg = this.count > 0 ? (this.sum / this.count) : 0;
     this.ring[index] = avg;
     this.ring[index + 1] = max;
-    this.count = 0;
-    this.sum = 0;
-    this.max = 0;
+    if (reset) {
+      this.count = 0;
+      this.sum = 0;
+      this.max = 0;
+    }
   }
 
   protected void injectZeros(final long now) {

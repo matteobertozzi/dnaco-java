@@ -12,8 +12,8 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <jackson.version>2.12.2</jackson.version>
-    <zstd.version>1.4.9-4</zstd.version>
+    <jackson.version>2.12.3</jackson.version>
+    <zstd.version>1.4.9-5</zstd.version>
 
     <junit.version>5.7.1</junit.version>
 
@@ -29,13 +29,13 @@
 
     <!-- Encoding -->
     <dependency>
-      <groupId>com.fasterxml.jackson.dataformat</groupId>
-      <artifactId>jackson-dataformat-cbor</artifactId>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
+      <artifactId>jackson-core</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
@@ -44,8 +44,8 @@
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-core</artifactId>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-cbor</artifactId>
       <version>${jackson.version}</version>
     </dependency>
 

@@ -32,7 +32,7 @@ class RootSpan extends Span {
 
     final LoggerSession session = Logger.getSession();
     if (session != null) {
-      setAttribute(TraceAttributes.TENANT_ID, session.getTenantId());
+      setTenantId(session.getTenantId());
       setAttribute(TraceAttributes.MODULE, session.getModuleId());
       setAttribute(TraceAttributes.OWNER, session.getOwnerId());
     }
