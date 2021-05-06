@@ -15,8 +15,8 @@ import tech.dnaco.telemetry.CounterMap;
 
 public class DumpStorage {
   public static void main(final String[] args) throws Exception {
-    final String tenantId = "atg_coldiretti.dev";
-    final String[] groups = new String[] { "BACKOFFICE" };
+    final String tenantId = "tignale.dev";
+    final String[] groups = new String[] { "__ALL__" };
 
     RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
 
@@ -33,15 +33,15 @@ public class DumpStorage {
     RocksDbKvStore.SKIP_SYS_ROWS = true;
     final Transaction txn = storage.getTransaction(null);
 
+    System.out.println(storage.getEntitySchema("RS_MAINTENANCE_WORKS"));
+
     final CounterMap schemaMap = new CounterMap();
     final CounterMap schemaSize = new CounterMap();
     final CounterMap schemaGroups = new CounterMap();
     final CounterMap schemaOperations = new CounterMap();
     final long startTime = System.nanoTime();
     storage.scanRow(txn, new RowKeyBuilder().slice(), (row) -> {
-      if (row.getSchema().getEntityName().equals("ATG_CONFIG_PACKAGES")) {
-        System.out.println("ROW: " + row);
-      }
+      System.out.println("ROW: " + row);
       schemaMap.inc(row.getSchema().getEntityName());
       schemaSize.inc(row.getSchema().getEntityName(), row.size());
       schemaGroups.inc((String)row.getObject(EntitySchema.SYS_FIELD_GROUP));

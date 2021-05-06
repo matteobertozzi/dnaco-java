@@ -132,13 +132,16 @@ public class EntitySchema {
       return true;
     }
 
-    if (getTypeCompatibility(type, this.types.get(index)) < 0) {
+    final EntityDataType currentType = this.types.get(index);
+    if (getTypeCompatibility(type, currentType) < 0) {
       Logger.error("type mismatch for entity {} field {}. expected {} got {}",
         entityName, fieldName, this.types.get(index), type);
       return false;
     }
 
-    this.types.set(index, type);
+    if (type != EntityDataType.NULL) {
+      this.types.set(index, type);
+    }
     return true;
   }
 
@@ -149,6 +152,12 @@ public class EntitySchema {
       }
     }
     return true;
+  }
+
+  public static void main(final String[] args) {
+    System.out.println(getTypeCompatibility(EntityDataType.NULL, EntityDataType.NULL));
+    System.out.println(getTypeCompatibility(EntityDataType.NULL, EntityDataType.STRING));
+    System.out.println(getTypeCompatibility(EntityDataType.STRING, EntityDataType.NULL));
   }
 
   public static int getTypeCompatibility(final EntityDataType type, final EntityDataType expectedType) {
@@ -170,6 +179,8 @@ public class EntitySchema {
       case STRING:
         // null is also acceptable
         return (type == EntityDataType.STRING || type == EntityDataType.NULL) ? 0 : -1;
+      case UTC_TIMESTAMP:
+        return (type == EntityDataType.UTC_TIMESTAMP || type == EntityDataType.INT) ? 0 : -1;
       case JSON_ARRAY:
         // null is also acceptable
         return (type == EntityDataType.JSON_ARRAY || type == EntityDataType.NULL) ? 0 : -1;

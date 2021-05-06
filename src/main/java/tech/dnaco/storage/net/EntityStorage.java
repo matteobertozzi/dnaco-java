@@ -30,6 +30,7 @@ import tech.dnaco.storage.net.models.ScanNextRequest;
 import tech.dnaco.storage.net.models.ScanRequest;
 import tech.dnaco.storage.net.models.ScanResult;
 import tech.dnaco.storage.net.models.Scanner;
+import tech.dnaco.storage.net.models.SchemaRequest;
 import tech.dnaco.storage.net.models.TransactionCommitRequest;
 import tech.dnaco.storage.net.models.TransactionStatusResponse;
 import tech.dnaco.strings.HumansUtil;
@@ -46,6 +47,11 @@ public final class EntityStorage {
     .setName("entity_storage_ops_count")
     .setLabel("Entity Storage Ops Count")
     .register(new CounterMap());
+
+  public EntitySchema getEntitySchema(final SchemaRequest request) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.getTenantId());
+    return storage.getEntitySchema(request.getEntity());
+  }
 
   // ================================================================================
   //  Modification Handlers

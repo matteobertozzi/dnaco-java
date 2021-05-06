@@ -20,7 +20,9 @@ public final class Query {
 
     switch (type) {
       case BOOL: return Boolean.compare((Boolean)a, (Boolean)b);
-      case INT: return Long.compare(((Number)a).longValue(), ((Number)b).longValue());
+      case INT:
+      case UTC_TIMESTAMP:
+        return Long.compare(((Number)a).longValue(), ((Number)b).longValue());
       case FLOAT: return Double.compare(((Number)a).doubleValue(), ((Number)b).doubleValue());
       case STRING: return StringUtil.compareTo((String)a, (String)b);
       case BYTES: return BytesUtil.compare((byte[])a, (byte[])b);
@@ -30,7 +32,8 @@ public final class Query {
   }
 
   private static boolean like(final Object value, final Object exp) {
-    return StringUtil.like((String) value, (String) exp);
+    final String sValue = (value != null) ? String.valueOf(value) : null;
+    return StringUtil.like(sValue, (String) exp);
   }
 
   private static boolean isEmpty(final Object value) {

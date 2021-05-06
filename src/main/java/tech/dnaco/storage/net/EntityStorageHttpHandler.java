@@ -3,6 +3,7 @@ package tech.dnaco.storage.net;
 import com.gullivernet.server.http.HttpMethod;
 import com.gullivernet.server.http.rest.RestRequestHandler;
 
+import tech.dnaco.storage.demo.EntitySchema;
 import tech.dnaco.storage.net.models.CountRequest;
 import tech.dnaco.storage.net.models.CountResult;
 import tech.dnaco.storage.net.models.ModificationRequest;
@@ -11,10 +12,16 @@ import tech.dnaco.storage.net.models.ScanNextRequest;
 import tech.dnaco.storage.net.models.ScanRequest;
 import tech.dnaco.storage.net.models.ScanResult;
 import tech.dnaco.storage.net.models.Scanner;
+import tech.dnaco.storage.net.models.SchemaRequest;
 import tech.dnaco.storage.net.models.TransactionCommitRequest;
 import tech.dnaco.storage.net.models.TransactionStatusResponse;
 
 public class EntityStorageHttpHandler implements RestRequestHandler {
+  @UriMapping(uri = "/v0/entity/schema")
+  public EntitySchema getEntitySchema(final SchemaRequest request) throws Exception {
+    return EntityStorage.INSTANCE.getEntitySchema(request);
+  }
+
   // ================================================================================
   //  Modification Handlers
   // ================================================================================

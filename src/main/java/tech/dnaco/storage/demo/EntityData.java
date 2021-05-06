@@ -40,6 +40,7 @@ public final class EntityData {
       case FLOAT: return encodeFloat(value);
       case BYTES: return encodeBytes(value);
       case STRING: return encodeString(value);
+      case UTC_TIMESTAMP: return encodeInt(value);
       case JSON_ARRAY: return encodeJsonArray(value);
       case JSON_OBJECT: return encodeJsonObject(value);
     }
@@ -58,6 +59,7 @@ public final class EntityData {
       case FLOAT: return decodeFloat(rawValue);
       case BYTES: return decodeBytes(rawValue);
       case STRING: return decodeString(rawValue);
+      case UTC_TIMESTAMP: return decodeInt(rawValue);
       case JSON_ARRAY: return decodeJsonArray(rawValue);
       case JSON_OBJECT: return decodeJsonObject(rawValue);
     }

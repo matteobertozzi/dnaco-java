@@ -20,5 +20,7 @@
 package tech.dnaco.storage.demo;
 
 public enum EntityDataType {
-  NULL, BOOL, INT, FLOAT, BYTES, STRING, JSON_OBJECT, JSON_ARRAY
+  NULL, BOOL, INT, FLOAT, BYTES, STRING,
+  JSON_OBJECT, JSON_ARRAY,
+  UTC_TIMESTAMP
 }

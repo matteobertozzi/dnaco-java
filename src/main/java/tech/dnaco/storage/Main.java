@@ -20,6 +20,7 @@ import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.rpc.DnacoRpcDispatcher;
 import tech.dnaco.net.rpc.DnacoRpcObjectMapper;
 import tech.dnaco.net.rpc.DnacoRpcService;
+import tech.dnaco.storage.demo.EntityBackupScheduled;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.net.EntityStorageHttpHandler;
 import tech.dnaco.storage.net.EntityStorageRpcHandler;
@@ -69,6 +70,7 @@ public final class Main {
       dispatcher.addHandler(new EventStorageRpcHandler());
 
       eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.HOURS, new EntityStorageScheduled());
+      eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.DAYS, new EntityBackupScheduled());
 
       final ServerInfo serverInfo = new ServerInfo()
           .setServiceUrl("goal.mobiledatacollection.it")
