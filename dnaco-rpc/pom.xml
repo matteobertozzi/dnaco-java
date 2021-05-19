@@ -11,10 +11,10 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <netty.version>4.1.63.Final</netty.version>
+    <netty.version>4.1.65.Final</netty.version>
     <jctools.version>3.3.0</jctools.version>
 
-    <junit.version>5.7.1</junit.version>
+    <junit.version>5.7.2</junit.version>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
