@@ -14,7 +14,7 @@ public class ScanResult {
   private String entity;
   private boolean more = false;
 
-  private ScanResult() {
+  public ScanResult() {
     this.rows = null;
     this.more = false;
   }

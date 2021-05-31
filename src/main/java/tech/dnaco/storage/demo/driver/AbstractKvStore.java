@@ -20,9 +20,11 @@
 package tech.dnaco.storage.demo.driver;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -140,6 +142,14 @@ public abstract class AbstractKvStore {
 
   public EntitySchema getSchema(final String entityName) {
     return schemas.get(entityName);
+  }
+
+  public Collection<EntitySchema> getSchemas() {
+    return schemas.values();
+  }
+
+  public Set<String> getEntityNames() {
+    return schemas.keySet();
   }
 
   // ================================================================================

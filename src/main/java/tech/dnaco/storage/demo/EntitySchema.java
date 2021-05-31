@@ -40,14 +40,23 @@ public class EntitySchema {
   public static final String SYS_FIELD_OPERATION = "__op__";
   public static final String SYS_FIELD_TIMESTAMP = "__ts__";
 
-  private final IndexedHashSet<String> fields = new IndexedHashSet<>();
+  private IndexedHashSet<String> fields = new IndexedHashSet<>();
   private final ArrayList<EntityDataType> types = new ArrayList<>();
-  private final String entityName;
+  private final String name;
 
   private HashIndexedArray<String> keys;
+  private String label;
+  private long mtime;
+  private boolean sync;
 
   public EntitySchema(final String entityName) {
-    this.entityName = entityName;
+    this(entityName, entityName, System.currentTimeMillis());
+  }
+
+  public EntitySchema(final String entityName, final String label, final long mtime) {
+    this.name = entityName;
+    this.label = entityName;
+    this.mtime = mtime;
     this.update(SYS_FIELD_GROUP, EntityDataType.STRING);
     this.update(SYS_FIELD_SEQID, EntityDataType.INT);
     this.update(SYS_FIELD_TIMESTAMP, EntityDataType.INT);
@@ -76,7 +85,31 @@ public class EntitySchema {
   }
 
   public String getEntityName() {
-    return entityName;
+    return name;
+  }
+
+  public String getLabel() {
+    return label;
+  }
+
+  public void setLabel(final String label) {
+    this.label = label;
+  }
+
+  public long getModificationTime() {
+    return mtime;
+  }
+
+  public void setModificationTime(final long mtime) {
+    this.mtime = mtime;
+  }
+
+  public boolean getSync() {
+    return sync;
+  }
+
+  public void setSync(final boolean sync) {
+    this.sync = sync;
   }
 
   public List<String> getFieldNames() {
@@ -125,6 +158,19 @@ public class EntitySchema {
     return newKeys != null ? Arrays.equals(keys.keySet(), newKeys) : (keys == null);
   }
 
+
+  public boolean remove(final String fieldName) {
+    final int index = fields.remove(fieldName);
+    if (index < 0) return false;
+
+    final List<String> keys = fields.keys();
+    this.fields = new IndexedHashSet<>();
+    this.fields.addAll(keys);
+
+    types.remove(index);
+    return true;
+  }
+
   public boolean update(final String fieldName, final EntityDataType type) {
     final int index = fields.add(fieldName);
     if (index == this.types.size()) {
@@ -135,7 +181,7 @@ public class EntitySchema {
     final EntityDataType currentType = this.types.get(index);
     if (getTypeCompatibility(type, currentType) < 0) {
       Logger.error("type mismatch for entity {} field {}. expected {} got {}",
-        entityName, fieldName, this.types.get(index), type);
+        name, fieldName, this.types.get(index), type);
       return false;
     }
 
@@ -194,7 +240,7 @@ public class EntitySchema {
   @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder();
-    builder.append("EntitySchema [name=").append(entityName);
+    builder.append("EntitySchema [name=").append(name);
     builder.append(", {");
     for (int i = 0, n = fields.size(); i < n; ++i) {
       if (i > 0) builder.append(", ");
@@ -207,7 +253,7 @@ public class EntitySchema {
 
   public byte[] encode() {
     final JsonObject json = new JsonObject();
-    json.addProperty("name", entityName);
+    json.addProperty("name", name);
     json.add("keys", keys != null ? JsonUtil.toJsonTree(keys.keySet()) : null);
     json.add("types", JsonUtil.toJsonTree(types));
     json.add("fields", JsonUtil.toJsonTree(fields.keys()));
@@ -222,9 +268,15 @@ public class EntitySchema {
     final JsonObject json = (JsonObject) EntityData.decodeJsonObject(rawValue);
     if (json == null) throw new IllegalArgumentException();
 
-    final EntitySchema schema = new EntitySchema(json.get("name").getAsString());
+    final String name = json.get("name").getAsString();
+    final String label = JsonUtil.getString(json, "label", null);
+    final long mtime = JsonUtil.getLong(json, "mtime", 0);
+    final boolean sync = JsonUtil.getBoolean(json, "sync", false);
+
+    final EntitySchema schema = new EntitySchema(name, label, mtime);
     final EntityDataType[] types = JsonUtil.fromJson(json.get("types"), EntityDataType[].class);
     final String[] fields = JsonUtil.fromJson(json.get("fields"), String[].class);
+    schema.setSync(sync);
     schema.update(fields, types);
     schema.setKey(JsonUtil.fromJson(json.get("keys"), String[].class));
     return schema;

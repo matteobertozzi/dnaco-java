@@ -1,5 +1,7 @@
 package tech.dnaco.storage.net;
 
+import java.util.Collection;
+
 import com.gullivernet.server.http.HttpMethod;
 import com.gullivernet.server.http.rest.RestRequestHandler;
 
@@ -17,7 +19,18 @@ import tech.dnaco.storage.net.models.TransactionCommitRequest;
 import tech.dnaco.storage.net.models.TransactionStatusResponse;
 
 public class EntityStorageHttpHandler implements RestRequestHandler {
-  @UriMapping(uri = "/v0/entity/schema")
+  @UriMapping(uri = "/v0/entity/schema/create", method = HttpMethod.POST)
+  public void entitySchemaCreate() {}
+
+  @UriMapping(uri = "/v0/entity/schema/edit", method = HttpMethod.POST)
+  public void entitySchemaEdit() {}
+
+  @UriMapping(uri = "/v0/entity/schema/list", method = HttpMethod.POST)
+  public Collection<EntitySchema> getEntitySchemas(final SchemaRequest request) throws Exception {
+    return EntityStorage.INSTANCE.getEntitySchemas(request);
+  }
+
+  @UriMapping(uri = "/v0/entity/schema/detail", method = HttpMethod.POST)
   public EntitySchema getEntitySchema(final SchemaRequest request) throws Exception {
     return EntityStorage.INSTANCE.getEntitySchema(request);
   }
@@ -79,7 +92,7 @@ public class EntityStorageHttpHandler implements RestRequestHandler {
   }
 
   @UriMapping(uri = "/v0/entity/scan-next", method = HttpMethod.POST)
-  public ScanResult scanNext(final ScanNextRequest request) {
+  public ScanResult scanNext(final ScanNextRequest request) throws Exception {
     return EntityStorage.INSTANCE.scanNext(request);
   }
 

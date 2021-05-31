@@ -42,7 +42,7 @@ public final class Main {
       }
     }
 
-    RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
+    RocksDbKvStore.init(new File("STORAGE_DATA"), 128 << 20);
 
     // Setup Logger using ServiceConfig
     final LogFileProvider logWriter;

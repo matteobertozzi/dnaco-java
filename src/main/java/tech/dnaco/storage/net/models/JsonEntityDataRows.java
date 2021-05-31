@@ -68,4 +68,10 @@ public class JsonEntityDataRows {
   public int rowCount() {
     return values.length / fieldNames.size();
   }
+
+  @Override
+  public String toString() {
+    return "JsonEntityDataRows [fieldNames=" + fieldNames + ", types=" + Arrays.toString(types) + ", values="
+        + Arrays.toString(values) + "]";
+  }
 }

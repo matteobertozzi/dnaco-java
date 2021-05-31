@@ -17,9 +17,12 @@
 
 package tech.dnaco.storage.encoding;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
 
+import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.bytes.encoding.IntEncoder;
 
 public class BitEncoder implements AutoCloseable {
@@ -82,5 +85,29 @@ public class BitEncoder implements AutoCloseable {
     availBits = Long.BYTES << 3;
     vBuffer = 0;
     vBits = 0;
+  }
+
+  private static int[] TABLE = new int[128];
+  private static char[] CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ_".toCharArray();
+  static {
+    for (int i = 0; i < TABLE.length; ++i) {
+      final int index = Arrays.binarySearch(CHARS, (char)i);
+      TABLE[i] = (index < 0) ? -1 : index;
+    }
+  }
+
+  public static void main(final String[] args) throws IOException {
+    System.out.println(Arrays.toString(TABLE));
+    final String text = "DATASOURCE_MANAGEMENT";
+    try (ByteArrayOutputStream buf = new ByteArrayOutputStream()) {
+      try (BitEncoder encoder = new BitEncoder(buf, 5)) {
+        for (int i = 0, n = text.length(); i < n; ++i) {
+          encoder.add(TABLE[text.charAt(i)]);
+        }
+      }
+      final byte[] buffo = buf.toByteArray();
+      System.out.println(text.length() + "/" + buffo.length + " -> " + (buffo.length / (double)text.length()));
+      System.out.println(BytesUtil.toBinaryString(buffo));
+    }
   }
 }

@@ -76,7 +76,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   //  Init Related
   // ================================================================================
   @Override
-  protected void openKvStore() throws Exception {
+  public void openKvStore() throws Exception {
     dbOptions = new Options();
     dbOptions.setTableFormatConfig(tableConfig);
     dbOptions.setWriteBufferSize(64 << 20);

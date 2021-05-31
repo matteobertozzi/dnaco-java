@@ -10,6 +10,11 @@ public class ScanRequest {
   private String[] fields;
   private JsonEntityDataRows[] rows;
   private Filter filter;
+  private boolean includeDeleted;
+
+  public ScanRequest() {
+    // no-op
+  }
 
   public String getTenantId() {
     return tenantId;
@@ -55,5 +60,11 @@ public class ScanRequest {
   }
   public void setFilter(final Filter filter) {
     this.filter = filter;
+  }
+  public boolean shouldIncludeDeleted() {
+    return includeDeleted;
+  }
+  public void shouldIncludeDeleted(final boolean value) {
+    this.includeDeleted = value;
   }
 }

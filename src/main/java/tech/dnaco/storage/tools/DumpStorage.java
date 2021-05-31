@@ -9,19 +9,18 @@ import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
-import tech.dnaco.storage.net.EntityStorage.CachedScannerResults;
+import tech.dnaco.storage.net.CachedScannerResults;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.telemetry.CounterMap;
 
 public class DumpStorage {
   public static void main(final String[] args) throws Exception {
-    final String tenantId = "tignale.dev";
+    final String tenantId = "road_safety.dev";
     final String[] groups = new String[] { "__ALL__" };
 
     RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
 
     final StorageLogic storage = Storage.getInstance(tenantId);
-    final StorageLogic storage2 = Storage.getInstance(tenantId + ".2");
     /*
     final Iterator<EntityDataRow> it = storage.getKvStore().scanRow(new ByteArraySlice());
     while (it.hasNext()) {
@@ -33,14 +32,12 @@ public class DumpStorage {
     RocksDbKvStore.SKIP_SYS_ROWS = true;
     final Transaction txn = storage.getTransaction(null);
 
-    System.out.println(storage.getEntitySchema("RS_MAINTENANCE_WORKS"));
-
     final CounterMap schemaMap = new CounterMap();
     final CounterMap schemaSize = new CounterMap();
     final CounterMap schemaGroups = new CounterMap();
     final CounterMap schemaOperations = new CounterMap();
     final long startTime = System.nanoTime();
-    storage.scanRow(txn, new RowKeyBuilder().slice(), (row) -> {
+    storage.scanRow(txn, new RowKeyBuilder().slice(), false, (row) -> {
       System.out.println("ROW: " + row);
       schemaMap.inc(row.getSchema().getEntityName());
       schemaSize.inc(row.getSchema().getEntityName(), row.size());
@@ -73,7 +70,7 @@ public class DumpStorage {
 
       // scan
       for (final String groupId: groups) {
-        storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+        storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
           results.add(row);
           System.out.println(row);
           return true;

@@ -26,6 +26,7 @@ import java.util.List;
 import com.gullivernet.commons.util.VerifyArg;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntitySchema.Operation;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.strings.StringUtil;
@@ -87,7 +88,7 @@ public class EntityDataRows {
     add(fieldIndex, value);
   }
 
-  public void addObject(final String fieldName, final Object value) {
+  public EntityDataRows addObject(final String fieldName, final Object value) {
     final int fieldIndex = schema.getFieldIndex(fieldName);
     if (schema.isKey(fieldName)) {
       final EntityDataType type = schema.getFieldType(fieldIndex);
@@ -96,12 +97,13 @@ public class EntityDataRows {
           add(fieldIndex, ((String)value).getBytes());
           break;
         case INT:
-          if (value instanceof Integer) {
+          if (value instanceof Integer || value instanceof Long) {
             add(fieldIndex, String.valueOf(value).getBytes());
-          } else if (value instanceof Double) {
+          } else if (value instanceof Float || value instanceof Double) {
             add(fieldIndex, String.valueOf(Math.round((Double)value)).getBytes());
           } else {
-            throw new UnsupportedOperationException("expected/int/double for field " + fieldName + " got " + value);
+            throw new UnsupportedOperationException("expected/int/double for field "
+              + fieldName + " got " + value + " " + (value != null ? value.getClass() : ""));
           }
           break;
         default:
@@ -110,6 +112,7 @@ public class EntityDataRows {
     } else {
       add(fieldIndex, EntityData.encodeFromObject(schema.getFieldType(fieldIndex), value));
     }
+    return this;
   }
 
   public void copyFrom(final EntityDataRow oldRow) {
@@ -231,7 +234,11 @@ public class EntityDataRows {
     builder.add(schema.getEntityName());
     for (final String key: schema.getKeyFields()) {
       final int keyIndex = schema.getFieldIndex(key);
-      builder.add(values.get(rowOffset + keyIndex));
+      final byte[] value = values.get(rowOffset + keyIndex);
+      if (value == null) {
+        Logger.error("unexpected field {} with null value", key);
+      }
+      builder.add(value);
     }
     return builder.drain();
   }

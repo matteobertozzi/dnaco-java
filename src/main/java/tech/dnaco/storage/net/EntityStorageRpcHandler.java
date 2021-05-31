@@ -70,7 +70,7 @@ public class EntityStorageRpcHandler implements DnacoRpcHandler {
   }
 
   @RpcRequest("/v0/entity/scan-next")
-  public ScanResult scanNext(final ScanNextRequest request) {
+  public ScanResult scanNext(final ScanNextRequest request) throws Exception {
     return EntityStorage.INSTANCE.scanNext(request);
   }
 

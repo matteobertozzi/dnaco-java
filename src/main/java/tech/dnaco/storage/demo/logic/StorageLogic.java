@@ -20,10 +20,9 @@
 package tech.dnaco.storage.demo.logic;
 
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -34,17 +33,15 @@ import tech.dnaco.collections.iterators.AbstractFilteredIterator;
 import tech.dnaco.collections.iterators.FilteredIterator;
 import tech.dnaco.collections.iterators.MergeIterator;
 import tech.dnaco.collections.iterators.PeekIterator;
+import tech.dnaco.collections.iterators.SimplePeekIterator;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
-import tech.dnaco.storage.demo.EntityDataType;
 import tech.dnaco.storage.demo.EntitySchema;
 import tech.dnaco.storage.demo.EntitySchema.Operation;
-import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.storage.demo.driver.AbstractKvStore;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.KeyValConsumer;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.RowPredicate;
-import tech.dnaco.storage.demo.driver.MemoryKvStore;
 import tech.dnaco.strings.StringUtil;
 
 public final class StorageLogic {
@@ -90,6 +87,10 @@ public final class StorageLogic {
 
   public EntitySchema getEntitySchema(final String entityName) {
     return storage.getSchema(entityName);
+  }
+
+  public Collection<EntitySchema> getEntitySchemas() {
+    return storage.getSchemas();
   }
 
   public void registerSchema(final EntitySchema schema) throws Exception {
@@ -308,8 +309,12 @@ public final class StorageLogic {
     storage.scanPrefix(new ByteArraySlice(), consumer);
   }
 
-  public PeekIterator<EntityDataRow> scanRow(final Transaction txn, final ByteArraySlice prefix) throws Exception {
+  public PeekIterator<EntityDataRow> scanRow(final Transaction txn,
+      final ByteArraySlice prefix, final boolean includeDeleted) throws Exception {
     if (txn == null) {
+      if (includeDeleted) {
+        return new SimplePeekIterator<>(storage.scanRow(prefix));
+      }
       return new FilteredIterator<>(storage.scanRow(prefix), StorageLogic::isRowActive);
     }
 
@@ -319,8 +324,9 @@ public final class StorageLogic {
     ));
   }
 
-  public void scanRow(final Transaction txn, final ByteArraySlice prefix, final RowPredicate consumer) throws Exception {
-    final PeekIterator<EntityDataRow> it = scanRow(txn, prefix);
+  public void scanRow(final Transaction txn, final ByteArraySlice prefix,
+      final boolean includeDeleted, final RowPredicate consumer) throws Exception {
+    final PeekIterator<EntityDataRow> it = scanRow(txn, prefix, includeDeleted);
     while (it.hasNext()) {
       final EntityDataRow row = it.next();
       //System.out.println(" ---> " + row);
@@ -367,85 +373,5 @@ public final class StorageLogic {
         }
       }
     }
-  }
-
-  public static void main(final String[] args) throws Exception {
-    final MemoryKvStore kvStore = new MemoryKvStore("project");
-    final StorageLogic storage = new StorageLogic(kvStore);
-
-    final EntitySchema schema = storage.getOrCreateEntitySchema("tst_entity");
-    schema.update("k1", EntityDataType.INT);
-    schema.update("k2", EntityDataType.INT);
-    schema.update("v", EntityDataType.INT);
-    schema.update("vX", EntityDataType.INT);
-    schema.setKey(new String[] { "k1", "k2" });
-    storage.registerSchema(schema);
-
-    // --- TXN 1 ---
-    final Transaction txn = storage.getOrCreateTransaction(UUID.randomUUID().toString());
-    storage.addRow(txn, EntityDataRow.fromMap(schema, Map.of(
-      EntitySchema.SYS_FIELD_OPERATION, Operation.INSERT.ordinal(),
-      EntitySchema.SYS_FIELD_GROUP, "T1",
-      "k1", 1, "k2", 10, "v", 1, "vX", 11
-    )));
-    storage.addRow(txn, EntityDataRow.fromMap(schema, Map.of(
-      EntitySchema.SYS_FIELD_OPERATION, Operation.INSERT.ordinal(),
-      EntitySchema.SYS_FIELD_GROUP, "T1",
-      "k1", 2, "k2", 20, "v", 2, "vX", 22
-    )));
-    //kvStore.dump();
-    System.out.println(" --- TXN SCAN 0 ---");
-    storage.scanRow(txn, new RowKeyBuilder().add("T1").slice(), (row) -> {
-      System.out.println("0: " + row);
-      return true;
-    });
-    storage.commit(txn);
-    //kvStore.dump();
-    //if (true) return;
-
-    // --- TXN 2 ---
-    final Transaction txn2 = storage.getOrCreateTransaction(UUID.randomUUID().toString());
-    System.out.println(" --- TXN SCAN 1 ---");
-    storage.scanRow(txn2, new RowKeyBuilder().add("T1").slice(), (row) -> {
-      System.out.println("1: " + row);
-      return true;
-    });
-
-    storage.addRow(txn2, EntityDataRow.fromMap(schema, Map.of(
-      EntitySchema.SYS_FIELD_OPERATION, Operation.UPDATE.ordinal(),
-      EntitySchema.SYS_FIELD_GROUP, "T1",
-      "k1", 1, "k2", 10, "v", 100
-    )));
-    System.out.println(" --- TXN SCAN 2 ---");
-    storage.scanRow(txn2, new RowKeyBuilder().add("T1").slice(), (row) -> {
-      System.out.println("2: " + row);
-      return true;
-    });
-    storage.commit(txn2);
-
-    // --- TXN 3 ---
-    final Transaction txn3 = storage.getOrCreateTransaction(UUID.randomUUID().toString());
-    System.out.println(" --- TXN SCAN 3 ---");
-    storage.scanRow(txn3, new RowKeyBuilder().add("T1").slice(), (row) -> {
-      System.out.println("3: " + row);
-      return true;
-    });
-
-    storage.addRow(txn3, EntityDataRow.fromMap(schema, Map.of(
-      EntitySchema.SYS_FIELD_OPERATION, Operation.DELETE.ordinal(),
-      EntitySchema.SYS_FIELD_GROUP, "T1",
-      "k1", 1, "k2", 10
-    )));
-    System.out.println(" --- TXN SCAN 3 ---");
-    storage.scanRow(txn3, new RowKeyBuilder().add("T1").slice(), (row) -> {
-      System.out.println("3: " + row);
-      return true;
-    });
-    storage.commit(txn3);
-
-    storage.scanRow(null, new RowKeyBuilder().add("T1").slice(), (row) -> {
-      System.out.println("4: " + row);
-      return true;
-    });
   }
 }

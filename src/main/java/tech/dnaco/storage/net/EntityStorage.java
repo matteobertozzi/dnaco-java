@@ -1,10 +1,10 @@
 package tech.dnaco.storage.net;
 
+import java.io.IOException;
 import java.time.ZonedDateTime;
-import java.util.Queue;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import com.gullivernet.commons.util.DateUtil;
 import com.gullivernet.commons.util.VerifyArg;
@@ -21,6 +21,7 @@ import tech.dnaco.storage.demo.logic.Query;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
+import tech.dnaco.storage.net.CachedScannerResults.CachedScanResults;
 import tech.dnaco.storage.net.models.CountRequest;
 import tech.dnaco.storage.net.models.CountResult;
 import tech.dnaco.storage.net.models.JsonEntityDataRows;
@@ -51,6 +52,11 @@ public final class EntityStorage {
   public EntitySchema getEntitySchema(final SchemaRequest request) throws Exception {
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
     return storage.getEntitySchema(request.getEntity());
+  }
+
+  public Collection<EntitySchema> getEntitySchemas(final SchemaRequest request) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.getTenantId());
+    return storage.getEntitySchemas();
   }
 
   // ================================================================================
@@ -90,7 +96,7 @@ public final class EntityStorage {
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
 
     for (final String groupId: request.getGroups()) {
-      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
         if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
           final EntityDataRows updatedRow = new EntityDataRows(schema).newRow();
           updatedRow.copyFrom(row);
@@ -131,7 +137,7 @@ public final class EntityStorage {
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
 
     for (final String groupId: request.getGroups()) {
-      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
         if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
           final EntityDataRows updatedRow = new EntityDataRows(schema).newRow();
           updatedRow.copyFrom(row);
@@ -277,19 +283,18 @@ public final class EntityStorage {
 
       // scan
       for (final String groupId: request.getGroups()) {
-        storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+        storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), request.shouldIncludeDeleted(), (row) -> {
           if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
             results.add(row);
-            results.rowCount++;
           }
-          results.rowRead++;
+          results.incRowRead();
           return true;
         });
       }
     });
   }
 
-  private final ConcurrentHashMap<String, Queue<ScanResult>> scanResults = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, CachedScanResults> scanResults = new ConcurrentHashMap<>();
   public Scanner scanAll(final ScanRequest request) throws Exception {
     Tracer.getCurrentTask().setTenantId(request.getTenantId());
     verifyGroups(request.getGroups());
@@ -301,12 +306,12 @@ public final class EntityStorage {
 
     return buildScanner(request.getTenantId(), null, startTime, (results) -> {
       for (final String groupId: request.getGroups()) {
-        storage.scanRow(txn, new RowKeyBuilder().add(groupId).addKeySeparator().slice(), (row) -> {
+        final ByteArraySlice prefix = new RowKeyBuilder().add(groupId).addKeySeparator().slice();
+        storage.scanRow(txn, prefix, request.shouldIncludeDeleted(), (row) -> {
           if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
             results.add(row);
-            results.rowCount++;
           }
-          results.rowRead++;
+          results.incRowRead();
           return true;
         });
       }
@@ -326,7 +331,9 @@ public final class EntityStorage {
 
     final long elapsed = System.nanoTime() - startTime;
     Logger.debug("{} scan {} read {} rows, result has {} rows matching the filter. took {}",
-      tenant, entity != null ? entity : "ALL", results.rowRead, results.rowCount, HumansUtil.humanTimeNanos(elapsed));
+      tenant, entity != null ? entity : "ALL",
+      results.getRowRead(), results.getRowCount(),
+      HumansUtil.humanTimeNanos(elapsed));
 
     // no data...
     if (results.isEmpty()) {
@@ -334,68 +341,29 @@ public final class EntityStorage {
     }
 
     // the scan has a single page
-    final ScanResult firstResult = results.scanner.poll();
+    final ScanResult firstResult = results.getFirstResult();
     if (results.isEmpty()) return new Scanner(firstResult);
 
     // the scan has multiple page
     final String scannerId = UUID.randomUUID().toString();
-    scanResults.put(scannerId, results.scanner);
+    scanResults.put(scannerId, results.newCachedScanResults());
     return new Scanner(scannerId, firstResult);
   }
 
-  public ScanResult scanNext(final ScanNextRequest request) {
+  public ScanResult scanNext(final ScanNextRequest request) throws IOException {
     Tracer.getCurrentTask().setTenantId(request.getTenantId());
     VerifyArg.verifyNotEmpty("scannerId", request.getScannerId());
     opsCount.inc(request.getTenantId());
 
-    final Queue<ScanResult> results = scanResults.get(request.getScannerId());
+    final CachedScanResults results = scanResults.get(request.getScannerId());
     if (results == null) return ScanResult.EMPTY_RESULT;
 
     final ScanResult result = results.poll();
-    if (results.isEmpty()) scanResults.remove(request.getScannerId());
+    if (!results.hasMore()) {
+      scanResults.remove(request.getScannerId());
+    }
 
     return result != null ? result : ScanResult.EMPTY_RESULT;
-  }
-
-  public static final class CachedScannerResults {
-    private final LinkedBlockingQueue<ScanResult> scanner = new LinkedBlockingQueue<>();
-    private EntitySchema schema;
-    private ScanResult results;
-    private long rowCount;
-    private long rowRead;
-
-    public boolean isEmpty() {
-      return scanner.isEmpty();
-    }
-
-    public void sealResults() {
-      sealResults(true);
-    }
-
-    public void sealResults(final boolean hasMore) {
-      if (results != null) {
-        results.setMore(hasMore);
-        scanner.add(results);
-      }
-    }
-
-    public boolean isSameSchema(final EntitySchema other) {
-      return schema != null && this.schema.getEntityName().equals(other.getEntityName());
-    }
-
-    public void setSchema(final EntitySchema schema) {
-      sealResults();
-
-      this.schema = schema;
-      this.results = new ScanResult(schema);
-    }
-
-    public void add(final EntityDataRow row) {
-      if (!isSameSchema(row.getSchema())) {
-        setSchema(row.getSchema());
-      }
-      results.add(row);
-    }
   }
 
   public CountResult countEntity(final CountRequest request) throws Exception {
@@ -413,7 +381,7 @@ public final class EntityStorage {
 
     // scan
     for (final String groupId: request.getGroups()) {
-      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), (row) -> {
+      storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
         if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
           result.incTotalRows();
         }
