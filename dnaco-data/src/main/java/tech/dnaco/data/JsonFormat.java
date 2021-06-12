@@ -17,7 +17,7 @@
 
 package tech.dnaco.data;
 
-import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 public final class JsonFormat extends DataFormat {
   public static final JsonFormat INSTANCE = new JsonFormat();
@@ -29,13 +29,13 @@ public final class JsonFormat extends DataFormat {
   }
 
   @Override
-  protected DataFormatMapper<? extends JsonFactory> get() {
+  protected DataFormatMapper get() {
     return mapper.get();
   }
 
-  private static final class JsonFormatMapper extends DataFormatMapper<JsonFactory> {
+  private static final class JsonFormatMapper extends DataFormatMapper {
     private JsonFormatMapper() {
-      super(new JsonFactory());
+      super(new JsonMapper());
     }
   }
 }

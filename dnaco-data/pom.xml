@@ -13,9 +13,9 @@
 
   <properties>
     <jackson.version>2.12.3</jackson.version>
-    <zstd.version>1.4.9-5</zstd.version>
+    <zstd.version>1.5.0-1</zstd.version>
 
-    <junit.version>5.7.1</junit.version>
+    <junit.version>5.7.2</junit.version>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -46,6 +46,11 @@
     <dependency>
       <groupId>com.fasterxml.jackson.dataformat</groupId>
       <artifactId>jackson-dataformat-cbor</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-ion</artifactId>
       <version>${jackson.version}</version>
     </dependency>
 

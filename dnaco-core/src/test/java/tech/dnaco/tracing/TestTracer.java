@@ -49,4 +49,15 @@ public class TestTracer {
     Assertions.assertEquals(rootSpan, Tracer.getCurrentTask());
     Assertions.assertEquals(spanB, Tracer.getCurrentSpan());
   }
+
+  @Test
+  public void testInner() {
+    try (final Span span = Tracer.newTask()) {
+      System.out.println("---> 1");
+      try (final Span span2 = Tracer.newTask()) {
+        System.out.println("---> 2");
+      }
+      System.out.println("---> 3");
+    }
+  }
 }

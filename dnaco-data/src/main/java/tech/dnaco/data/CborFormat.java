@@ -17,8 +17,7 @@
 
 package tech.dnaco.data;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
+import com.fasterxml.jackson.dataformat.cbor.databind.CBORMapper;
 
 public final class CborFormat extends DataFormat {
   public static final CborFormat INSTANCE = new CborFormat();
@@ -30,13 +29,13 @@ public final class CborFormat extends DataFormat {
   }
 
   @Override
-  protected DataFormatMapper<? extends JsonFactory> get() {
+  protected DataFormatMapper get() {
     return mapper.get();
   }
 
-  private static final class CborFormatMapper extends DataFormatMapper<CBORFactory> {
+  private static final class CborFormatMapper extends DataFormatMapper {
     private CborFormatMapper() {
-      super(new CBORFactory());
+      super(new CBORMapper());
     }
   }
 }

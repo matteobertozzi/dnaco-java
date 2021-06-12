@@ -40,16 +40,13 @@ import tech.dnaco.data.modules.TraceIdsModule;
 import tech.dnaco.util.Serialization.SerializationName;
 import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
-class DataFormatMapper<TFactory extends JsonFactory> {
+class DataFormatMapper {
   public static final String JSON_DATE_FORMAT_PATTERN = "YYYYMMddHHmmss";
 
-  private final TFactory factory;
   private final ObjectMapper mapper;
 
-  protected DataFormatMapper(final TFactory factory) {
-    this.factory = factory;
-
-    this.mapper = new ObjectMapper(factory);
+  protected DataFormatMapper(final ObjectMapper objectMapper) {
+    this.mapper = objectMapper;
     this.mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
     this.mapper.setVisibility(PropertyAccessor.GETTER, Visibility.NONE);
     this.mapper.setVisibility(PropertyAccessor.IS_GETTER, Visibility.NONE);
@@ -84,8 +81,8 @@ class DataFormatMapper<TFactory extends JsonFactory> {
     this.mapper.registerModule(module);
   }
 
-  public TFactory getFactory() {
-    return factory;
+  public JsonFactory getFactory() {
+    return mapper.getFactory();
   }
 
   public ObjectMapper getObjectMapper() {

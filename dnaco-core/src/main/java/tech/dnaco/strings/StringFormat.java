@@ -20,6 +20,7 @@ package tech.dnaco.strings;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,6 +56,12 @@ public final class StringFormat {
 
   public static int applyFormat(final StringBuilder msgBuilder, final String format,
       final Object[] args, final int argsOff, final int argsLen) {
+    return applyFormat(msgBuilder, format, args, argsOff, argsLen, StringFormat::valueOf);
+  }
+
+  public static int applyFormat(final StringBuilder msgBuilder, final String format,
+      final Object[] args, final int argsOff, final int argsLen,
+      final Function<Object, String> valueToString) {
     if (argsLen == 0) {
       msgBuilder.append(format);
       return 1;
@@ -64,7 +71,7 @@ public final class StringFormat {
     final Matcher m = KEYWORD_PATTERN.matcher(format);
     while (m.find()) {
       final String key = m.group(1);
-      final String value = valueOf(argsIndex < args.length ? args[argsIndex++] : "{unprovided arg}");
+      final String value = argsIndex < args.length ? valueToString.apply(args[argsIndex++]) : "{unprovided arg}";
       if (StringUtil.isNotEmpty(key)) {
         m.appendReplacement(msgBuilder, key);
         msgBuilder.append(':').append(value);

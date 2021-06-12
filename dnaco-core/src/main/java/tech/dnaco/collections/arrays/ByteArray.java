@@ -116,6 +116,28 @@ public class ByteArray {
   }
 
   @Override
+  public int hashCode() {
+    if (count == 0) return 0;
+
+    int result = 1;
+    for (int i = 0; i < count; ++i) {
+      result = 31 * result + blob[i];
+    }
+    return result;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) return true;
+    if (!(obj instanceof ByteArray)) return false;
+
+    final ByteArray other = (ByteArray) obj;
+    if (count != other.count) return false;
+
+    return Arrays.equals(blob, 0, count, other.blob, 0, count);
+  }
+
+  @Override
   public String toString() {
     return "ByteArray [count=" + count + ", items=" + Arrays.toString(blob) + "]";
   }

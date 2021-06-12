@@ -118,7 +118,7 @@ public abstract class AbstractClient implements StopSignal {
     setState(ClientState.READY);
   }
 
-  protected boolean isReady() {
+  public boolean isReady() {
     return state == ClientState.READY;
   }
 
@@ -200,6 +200,13 @@ public abstract class AbstractClient implements StopSignal {
     } else {
       Logger.debug("write failed add to pending frame to retry queue");
       addToPending(frame);
+    }
+  }
+
+  protected void fireEvent(final Object event) {
+    final Channel channel = channelRef.get();
+    if (channel != null) {
+      channel.pipeline().fireUserEventTriggered(event);
     }
   }
 
@@ -308,6 +315,9 @@ public abstract class AbstractClient implements StopSignal {
     }
 
     public synchronized InProgressClientPromise<T> setSuccess(final T result) {
+      if (result instanceof ReferenceCounted) {
+        ((ReferenceCounted)result).retain();
+      }
       this.result = result;
       triggerCompletion();
       return this;
@@ -325,6 +335,9 @@ public abstract class AbstractClient implements StopSignal {
         for (final BiConsumer<? super T, ? super Throwable> action: actions) {
           action.accept(result, cause);
         }
+        if (result instanceof ReferenceCounted) {
+          ((ReferenceCounted)result).release();
+        }
       }
     }
 
@@ -332,6 +345,10 @@ public abstract class AbstractClient implements StopSignal {
     public synchronized ClientPromise<T> whenComplete(final BiConsumer<? super T, ? super Throwable> action) {
       if (completed) {
         action.accept(result, cause);
+
+        if (result instanceof ReferenceCounted) {
+          ((ReferenceCounted)result).release();
+        }
       } else {
         if (actions == null) {
           actions = new ArrayList<>();

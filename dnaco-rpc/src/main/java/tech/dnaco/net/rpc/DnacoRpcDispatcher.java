@@ -40,6 +40,7 @@ import tech.dnaco.net.rpc.DnacoRpcHandler.RpcRequest;
 import tech.dnaco.net.rpc.DnacoRpcHandler.RpcSessionConnected;
 import tech.dnaco.net.rpc.DnacoRpcHandler.RpcSessionDisconnected;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.strings.StringUtil;
 
 public class DnacoRpcDispatcher {
   private final HashMap<ByteBuf, RpcHandler> rpcRequestMapping = new HashMap<>(256);
@@ -225,7 +226,8 @@ public class DnacoRpcDispatcher {
       writeRpcResponse(ctx, request, DnacoRpcResponse.OperationStatus.FAILED, startNs, Unpooled.wrappedBuffer("INTERNAL_SERVER_ERROR".getBytes()));
     } catch (final Throwable e) {
       Logger.error(e, "failed to execute request: {}", request);
-      writeRpcResponse(ctx, request, DnacoRpcResponse.OperationStatus.FAILED, startNs, Unpooled.wrappedBuffer(e.getMessage().getBytes()));
+      final byte[] message = StringUtil.defaultIfEmpty(e.getMessage(), "INTERNAL_SERVER_ERROR").getBytes();
+      writeRpcResponse(ctx, request, DnacoRpcResponse.OperationStatus.FAILED, startNs, Unpooled.wrappedBuffer(message));
     }
   }
 
@@ -320,6 +322,10 @@ public class DnacoRpcDispatcher {
           paramMappers[i] = RpcPacketParamMapper.INSTANCE;
         } else if (DnacoRpcSession.class.isAssignableFrom(paramType)) {
           paramMappers[i] = RpcSessionParamMapper.INSTANCE;
+        } else if (ByteBuf.class.isAssignableFrom(paramType)) {
+          paramMappers[i] = RpcByteBufParamMapper.INSTANCE;
+        } else if (byte[].class.isAssignableFrom(paramType)) {
+          paramMappers[i] = RpcByteArrayParamMapper.INSTANCE;
         } else {
           paramMappers[i] = new RpcPacketDataParamMapper(rawParam.getName(), paramType);
         }
@@ -382,6 +388,27 @@ public class DnacoRpcDispatcher {
       @Override
       public Object get(final DnacoRpcSession session, final DnacoRpcPacket packet, final DnacoRpcObjectMapper objectMapper) {
         return session;
+      }
+    }
+
+    private static final class RpcByteBufParamMapper implements ParamMapper {
+      private static final RpcByteBufParamMapper INSTANCE = new RpcByteBufParamMapper();
+
+      @Override
+      public Object get(final DnacoRpcSession session, final DnacoRpcPacket packet, final DnacoRpcObjectMapper objectMapper) {
+        return packet.getData();
+      }
+    }
+
+    private static final class RpcByteArrayParamMapper implements ParamMapper {
+      private static final RpcByteArrayParamMapper INSTANCE = new RpcByteArrayParamMapper();
+
+      @Override
+      public Object get(final DnacoRpcSession session, final DnacoRpcPacket packet, final DnacoRpcObjectMapper objectMapper) {
+        final byte[] content = new byte[packet.getDataSize()];
+        packet.getData().readBytes(content);
+        packet.getData().resetReaderIndex();
+        return content;
       }
     }
 

@@ -17,6 +17,8 @@
 
 package tech.dnaco.threading;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -109,6 +111,18 @@ public final class ThreadUtil {
     }
   }
 
+  public static void shutdown(final Collection<Thread> threads) {
+    for (final Thread thread: threads) {
+      shutdown(thread, Long.MAX_VALUE);
+    }
+  }
+
+  public static void shutdown(final Collection<Thread> threads, final long joinWait, final TimeUnit unit) {
+    for (final Thread thread: threads) {
+      shutdown(thread, unit.toMillis(joinWait));
+    }
+  }
+
   public static boolean conditionAwait(final Condition waitCond) {
     try {
       waitCond.await();
@@ -170,9 +184,18 @@ public final class ThreadUtil {
   }
 
   public static void runInThreads(final ThreadFactory threadFactory, final int count, final Runnable runnable) {
+    final List<Thread> threads = runInThreadsNoWait(threadFactory, count, runnable);
+    shutdown(threads);
+  }
+
+  public static List<Thread> runInThreadsNoWait(final String threadName, final int count, final Runnable runnable) {
+    return runInThreadsNoWait(new NamedThreadFactory(threadName), count, runnable);
+  }
+
+  public static List<Thread> runInThreadsNoWait(final ThreadFactory threadFactory, final int count, final Runnable runnable) {
     final Thread[] threads = new Thread[count];
     for (int i = 0; i < count; ++i) threads[i] = threadFactory.newThread(runnable);
     for (int i = 0; i < count; ++i) threads[i].start();
-    for (int i = 0; i < count; ++i) shutdown(threads[i]);
+    return List.of(threads);
   }
 }

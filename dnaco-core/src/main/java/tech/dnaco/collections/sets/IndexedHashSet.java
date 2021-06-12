@@ -155,6 +155,7 @@ public final class IndexedHashSet<K> {
         entry.key = null;
         freeList = i;
         count--;
+        resize(entriesIndex);
         return i;
       }
     }

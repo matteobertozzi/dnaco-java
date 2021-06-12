@@ -20,13 +20,17 @@
 package tech.dnaco.logging;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map.Entry;
 
+import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
+import tech.dnaco.collections.lists.ListUtil;
 import tech.dnaco.logging.format.LogFormat;
 import tech.dnaco.strings.HumansTableView;
 
 public class LogEntryData extends LogEntry {
-  public enum DataType { BINARY, TEXT, JSON, KEY_VALUE, TABLE }
+  public enum DataType { BINARY, TEXT, JSON, KEY_VALUE, TABLE, HTTP }
 
   private final ArrayList<Data> dataEntries = new ArrayList<>();
   private String label;
@@ -68,6 +72,16 @@ public class LogEntryData extends LogEntry {
 
   public LogEntryData addTable(final String[] columnNames, final Object[] rows) {
     return addData(new TableData(columnNames, rows));
+  }
+
+  public LogEntryData addHttpRequest(final String method, final String uri,
+      final List<Entry<String, String>> headers, final byte[] body) {
+    return addData(new HttpData(method, uri, headers, body));
+  }
+
+  public LogEntryData addHttpResponse(final String method, final String uri, final int status,
+      final List<Entry<String, String>> headers, final byte[] body) {
+    return addData(new HttpData(method, uri, status, headers, body));
   }
 
   public interface Data {
@@ -161,6 +175,61 @@ public class LogEntryData extends LogEntry {
         tableView.addRow(values, i);
       }
       tableView.addHumanView(report);
+    }
+  }
+
+  public static final class HttpData implements Data {
+    private final String method;
+    private final String uri;
+    private final String[] headers;
+    private final byte[] body;
+    private final Integer status;
+
+    public HttpData(final String method, final String uri,
+        final List<Entry<String, String>> headers, final byte[] body) {
+      this.method = method;
+      this.uri = uri;
+      this.headers = convertHeaders(headers);
+      this.body = body;
+      this.status = null;
+    }
+
+    public HttpData(final String method, final String uri, final int status,
+        final List<Entry<String, String>> headers, final byte[] body) {
+      this.method = method;
+      this.uri = uri;
+      this.headers = convertHeaders(headers);
+      this.body = body;
+      this.status = status;
+    }
+
+    private static String[] convertHeaders(final List<Entry<String, String>> entries) {
+      if (ListUtil.isEmpty(entries)) return null;
+
+      int index = 0;
+      final String[] headers = new String[entries.size() * 2];
+      for (final Entry<String, String> entry: entries) {
+        headers[index++] = entry.getKey();
+        headers[index++] = entry.getValue();
+      }
+      return headers;
+    }
+
+    public DataType getType() { return DataType.HTTP; }
+
+    public void addToHumanReport(final StringBuilder report) {
+      if (status != null) {
+        report.append("RESPONSE STATUS: ").append(status).append("\n");
+      }
+      if (headers != null) {
+        for (int i = 0; i < headers.length; i += 2) {
+          report.append(" - ").append(headers[i]).append(" ").append(headers[i+1]).append("\n");
+        }
+      }
+      if (BytesUtil.isNotEmpty(body)) {
+        report.append(new String(body));
+      }
+      report.append("\n");
     }
   }
 

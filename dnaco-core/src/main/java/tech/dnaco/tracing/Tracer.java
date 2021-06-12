@@ -53,8 +53,7 @@ public final class Tracer {
   //  Task related
   // ================================================================================
   public static Span newTask() {
-    final TraceId traceId = provider.newTraceId();
-    return new RootSpan(traceId, null, provider.newSpanId());
+    return newSubTask(provider.newTraceId());
   }
 
   public static Span newTask(final String label) {
@@ -118,13 +117,28 @@ public final class Tracer {
     }
     provider.addSpanTraces(span);
 
+    if (!spanStack.isEmpty() && spanStack.size() % 1000 == 0) {
+      Logger.error("LEAK Too many spans in the stack: {}", spanStack.size());
+    }
+
     if (span instanceof RootSpan) {
-      final RootSpan rootSpan = (RootSpan)span;
+      RootSpan rootSpan = (RootSpan)span;
       if (localRootSpan.get() != rootSpan) {
         throw new IllegalArgumentException("expected " + rootSpan + " to be the current span. " + localRootSpan.get());
       }
-      localRootSpan.remove();
+
       TaskMonitor.INSTANCE.addCompletedTask(rootSpan);
+
+      // find the previous RootSpan
+      rootSpan = null;
+      for (int i = spanStack.size() - 1; i >= 0; ++i) {
+        final Span openSpan = spanStack.get(i);
+        if (openSpan instanceof RootSpan) {
+          rootSpan = (RootSpan)openSpan;
+          break;
+        }
+      }
+      localRootSpan.set(rootSpan);
     }
   }
 }

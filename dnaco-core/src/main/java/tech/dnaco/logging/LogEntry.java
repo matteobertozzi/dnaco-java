@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicLong;
 
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.journal.JournalEntry;
@@ -33,12 +34,14 @@ import tech.dnaco.tracing.TraceId;
 public abstract class LogEntry implements JournalEntry {
   public static final DateTimeFormatter LOG_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
-  public enum LogEntryType { FLUSH, RESET, MESSAGE, DATA }
+  public enum LogEntryType { FLUSH, RESET, MESSAGE, DATA, HTTP }
 
   private static final LogEntryType[] LOG_ENTRY_TYPES = LogEntryType.values();
   public static LogEntryType entryTypeFromOrdinal(final int ordinal) {
     return LOG_ENTRY_TYPES[ordinal];
   }
+
+  private static final AtomicLong LOG_SEQ_ID = new AtomicLong();
 
   private String thread;
   private String tenantId;
@@ -46,6 +49,7 @@ public abstract class LogEntry implements JournalEntry {
   private String owner;
 
   private long timestamp;
+  private long seqId;
   private TraceId traceId;
   private SpanId spanId;
 
@@ -99,6 +103,18 @@ public abstract class LogEntry implements JournalEntry {
 
   public void setTimestamp(final long timestamp) {
     this.timestamp = timestamp;
+  }
+
+  public long getSeqId() {
+    return seqId;
+  }
+
+  public void setSeqId() {
+    setSeqId(LOG_SEQ_ID.incrementAndGet());
+  }
+
+  public void setSeqId(final long seqId) {
+    this.seqId = seqId;
   }
 
   public TraceId getTraceId() {

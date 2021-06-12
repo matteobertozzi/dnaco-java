@@ -214,6 +214,7 @@ public final class Logger {
   }
 
   public static void add(final Thread thread, final LogEntry entry) {
+    entry.setSeqId();
     provider.addToLog(thread, entry);
   }
 

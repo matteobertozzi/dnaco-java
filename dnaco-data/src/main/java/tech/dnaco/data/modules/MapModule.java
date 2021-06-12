@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 import tech.dnaco.collections.maps.HashIndexedArrayMap;
 import tech.dnaco.collections.sets.HashIndexedArray;
+import tech.dnaco.collections.sets.IndexedHashSet;
 import tech.dnaco.data.JsonFormat;
 
 public final class MapModule {
@@ -42,10 +43,24 @@ public final class MapModule {
     INSTANCE.addDeserializer(HashIndexedArray.class, new HashIndexedArrayDeserializer());
     INSTANCE.addSerializer(new HashIndexedArrayMapSerializer());
     INSTANCE.addDeserializer(HashIndexedArrayMap.class, new HashIndexedArrayMapDeserializer());
+    INSTANCE.addSerializer(new IndexedHashSetSerializer());
   }
 
   private MapModule() {
     // no-op
+  }
+
+  public static final class IndexedHashSetSerializer extends StdSerializer<IndexedHashSet<?>> {
+	  private static final long serialVersionUID = -6449214149339710750L;
+
+	  public IndexedHashSetSerializer() {
+      super(IndexedHashSet.class, false);
+    }
+
+    @Override
+    public void serialize(final IndexedHashSet<?> value, final JsonGenerator gen, final SerializerProvider provider) throws IOException {
+      provider.defaultSerializeValue(value.keys(), gen);
+    }
   }
 
   public static final class HashIndexedArraySerializer extends StdSerializer<HashIndexedArray<?>> {

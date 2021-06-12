@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -37,7 +36,7 @@ public abstract class DataFormat {
     // no-op
   }
 
-  protected abstract DataFormatMapper<? extends JsonFactory> get();
+  protected abstract DataFormatMapper get();
 
   protected ObjectMapper getObjectMapper() {
     return get().getObjectMapper();

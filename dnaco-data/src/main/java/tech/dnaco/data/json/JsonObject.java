@@ -32,6 +32,10 @@ public class JsonObject extends JsonElement {
     this.members = new HashMap<>(length);
   }
 
+  public JsonObject(final JsonObject other) {
+    this.members = new HashMap<>(other.members);
+  }
+
   public JsonObject(final String key, final JsonElement value) {
     this.members = Map.of(key, value);
   }
@@ -70,6 +74,11 @@ public class JsonObject extends JsonElement {
 
   public JsonObject addNull(final String property) {
     members.put(property, JsonNull.INSTANCE);
+    return this;
+  }
+
+  public JsonObject addAll(final JsonObject other) {
+    members.putAll(other.members);
     return this;
   }
 

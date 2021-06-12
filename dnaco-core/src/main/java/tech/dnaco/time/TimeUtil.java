@@ -19,8 +19,11 @@
 
 package tech.dnaco.time;
 
+import java.io.PrintStream;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
+
+import tech.dnaco.strings.HumansUtil;
 
 public final class TimeUtil {
   private static ClockProvider clockProvider = new SystemClockProvider();
@@ -35,6 +38,13 @@ public final class TimeUtil {
 
   public static long currentNanos() {
     return clockProvider.currentNanos();
+  }
+
+  public static void measure(final PrintStream stream, final Runnable runnable) {
+    final long startTime = System.nanoTime();
+    runnable.run();
+    final long elapsed = System.nanoTime() - startTime;
+    stream.println("took " + HumansUtil.humanTimeNanos(elapsed));
   }
 
   // ===========================================================================
