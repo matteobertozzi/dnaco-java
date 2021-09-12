@@ -38,6 +38,10 @@ public class EntityDataRow {
     return rows.getSchema();
   }
 
+  public boolean hasAllFields() {
+    return rows.hasAllFields();
+  }
+
   public void setSeqId(final long seqId) {
     rows.setSeqId(rowIndex, seqId);
   }
@@ -108,7 +112,7 @@ public class EntityDataRow {
   }
 
   public static EntityDataRow fromMap(final EntitySchema schema, final Map<String, Object> kvs) {
-    final EntityDataRows rows = new EntityDataRows(schema).newRow();
+    final EntityDataRows rows = new EntityDataRows(schema, schema.userFieldsCount() == kvs.size()).newRow();
     for (final Entry<String, Object> entry: kvs.entrySet()) {
       rows.addObject(entry.getKey(), entry.getValue());
     }

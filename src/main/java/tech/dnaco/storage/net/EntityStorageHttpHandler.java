@@ -1,11 +1,11 @@
 package tech.dnaco.storage.net;
 
-import java.util.Collection;
+import java.util.List;
 
 import com.gullivernet.server.http.HttpMethod;
 import com.gullivernet.server.http.rest.RestRequestHandler;
 
-import tech.dnaco.storage.demo.EntitySchema;
+import tech.dnaco.storage.net.models.ClientSchema;
 import tech.dnaco.storage.net.models.CountRequest;
 import tech.dnaco.storage.net.models.CountResult;
 import tech.dnaco.storage.net.models.ModificationRequest;
@@ -20,18 +20,22 @@ import tech.dnaco.storage.net.models.TransactionStatusResponse;
 
 public class EntityStorageHttpHandler implements RestRequestHandler {
   @UriMapping(uri = "/v0/entity/schema/create", method = HttpMethod.POST)
-  public void entitySchemaCreate() {}
+  public void createEntitySchema(final ClientSchema request) throws Exception {
+    EntityStorage.INSTANCE.createEntitySchema(request);
+  }
 
   @UriMapping(uri = "/v0/entity/schema/edit", method = HttpMethod.POST)
-  public void entitySchemaEdit() {}
+  public void editEntitySchema(final ClientSchema request) throws Exception {
+    EntityStorage.INSTANCE.editEntitySchema(request);
+  }
 
   @UriMapping(uri = "/v0/entity/schema/list", method = HttpMethod.POST)
-  public Collection<EntitySchema> getEntitySchemas(final SchemaRequest request) throws Exception {
+  public List<ClientSchema> getEntitySchemas(final SchemaRequest request) throws Exception {
     return EntityStorage.INSTANCE.getEntitySchemas(request);
   }
 
   @UriMapping(uri = "/v0/entity/schema/detail", method = HttpMethod.POST)
-  public EntitySchema getEntitySchema(final SchemaRequest request) throws Exception {
+  public ClientSchema getEntitySchema(final SchemaRequest request) throws Exception {
     return EntityStorage.INSTANCE.getEntitySchema(request);
   }
 

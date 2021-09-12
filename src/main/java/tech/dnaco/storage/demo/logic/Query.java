@@ -1,5 +1,8 @@
 package tech.dnaco.storage.demo.logic;
 
+import java.util.HashMap;
+import java.util.regex.Pattern;
+
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataType;
@@ -31,9 +34,16 @@ public final class Query {
     }
   }
 
-  private static boolean like(final Object value, final Object exp) {
-    final String sValue = (value != null) ? String.valueOf(value) : null;
-    return StringUtil.like(sValue, (String) exp);
+  private static boolean like(final Object value, final String exp, final QueryCache cache) {
+    if (value == null || exp == null) return false;
+
+    final String sValue = String.valueOf(value);
+    if (sValue.isEmpty() && exp.isEmpty()) {
+      return true;
+    }
+
+    final Pattern pattern = cache.likePattern(exp);
+    return pattern.matcher(sValue).matches();
   }
 
   private static boolean isEmpty(final Object value) {
@@ -60,12 +70,12 @@ public final class Query {
     return compare(type, value, values[0]) >= 0 && compare(type, value, values[1]) <= 0;
   }
 
-  public static boolean process(final Filter filter, final EntityDataRow row) {
+  public static boolean process(final Filter filter, final EntityDataRow row, final QueryCache cache) {
     switch (filter.getType()) {
       case OR:
         final Filter[] orFilter = filter.getFilters();
         for (int i = 0; i < orFilter.length; ++i) {
-          if (process(orFilter[i], row)) {
+          if (process(orFilter[i], row, cache)) {
             return true;
           }
         }
@@ -73,7 +83,7 @@ public final class Query {
       case AND: {
         final Filter[] andFilter = filter.getFilters();
         for (int i = 0; i < andFilter.length; ++i) {
-          if (!process(andFilter[i], row)) {
+          if (!process(andFilter[i], row, cache)) {
             return false;
           }
         }
@@ -86,8 +96,8 @@ public final class Query {
       case GE: return compare(row.getType(filter.getField()), row.getObject(filter.getField()), filter.getValue()) >= 0;
       case LT: return compare(row.getType(filter.getField()), row.getObject(filter.getField()), filter.getValue()) < 0;
       case LE: return compare(row.getType(filter.getField()), row.getObject(filter.getField()), filter.getValue()) <= 0;
-      case LIKE: return like(row.getObject(filter.getField()), filter.getValue());
-      case NLIKE: return !like(row.getObject(filter.getField()), filter.getValue());
+      case LIKE: return like(row.getObject(filter.getField()), (String)filter.getValue(), cache);
+      case NLIKE: return !like(row.getObject(filter.getField()), (String)filter.getValue(), cache);
       case EMPTY: return isEmpty(row.getObject(filter.getField()));
       case NEMPTY: return !isEmpty(row.getObject(filter.getField()));
       case IN: return in(row.getType(filter.getField()), row.getObject(filter.getField()), filter.getValues());
@@ -95,5 +105,13 @@ public final class Query {
       case BW: return between(row.getType(filter.getField()), row.getObject(filter.getField()), filter.getValues());
     }
     return false;
+  }
+
+  public static class QueryCache {
+    private final HashMap<String, Pattern> likeCache = new HashMap<>();
+
+    private Pattern likePattern(final String expr) {
+      return likeCache.computeIfAbsent(expr, (k) -> StringUtil.likePattern(k));
+    }
   }
 }

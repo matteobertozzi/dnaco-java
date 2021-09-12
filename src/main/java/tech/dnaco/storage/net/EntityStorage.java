@@ -2,7 +2,9 @@ package tech.dnaco.storage.net;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -14,14 +16,19 @@ import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
+import tech.dnaco.storage.demo.EntityDataType;
 import tech.dnaco.storage.demo.EntitySchema;
 import tech.dnaco.storage.demo.EntitySchema.Operation;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.storage.demo.logic.Query;
+import tech.dnaco.storage.demo.logic.Query.QueryCache;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
 import tech.dnaco.storage.net.CachedScannerResults.CachedScanResults;
+import tech.dnaco.storage.net.EntityStorageScheduled.TableStats;
+import tech.dnaco.storage.net.models.ClientSchema;
+import tech.dnaco.storage.net.models.ClientSchema.EntityField;
 import tech.dnaco.storage.net.models.CountRequest;
 import tech.dnaco.storage.net.models.CountResult;
 import tech.dnaco.storage.net.models.JsonEntityDataRows;
@@ -49,14 +56,79 @@ public final class EntityStorage {
     .setLabel("Entity Storage Ops Count")
     .register(new CounterMap());
 
-  public EntitySchema getEntitySchema(final SchemaRequest request) throws Exception {
+  public void createEntitySchema(final ClientSchema request) throws Exception {
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
-    return storage.getEntitySchema(request.getEntity());
+
+    if (storage.getEntitySchema(request.getName()) != null) {
+      throw new Exception("entity named " + request.getName() + " already exists");
+    }
+
+    final EntitySchema schema = storage.getOrCreateEntitySchema(request.getName());
+    schema.setSync(request.getSync());
+    schema.setDataType(request.getDataType());
+    schema.setRetentionPeriod(request.getRetentionPeriod());
+    schema.setLabel(request.getLabel());
+
+    final ArrayList<String> keys = new ArrayList<>();
+    for (final EntityField field: request.getFields()) {
+      if (field.isKey()) keys.add(field.getName());
+
+      if (!schema.update(field.getName(), EntityDataType.valueOf(field.getType()))) {
+        throw new Exception("Invalid field type: " + field.getName() + " " + field.getType());
+      }
+    }
+
+    schema.setKey(keys.toArray(new String[0]));
+
+    storage.registerSchema(schema);
   }
 
-  public Collection<EntitySchema> getEntitySchemas(final SchemaRequest request) throws Exception {
+  public void editEntitySchema(final ClientSchema request) throws Exception {
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
-    return storage.getEntitySchemas();
+
+    final EntitySchema schema = storage.getEntitySchema(request.getName());
+    if (schema == null) {
+      throw new Exception("entity named " + request.getName() + " does not exists");
+    }
+
+    schema.setSync(request.getSync());
+    schema.setDataType(request.getDataType());
+    schema.setRetentionPeriod(request.getRetentionPeriod());
+    schema.setLabel(request.getLabel());
+    schema.setModificationTime(System.currentTimeMillis());
+
+    if (ArrayUtil.isNotEmpty(request.getFields())) {
+      for (final EntityField field: request.getFields()) {
+        if (field.isKey() || schema.isKey(field.getName())) {
+          continue;
+        }
+
+        if (!schema.update(field.getName(), EntityDataType.valueOf(field.getType()))) {
+          throw new Exception("Invalid field type: " + field.getName() + " " + field.getType());
+        }
+      }
+    }
+
+    storage.registerSchema(schema);
+  }
+
+  public ClientSchema getEntitySchema(final SchemaRequest request) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.getTenantId());
+    final EntitySchema schema = storage.getEntitySchema(request.getName());
+    final TableStats stats = EntityStorageScheduled.getTableStats(request.getTenantId(), request.getName());
+    return schema != null ? schema.toClientJson(stats, true) : null;
+  }
+
+  public List<ClientSchema> getEntitySchemas(final SchemaRequest request) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.getTenantId());
+    final Collection<EntitySchema> schemas = storage.getEntitySchemas();
+    final ArrayList<ClientSchema> json = new ArrayList<>(schemas.size());
+    for (final EntitySchema schema: schemas) {
+      final TableStats stats = EntityStorageScheduled.getTableStats(request.getTenantId(), schema.getEntityName());
+      json.add(schema.toClientJson(stats, false));
+    }
+    json.sort((a, b) -> a.getName().compareTo(b.getName()));
+    return json;
   }
 
   // ================================================================================
@@ -95,10 +167,11 @@ public final class EntityStorage {
     final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
 
+    final QueryCache queryCache = new QueryCache();
     for (final String groupId: request.getGroups()) {
       storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
-        if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
-          final EntityDataRows updatedRow = new EntityDataRows(schema).newRow();
+        if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
+          final EntityDataRows updatedRow = new EntityDataRows(schema, row.hasAllFields()).newRow();
           updatedRow.copyFrom(row);
           updatedRow.setTimestamp(0, timestamp);
           updatedRow.setOperation(0, Operation.UPDATE);
@@ -136,10 +209,11 @@ public final class EntityStorage {
     final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
 
+    final QueryCache queryCache = new QueryCache();
     for (final String groupId: request.getGroups()) {
       storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
-        if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
-          final EntityDataRows updatedRow = new EntityDataRows(schema).newRow();
+        if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
+          final EntityDataRows updatedRow = new EntityDataRows(schema, false).newRow();
           updatedRow.copyFrom(row);
           updatedRow.setTimestamp(0, timestamp);
           updatedRow.setOperation(0, Operation.DELETE);
@@ -282,9 +356,10 @@ public final class EntityStorage {
       }
 
       // scan
+      final QueryCache queryCache = new QueryCache();
       for (final String groupId: request.getGroups()) {
         storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), request.shouldIncludeDeleted(), (row) -> {
-          if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
+          if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
             results.add(row);
           }
           results.incRowRead();
@@ -301,15 +376,19 @@ public final class EntityStorage {
     opsCount.inc(request.getTenantId());
 
     final long startTime = System.nanoTime();
+    final boolean syncOnly = request.isSyncOnly();
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
     final Transaction txn = storage.getTransaction(request.getTxnId());
 
+    final QueryCache queryCache = new QueryCache();
     return buildScanner(request.getTenantId(), null, startTime, (results) -> {
       for (final String groupId: request.getGroups()) {
         final ByteArraySlice prefix = new RowKeyBuilder().add(groupId).addKeySeparator().slice();
         storage.scanRow(txn, prefix, request.shouldIncludeDeleted(), (row) -> {
-          if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
-            results.add(row);
+          if (!syncOnly || row.getSchema().getSync()) {
+            if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
+              results.add(row);
+            }
           }
           results.incRowRead();
           return true;
@@ -330,9 +409,10 @@ public final class EntityStorage {
     results.sealResults(false);
 
     final long elapsed = System.nanoTime() - startTime;
-    Logger.debug("{} scan {} read {} rows, result has {} rows matching the filter. took {}",
+    Logger.debug("{} scan {} read {} rows, result has {} rows {} matching the filter. took {}",
       tenant, entity != null ? entity : "ALL",
       results.getRowRead(), results.getRowCount(),
+      HumansUtil.humanSize(results.getRowsSize()),
       HumansUtil.humanTimeNanos(elapsed));
 
     // no data...
@@ -380,9 +460,10 @@ public final class EntityStorage {
     final CountResult result = new CountResult();
 
     // scan
+    final QueryCache queryCache = new QueryCache();
     for (final String groupId: request.getGroups()) {
       storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
-        if (request.hasNoFilter() || Query.process(request.getFilter(), row)) {
+        if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
           result.incTotalRows();
         }
         return true;

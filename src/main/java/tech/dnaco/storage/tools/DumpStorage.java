@@ -1,8 +1,11 @@
 package tech.dnaco.storage.tools;
 
 import java.io.File;
+import java.util.HashSet;
+import java.util.Iterator;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntitySchema;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
@@ -11,6 +14,7 @@ import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
 import tech.dnaco.storage.net.CachedScannerResults;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.telemetry.CounterMap;
 
 public class DumpStorage {
@@ -21,13 +25,31 @@ public class DumpStorage {
     RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
 
     final StorageLogic storage = Storage.getInstance(tenantId);
-    /*
-    final Iterator<EntityDataRow> it = storage.getKvStore().scanRow(new ByteArraySlice());
-    while (it.hasNext()) {
-      final EntityDataRow entity = it.next();
-      System.out.println(entity.getSchema().getEntityName() + " " + " -> " + entity.getOperation() + " -> " + new String(entity.buildRowKey()));
+    for (final EntitySchema entry: storage.getEntitySchemas()) {
+      System.out.println(entry);
     }
-    */
+    //if (true) return;
+
+    final HashSet<String> streetCodes = new HashSet<>();
+    try {
+      final Iterator<EntityDataRow> it = storage.getKvStore().scanRow(new ByteArraySlice());
+      while (it.hasNext()) {
+        final EntityDataRow entity = it.next();
+        if (!entity.getSchema().getEntityName().equals("RS_CIPPUS")) continue;
+        System.out.println(entity.getSchema().getEntityName()
+          + " -> " + entity.getOperation() + " -> " + new String(entity.buildRowKey())
+          + " -> " + entity.getObject("streetCode"));
+        streetCodes.add(entity.getObject("streetCode").toString());
+      }
+    } catch (final Throwable e) {
+      e.printStackTrace();
+    }
+    //System.out.println(streetCodes);
+    for (final String v: streetCodes) {
+      System.out.println(" -> " + v + " -> " + v.contains("SPXI") + " -> " + StringUtil.like(v, "%SPXI%") + " -> " + StringUtil.like(v, "%BSSPXI%"));
+    }
+    if (true) return;
+
 
     RocksDbKvStore.SKIP_SYS_ROWS = true;
     final Transaction txn = storage.getTransaction(null);

@@ -29,6 +29,9 @@ import tech.dnaco.collections.sets.IndexedHashSet;
 import tech.dnaco.data.json.JsonObject;
 import tech.dnaco.data.json.JsonUtil;
 import tech.dnaco.logging.Logger;
+import tech.dnaco.storage.net.EntityStorageScheduled.TableStats;
+import tech.dnaco.storage.net.models.ClientSchema;
+import tech.dnaco.storage.net.models.ClientSchema.EntityField;
 import tech.dnaco.strings.StringUtil;
 
 public class EntitySchema {
@@ -45,26 +48,87 @@ public class EntitySchema {
   private final String name;
 
   private HashIndexedArray<String> keys;
+  private String dataType;
   private String label;
   private long mtime;
+  private long retentionPeriod;
   private boolean sync;
 
   public EntitySchema(final String entityName) {
-    this(entityName, entityName, System.currentTimeMillis());
+    this(entityName, entityName, System.currentTimeMillis(), null, 0);
   }
 
-  public EntitySchema(final String entityName, final String label, final long mtime) {
+  public EntitySchema(final String entityName, final String label, final long mtime,
+      final String dataType, final long retentionPeriod) {
     this.name = entityName;
-    this.label = entityName;
+    this.label = label;
     this.mtime = mtime;
+    this.dataType = dataType;
+    this.retentionPeriod = retentionPeriod;
     this.update(SYS_FIELD_GROUP, EntityDataType.STRING);
     this.update(SYS_FIELD_SEQID, EntityDataType.INT);
     this.update(SYS_FIELD_TIMESTAMP, EntityDataType.INT);
     this.update(SYS_FIELD_OPERATION, EntityDataType.INT);
   }
 
+  public ClientSchema toClientJson(final TableStats stats, final boolean includeFields) {
+
+    final ClientSchema schema = new ClientSchema();
+    schema.setName(name);
+    schema.setLabel(label);
+    schema.setEditTime(mtime);
+    schema.setSync(sync);
+    schema.setDataType(dataType);
+    schema.setRetentionPeriod(retentionPeriod);
+    schema.setRowCount(stats.getRowCount());
+    schema.setDiskUsage(stats.getDiskUsage());
+    schema.setGroups(stats.getGroups());
+
+    if (includeFields) {
+      final ArrayList<EntityField> jsonKey = new ArrayList<>(keys.size());
+      for (int i = 0; i < keys.size(); ++i) {
+        final String fieldName = keys.get(i);
+        final int index = fields.get(fieldName);
+        final EntityField jsonField = new EntityField();
+        jsonField.setType(types.get(index).name());
+        jsonField.setName(fieldName);
+        jsonField.setKey(true);
+        jsonField.setDiskUsage(stats.getDiskUsage(fieldName));
+        jsonKey.add(jsonField);
+      }
+
+      final ArrayList<EntityField> jsonFields = new ArrayList<>(types.size() - 4);
+      for (int i = 4, n = fields.size(); i < n; ++i) {
+        final String fieldName = fields.get(i);
+        if (isKey(fieldName)) continue;
+
+        final EntityField jsonField = new EntityField();
+        jsonField.setType(types.get(i).name());
+        jsonField.setName(fieldName);
+        jsonField.setKey(false);
+        jsonField.setDiskUsage(stats.getDiskUsage(fieldName));
+        jsonFields.add(jsonField);
+      }
+      jsonFields.sort((a, b) -> {
+        final int cmp = a.getType().compareTo(b.getType());
+        if (cmp != 0) return cmp;
+        return a.getName().compareTo(b.getName());
+      });
+
+      jsonFields.addAll(0, jsonKey);
+
+      schema.setFields(jsonFields.toArray(new EntityField[0]));
+    }
+
+    return schema;
+  }
+
   public int fieldsCount() {
     return fields.size();
+  }
+
+  public int userFieldsCount() {
+    return fields.size() - 4;
   }
 
   public int getFieldIndex(final String name) {
@@ -112,12 +176,40 @@ public class EntitySchema {
     this.sync = sync;
   }
 
+  public String getDataType() {
+    return dataType;
+  }
+
+  public void setDataType(final String dataType) {
+    this.dataType = dataType;
+  }
+
+  public long getRetentionPeriod() {
+    return retentionPeriod;
+  }
+
+  public void setRetentionPeriod(final long period) {
+    this.retentionPeriod = period;
+  }
+
   public List<String> getFieldNames() {
     return fields.keys();
   }
 
+  public String getFieldName(final int index) {
+    return fields.get(index);
+  }
+
   public String[] getKeyFields() {
     return keys != null ? keys.keySet() : StringUtil.EMPTY_ARRAY;
+  }
+
+  public int keyFieldsCount() {
+    return keys != null ? keys.size() : 0;
+  }
+
+  public int nonKeyFieldsCount() {
+    return keys != null ? fields.size() - keys.size() : fields.size();
   }
 
   public List<String> getNonKeyFields() {
@@ -151,7 +243,7 @@ public class EntitySchema {
     return keys != null && keys.contains(fieldName);
   }
 
-  public boolean setKey(final String[] newKeys) {
+  public synchronized boolean setKey(final String[] newKeys) {
     if (keys == null) {
       keys = newKeys != null ? new HashIndexedArray<>(newKeys) : null;
     }
@@ -159,7 +251,7 @@ public class EntitySchema {
   }
 
 
-  public boolean remove(final String fieldName) {
+  public synchronized boolean remove(final String fieldName) {
     final int index = fields.remove(fieldName);
     if (index < 0) return false;
 
@@ -171,7 +263,7 @@ public class EntitySchema {
     return true;
   }
 
-  public boolean update(final String fieldName, final EntityDataType type) {
+  public synchronized boolean update(final String fieldName, final EntityDataType type) {
     final int index = fields.add(fieldName);
     if (index == this.types.size()) {
       this.types.add(type);
@@ -198,12 +290,6 @@ public class EntitySchema {
       }
     }
     return true;
-  }
-
-  public static void main(final String[] args) {
-    System.out.println(getTypeCompatibility(EntityDataType.NULL, EntityDataType.NULL));
-    System.out.println(getTypeCompatibility(EntityDataType.NULL, EntityDataType.STRING));
-    System.out.println(getTypeCompatibility(EntityDataType.STRING, EntityDataType.NULL));
   }
 
   public static int getTypeCompatibility(final EntityDataType type, final EntityDataType expectedType) {
@@ -241,6 +327,10 @@ public class EntitySchema {
   public String toString() {
     final StringBuilder builder = new StringBuilder();
     builder.append("EntitySchema [name=").append(name);
+    builder.append(", label=").append(label);
+    builder.append(", sync=").append(sync);
+    builder.append(", dataType=").append(dataType);
+    builder.append(", retentionPeriod=").append(retentionPeriod);
     builder.append(", {");
     for (int i = 0, n = fields.size(); i < n; ++i) {
       if (i > 0) builder.append(", ");
@@ -254,6 +344,12 @@ public class EntitySchema {
   public byte[] encode() {
     final JsonObject json = new JsonObject();
     json.addProperty("name", name);
+    json.addProperty("label", label);
+    json.addProperty("dataType", dataType);
+    json.addProperty("mtime", mtime);
+    json.addProperty("retentionPeriod", retentionPeriod);
+    json.addProperty("sync", sync);
+
     json.add("keys", keys != null ? JsonUtil.toJsonTree(keys.keySet()) : null);
     json.add("types", JsonUtil.toJsonTree(types));
     json.add("fields", JsonUtil.toJsonTree(fields.keys()));
@@ -264,16 +360,18 @@ public class EntitySchema {
     return decode(new ByteArraySlice(rawValue));
   }
 
-  public static EntitySchema decode(final ByteArraySlice rawValue) {
+  private static EntitySchema decode(final ByteArraySlice rawValue) {
     final JsonObject json = (JsonObject) EntityData.decodeJsonObject(rawValue);
     if (json == null) throw new IllegalArgumentException();
 
     final String name = json.get("name").getAsString();
     final String label = JsonUtil.getString(json, "label", null);
+    final String dataType = JsonUtil.getString(json, "dataType", null);
     final long mtime = JsonUtil.getLong(json, "mtime", 0);
+    final long retentionPeriod = JsonUtil.getLong(json, "retentionPeriod", 0);
     final boolean sync = JsonUtil.getBoolean(json, "sync", false);
 
-    final EntitySchema schema = new EntitySchema(name, label, mtime);
+    final EntitySchema schema = new EntitySchema(name, label, mtime, dataType, retentionPeriod);
     final EntityDataType[] types = JsonUtil.fromJson(json.get("types"), EntityDataType[].class);
     final String[] fields = JsonUtil.fromJson(json.get("fields"), String[].class);
     schema.setSync(sync);

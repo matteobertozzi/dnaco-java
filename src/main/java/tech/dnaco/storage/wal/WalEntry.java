@@ -29,7 +29,6 @@ public class WalEntry implements JournalEntry {
     this.seqId = seqId;
   }
 
-  @Override
   public void write(final PagedByteArray buffer) {
     // TODO Auto-generated method stub
   }

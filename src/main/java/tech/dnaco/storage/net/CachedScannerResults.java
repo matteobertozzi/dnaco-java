@@ -20,6 +20,8 @@ public class CachedScannerResults {
   private ScanResult results;
   private ScanResult firstResult;
   private int chunkCount;
+  private long chunkSize;
+  private long rowsSize;
   private long rowCount;
   private long rowRead;
 
@@ -33,6 +35,10 @@ public class CachedScannerResults {
 
   public long getRowRead() {
     return rowRead;
+  }
+
+  public long getRowsSize() {
+    return rowsSize;
   }
 
   public ScanResult getFirstResult() {
@@ -53,6 +59,7 @@ public class CachedScannerResults {
       CachedScanResults.write(scannerId, chunkCount, results);
     }
     chunkCount++;
+    chunkSize = 0;
     results = null;
   }
 
@@ -67,11 +74,15 @@ public class CachedScannerResults {
     this.results = new ScanResult(schema);
   }
 
+  private static final int MAX_CHUNK_SIZE = 1 << 20;
   public void add(final EntityDataRow row) throws IOException {
-    if (!isSameSchema(row.getSchema())) {
+    final int rowSize = row.size();
+    if (!isSameSchema(row.getSchema()) || (chunkSize > 0 && (chunkSize + rowSize) > MAX_CHUNK_SIZE)) {
       setSchema(row.getSchema());
     }
     results.add(row);
+    chunkSize += rowSize;
+    rowsSize += rowSize;
     rowCount++;
   }
 

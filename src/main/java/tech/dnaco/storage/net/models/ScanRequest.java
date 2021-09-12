@@ -11,6 +11,7 @@ public class ScanRequest {
   private JsonEntityDataRows[] rows;
   private Filter filter;
   private boolean includeDeleted;
+  private boolean syncOnly;
 
   public ScanRequest() {
     // no-op
@@ -66,5 +67,13 @@ public class ScanRequest {
   }
   public void shouldIncludeDeleted(final boolean value) {
     this.includeDeleted = value;
+  }
+
+  public boolean isSyncOnly() {
+    return syncOnly;
+  }
+
+  public void setSyncOnly(final boolean syncOnly) {
+    this.syncOnly = syncOnly;
   }
 }

@@ -50,7 +50,7 @@ public class JsonEntityDataRows {
     for (int i = 0, n = rowCount(); i < n; ++i) {
       final int rowOffset = i * fieldCount;
       for (final String groupId: groups) {
-        final EntityDataRows rows = new EntityDataRows(schema).newRow();
+        final EntityDataRows rows = new EntityDataRows(schema, schema.userFieldsCount() == fieldCount).newRow();
         rows.addObject(EntitySchema.SYS_FIELD_GROUP, groupId);
         rows.addObject(EntitySchema.SYS_FIELD_SEQID, Long.MAX_VALUE);
         for (int fieldIndex = 0; fieldIndex < fieldCount; ++fieldIndex) {

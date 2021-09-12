@@ -171,12 +171,17 @@ public abstract class AbstractKvStore {
     }
   }
 
+  public long getCounterValue(final String counterName) throws Exception {
+    return this.counters.getOrDefault(counterName, 0L);
+  }
+
   // ================================================================================
   //  Put/Delete Related
   // ================================================================================
   public abstract void put(final ByteArraySlice key, final byte[] value) throws Exception;
   public abstract void delete(final ByteArraySlice key) throws Exception;
   public abstract void deletePrefix(final ByteArraySlice keyPrefix) throws Exception;
+  public abstract void flush() throws Exception;
 
   public void put(final EntityDataRow row, final String txnId) throws Exception {
     preparePutEntries(row, txnId, this::put);
@@ -266,7 +271,7 @@ public abstract class AbstractKvStore {
       if (!predicate.test(row)) break;
     }
     // TODO: we must close the iterator
-    while (it.hasNext()) it.next();
+    //while (it.hasNext()) it.next();
   }
 
   public void scanPrefix(final ByteArraySlice prefix, final KeyValConsumer consumer) throws Exception {
@@ -276,7 +281,7 @@ public abstract class AbstractKvStore {
       consumer.accept(entry.getKey(), entry.getValue());
     }
     // TODO: we must close the iterator
-    while (it.hasNext()) it.next();
+    //while (it.hasNext()) it.next();
   }
 
   protected Iterator<Entry<ByteArraySlice, byte[]>> scanPrefix(final byte[] prefix) throws Exception {
@@ -298,6 +303,7 @@ public abstract class AbstractKvStore {
       }
 
       byte[] nextKey = this.peekNext().getKey().buffer();
+
       final ByteArraySlice rowKey = RowKeyUtil.keyWithoutLastComponent(nextKey);
       //System.out.println(" ----> ROW KEY: " + rowKey);
       final List<byte[]> keyParts = RowKeyUtil.decodeKey(rowKey.buffer());
@@ -306,13 +312,13 @@ public abstract class AbstractKvStore {
       if (BytesUtil.hasPrefix(keyParts.get(0), 0, keyParts.get(0).length, EntityDataRows.SYS_TXN_PREFIX, 0, EntityDataRows.SYS_TXN_PREFIX.length)) {
         // [txn].[group].[entity].[key].[field]
         final EntitySchema schema = getSchema(keyParts.get(2));
-        rows = new EntityDataRows(schema).newRow();
+        rows = new EntityDataRows(schema, false).newRow();
         rows.addTxnKey(keyParts);
       } else {
         // [group].[entity].[key].[field]
         final EntitySchema schema = getSchema(keyParts.get(1));
         if (schema == null) throw new UnsupportedOperationException("invalid schema " + new String(keyParts.get(0)) + "." + new String(keyParts.get(1)));
-        rows = new EntityDataRows(schema).newRow();
+        rows = new EntityDataRows(schema, false).newRow();
         rows.addKey(keyParts);
       }
 

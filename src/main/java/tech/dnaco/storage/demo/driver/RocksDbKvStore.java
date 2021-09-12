@@ -28,6 +28,7 @@ import java.util.NoSuchElementException;
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.CompactionStyle;
 import org.rocksdb.CompressionType;
+import org.rocksdb.FlushOptions;
 import org.rocksdb.LRUCache;
 import org.rocksdb.Options;
 import org.rocksdb.ReadOptions;
@@ -68,7 +69,7 @@ public class RocksDbKvStore extends AbstractKvStore {
     // init shared block cache
     tableConfig = new BlockBasedTableConfig();
     tableConfig.setBlockCache(new LRUCache(cacheSize));
-    tableConfig.setBlockSize(1 << 20);
+    tableConfig.setBlockSize(8 << 10);
     tableConfig.setWholeKeyFiltering(false);
   }
 
@@ -79,7 +80,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   public void openKvStore() throws Exception {
     dbOptions = new Options();
     dbOptions.setTableFormatConfig(tableConfig);
-    dbOptions.setWriteBufferSize(64 << 20);
+    dbOptions.setWriteBufferSize(16 << 20);
     dbOptions.setCompressionType(CompressionType.ZSTD_COMPRESSION);
     dbOptions.setCompactionStyle(CompactionStyle.UNIVERSAL);
     dbOptions.setMaxWriteBufferNumber(2);
@@ -95,6 +96,14 @@ public class RocksDbKvStore extends AbstractKvStore {
 
   @Override
   protected void shutdownKvStore() {
+    try {
+      try (FlushOptions opts = new FlushOptions()) {
+        opts.setAllowWriteStall(true);
+        db.flush(opts);
+      }
+    } catch (final Exception e) {
+      Logger.error(e, "failed to flush db");
+    }
     IOUtil.closeQuietly(db);
     IOUtil.closeQuietly(dbOptions);
   }
@@ -110,7 +119,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   @Override
   public void put(final EntityDataRow row, final String txnId) throws Exception {
     try (WriteOptions writeOpts = new WriteOptions()) {
-      writeOpts.setDisableWAL(false);
+      writeOpts.setDisableWAL(true);
       try (WriteBatch batch = new WriteBatch()) {
         preparePutEntries(row, txnId, (k, v) -> batch.put(k.buffer(), v));
         db.write(writeOpts, batch);
@@ -121,7 +130,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   @Override
   public void put(final EntityDataRows rows, final String txnId) throws Exception {
     try (WriteOptions writeOpts = new WriteOptions()) {
-      writeOpts.setDisableWAL(false);
+      writeOpts.setDisableWAL(true);
       try (WriteBatch batch = new WriteBatch()) {
         preparePutEntries(rows, txnId, (k, v) -> batch.put(k.buffer(), v));
         db.write(writeOpts, batch);
@@ -138,6 +147,13 @@ public class RocksDbKvStore extends AbstractKvStore {
   public void deletePrefix(final ByteArraySlice keyPrefix) throws Exception {
     final byte[] prefix = keyPrefix.buffer();
     db.deleteRange(prefix, prefixEndKey(prefix));
+  }
+
+  @Override
+  public void flush() throws Exception {
+    try (FlushOptions opts = new FlushOptions()) {
+      db.flush(opts);
+    }
   }
 
   // ================================================================================

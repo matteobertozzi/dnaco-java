@@ -23,17 +23,18 @@ public final class EntityBackupScheduled extends ScheduledTask {
   protected void execute() {
     final String[] projectIds = new File("STORAGE_DATA").list();
     for (int i = 0; i < projectIds.length; ++i) {
+      Logger.setSession(LoggerSession.newSession(projectIds[i], Logger.getSession()));
       try {
         processProject(projectIds[i]);
       } catch (final Exception e) {
         Logger.error(e, "failed to process {}", projectIds[i]);
+      } finally {
+        Logger.stopSession();
       }
     }
   }
 
   private static void processProject(final String projectId) throws Exception {
-    Logger.setSession(LoggerSession.newSession(projectId, Logger.getSession()));
-
     final long startTime = System.nanoTime();
     final ZonedDateTime now = ZonedDateTime.now();
     final File backupDir = new File(new File("backup"), DATE_FORMAT.format(now));

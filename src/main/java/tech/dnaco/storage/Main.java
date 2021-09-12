@@ -22,6 +22,7 @@ import tech.dnaco.net.rpc.DnacoRpcObjectMapper;
 import tech.dnaco.net.rpc.DnacoRpcService;
 import tech.dnaco.storage.demo.EntityBackupScheduled;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
+import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.net.EntityStorageHttpHandler;
 import tech.dnaco.storage.net.EntityStorageRpcHandler;
 import tech.dnaco.storage.net.EntityStorageScheduled;
@@ -118,6 +119,7 @@ public final class Main {
     } catch (final Throwable e) {
       Logger.error(e, "uncaught exception");
     } finally {
+      Storage.shutdown();
       if (logWriter != null) {
         logWriter.close();
       }

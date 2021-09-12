@@ -65,6 +65,10 @@ public final class StorageLogic {
     return storage.intCounter("__SYS_LAST_COMMIT_ID__");
   }
 
+  public long getMaxCommitId() throws Exception {
+    return storage.getCounterValue("__SYS_LAST_COMMIT_ID__");
+  }
+
   public Transaction getTransaction(final String txnId) {
     return StringUtil.isEmpty(txnId) ? null : transactions.get(txnId);
   }
@@ -145,6 +149,12 @@ public final class StorageLogic {
   }
 
   private boolean upsertRow(final Transaction txn, final EntityDataRow row) throws Exception {
+    // if the row has all fields, skip all the checks and write it
+    if (row.hasAllFields()) {
+      storage.put(row, txn.getTxnId());
+      return true;
+    }
+
     // if the row is in the transaction...
     final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
     if (oldTxnRow != null) {
@@ -250,18 +260,21 @@ public final class StorageLogic {
     commitLock.lock();
     try {
       // prepare
-      Logger.debug("PREPARE {}", txn.getTxnId());
-      storage.scanRow(txnKeyPrefix, (txnRow) -> {
-        final byte[] key = txnRow.buildRowKey();
-        final EntityDataRow oldRow = storage.getRow(key);
-        if (oldRow != null && oldRow.getSeqId() > txn.getMaxSeqId()) {
-          Logger.error("concurrent modification oldRow {} txn {}", oldRow.getSeqId(), txn.getMaxSeqId());
-          addErrorRow(txn, ErrorStatus.CONCURRENT_MODIFICATION, txnRow);
-          txn.setState(Transaction.State.FAILED);
-          return false;
-        }
-        return true;
-      });
+      final long maxCommitId = getMaxCommitId();
+      Logger.debug("PREPARE {}: txn.maxSeqId {} maxCommitId {}", txn.getTxnId(), txn.getMaxSeqId(), maxCommitId);
+      if (maxCommitId != txn.getMaxSeqId()) {
+        storage.scanRow(txnKeyPrefix, (txnRow) -> {
+          final byte[] key = txnRow.buildRowKey();
+          final EntityDataRow oldRow = storage.getRow(key);
+          if (oldRow != null && oldRow.getSeqId() > txn.getMaxSeqId()) {
+            Logger.error("concurrent modification oldRow {} txn {}", oldRow.getSeqId(), txn.getMaxSeqId());
+            addErrorRow(txn, ErrorStatus.CONCURRENT_MODIFICATION, txnRow);
+            txn.setState(Transaction.State.FAILED);
+            return false;
+          }
+          return true;
+        });
+      }
 
       // TODO: update txn state
       final long commitSeqId = nextCommitId();
@@ -269,7 +282,7 @@ public final class StorageLogic {
       txn.setState(Transaction.State.PREPARED);
 
       // commit
-      //Logger.debug("COMMIT {}", txn.getTxnId());
+      Logger.debug("COMMIT {}", txn.getTxnId());
       storage.scanRow(txnKeyPrefix, (row) -> {
         //System.out.println(" ----> COMMIT: " + row);
         row.setTimestamp(timestamp);
@@ -280,6 +293,7 @@ public final class StorageLogic {
       txn.setState(Transaction.State.COMMITTED);
       // TODO: update txn state
       storage.deletePrefix(txnKeyPrefix);
+      storage.flush();
       return true;
     } finally {
       commitLock.unlock();

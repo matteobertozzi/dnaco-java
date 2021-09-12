@@ -34,13 +34,19 @@ import tech.dnaco.strings.StringUtil;
 public class EntityDataRows {
   private final ArrayList<byte[]> values = new ArrayList<>();
   private final EntitySchema schema;
+  private boolean hasAllFields;
 
-  public EntityDataRows(final EntitySchema schema) {
+  public EntityDataRows(final EntitySchema schema, final boolean hasAllFields) {
     this.schema = VerifyArg.verifyNotNull("schema", schema);
+    this.hasAllFields = hasAllFields;
   }
 
   public EntitySchema getSchema() {
     return schema;
+  }
+
+  public boolean hasAllFields() {
+    return hasAllFields;
   }
 
   public boolean isEmpty() {
@@ -116,6 +122,7 @@ public class EntityDataRows {
   }
 
   public void copyFrom(final EntityDataRow oldRow) {
+    this.hasAllFields = oldRow.hasAllFields();
     for (final String fieldName: schema.getFieldNames()) {
       add(fieldName, oldRow.get(fieldName));
     }
