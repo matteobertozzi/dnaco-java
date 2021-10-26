@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 
 public final class StringFormat {
   private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\{([-_a-zA-Z0-9]*)}");
-  private static final Pattern POSITIONAL_PATTERN = Pattern.compile("\\{([0-9]+)}");
+  private static final Pattern POSITIONAL_PATTERN = Pattern.compile("\\{(([0-9]+)(\\:[-_a-zA-Z0-9]+)*)}");
 
   private StringFormat() {
     // no-op
@@ -94,26 +94,43 @@ public final class StringFormat {
   }
 
   public static String positionalFormat(final String format, final Object... args) {
-    final Matcher m = POSITIONAL_PATTERN.matcher(format);
     final StringBuilder buf = new StringBuilder(format.length() + (args.length * 8));
-    while (m.find()) {
-      final int pos = Integer.parseInt(m.group(1));
-      final String value = valueOf(args[pos]);
-      m.appendReplacement(buf, Matcher.quoteReplacement(value));
-    }
-    m.appendTail(buf);
+    applyPositionalFormat(buf, format, args, 0, args.length, StringFormat::valueOf);
     return buf.toString();
+  }
+
+  public static void applyPositionalFormat(final StringBuilder msgBuilder, final String format, final Object[] args) {
+    applyPositionalFormat(msgBuilder, format, args, 0, args != null ? args.length : 0, StringFormat::valueOf);
+  }
+
+  public static void applyPositionalFormat(final StringBuilder msgBuilder, final String format,
+      final Object[] args, final int argsOff, final int argsLen,
+      final Function<Object, String> valueToString) {
+    if (argsLen == 0) {
+      msgBuilder.append(format);
+      return;
+    }
+
+    final Matcher m = POSITIONAL_PATTERN.matcher(format);
+    while (m.find()) {
+      final int argsIndex = Integer.parseInt(m.group(2));
+      final String value = argsIndex < args.length ? valueToString.apply(args[argsIndex]) : "{unprovided arg}";
+      m.appendReplacement(msgBuilder, Matcher.quoteReplacement(value));
+    }
+    m.appendTail(msgBuilder);
   }
 
   public static String valueOf(final Object value) {
     if (value == null) return "null";
-    if (value instanceof byte[]) return Arrays.toString((byte[]) value);
-    if (value instanceof int[]) return Arrays.toString((int[]) value);
-    if (value instanceof long[]) return Arrays.toString((long[]) value);
-    if (value instanceof float[]) return Arrays.toString((float[]) value);
-    if (value instanceof double[]) return Arrays.toString((double[]) value);
-    if (value instanceof Object[]) return Arrays.toString((Object[]) value);
-    if (value instanceof Map) return stringMapValue((Map<?,?>) value);
+    if (value.getClass().isArray()) {
+      if (value instanceof byte[] bArray) return Arrays.toString(bArray);
+      if (value instanceof int[] iArray) return Arrays.toString(iArray);
+      if (value instanceof long[] lArray) return Arrays.toString(lArray);
+      if (value instanceof float[] fArray) return Arrays.toString(fArray);
+      if (value instanceof double[] dArrary) return Arrays.toString(dArrary);
+      if (value instanceof Object[] oArray) return Arrays.toString(oArray);
+    }
+    if (value instanceof Map<?, ?> map) return stringMapValue(map);
     return String.valueOf(value);
   }
 
@@ -129,5 +146,15 @@ public final class StringFormat {
     }
     builder.append("}");
     return builder.toString();
+  }
+
+  public static void main(String[] args) {
+    long startTime = System.nanoTime();
+    StringBuilder builder = new StringBuilder(1 << 20);
+    for (int i = 0; i < 100_000_000; ++i) {
+      builder.append(valueOf(new int[] { i }));
+    }
+    long endTime = System.nanoTime();
+    System.out.println(builder.length() + " -> " + HumansUtil.humanTimeNanos(endTime - startTime));
   }
 }

@@ -65,7 +65,7 @@ public class MultiFileInputStream extends InputStream {
     return -1;
   }
 
-  public int read(final byte b[], final int off, final int len) throws IOException {
+  public int read(final byte[] b, final int off, final int len) throws IOException {
     Objects.checkFromIndexSize(off, len, b.length);
     if (len == 0) return 0;
 

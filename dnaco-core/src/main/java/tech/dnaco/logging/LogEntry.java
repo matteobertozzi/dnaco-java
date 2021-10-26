@@ -133,7 +133,6 @@ public abstract class LogEntry implements JournalEntry {
     this.spanId = spanId;
   }
 
-  @Override
   public void write(final PagedByteArray buffer) {
     LogFormat.writeJournalHeader(buffer, this);
     final int offset = buffer.size();

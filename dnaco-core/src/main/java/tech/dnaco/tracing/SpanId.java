@@ -77,9 +77,8 @@ public final class SpanId implements Comparable<SpanId> {
   @Override
   public boolean equals(final Object obj) {
     if (this == obj) return true;
-    if (!(obj instanceof SpanId)) return false;
+    if (!(obj instanceof final SpanId other)) return false;
 
-    final SpanId other = (SpanId) obj;
     return spanId == other.spanId;
   }
 

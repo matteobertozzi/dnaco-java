@@ -19,12 +19,10 @@
 
 package tech.dnaco.journal;
 
-import tech.dnaco.collections.arrays.paged.PagedByteArray;
-
 public interface JournalEntry {
   String getTenantId();
 
-  void write(PagedByteArray buffer);
+  //void write(PagedByteArray buffer);
 
   void release();
 }

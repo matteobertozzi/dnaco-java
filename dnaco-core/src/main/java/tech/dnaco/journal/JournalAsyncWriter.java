@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.collections.lists.ListUtil;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.logging.Logger;
@@ -40,6 +41,7 @@ public class JournalAsyncWriter implements AutoCloseable {
   private final CopyOnWriteArrayList<JournalWriter> writers = new CopyOnWriteArrayList<>();
   private final ThreadData<JournalBuffer> localBuffers = new ThreadData<>();
   private final AtomicBoolean running = new AtomicBoolean(false);
+  private final JournalEntryWriter entryWriter;
 
   private final JournalStats stats;
   private final String name;
@@ -48,8 +50,9 @@ public class JournalAsyncWriter implements AutoCloseable {
 
   private int threadBackPressureSize = 128 << 20; // 128M
 
-  public JournalAsyncWriter(final String name) {
+  public JournalAsyncWriter(final String name, final JournalEntryWriter entryWriter) {
     this.name = name;
+    this.entryWriter = entryWriter;
     this.stats = TelemetryCollectorRegistry.INSTANCE.register(name + "_journal", name + " Journal", null, new JournalStats());
   }
 
@@ -99,7 +102,7 @@ public class JournalAsyncWriter implements AutoCloseable {
   public void addToLogQueue(final Thread currentThread, final JournalEntry entry) {
     try {
       final int bufSize;
-      try (ThreadLocalData<JournalBuffer> buffer = localBuffers.computeIfAbsent(currentThread, JournalBuffer::new)) {
+      try (ThreadLocalData<JournalBuffer> buffer = localBuffers.computeIfAbsent(currentThread, this::newBuffer)) {
         bufSize = buffer.get().add(entry);
         entry.release();
       }
@@ -111,6 +114,10 @@ public class JournalAsyncWriter implements AutoCloseable {
     } catch (final Throwable e) {
       Logger.logToStderr(LogLevel.ERROR, e, "unable to add entry to the journal: thread={} entry={}", currentThread, entry);
     }
+  }
+
+  private JournalBuffer newBuffer() {
+    return new JournalBuffer(entryWriter);
   }
 
   private final class LogFlusherThread extends Thread {
@@ -200,5 +207,9 @@ public class JournalAsyncWriter implements AutoCloseable {
         stats.addFlush(now, tenantIds.size(), bufSize, elapsedNs);
       }
     }
+  }
+
+  public interface JournalEntryWriter {
+    void writeEntry(PagedByteArray buffer, JournalEntry entry);
   }
 }

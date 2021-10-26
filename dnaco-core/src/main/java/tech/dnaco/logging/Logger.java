@@ -100,9 +100,8 @@ public final class Logger {
   }
 
   public static boolean isEnabled(final LogLevel level) {
-    //final LoggerSession session = getSession();
-    //final LogLevel scopeLevel = (session != null) ? session.getLevel() : defaultLevel;
-    final LogLevel scopeLevel = LogLevel.TRACE;
+    final LoggerSession session = getSession();
+    final LogLevel scopeLevel = (session != null) ? session.getLevel() : defaultLevel;
     return level.ordinal() <= scopeLevel.ordinal();
   }
 

@@ -52,7 +52,7 @@ public class SystemMetrics {
   public long getCpuUsage() {
     final OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
     if (bean instanceof com.sun.management.OperatingSystemMXBean) {
-      return Math.round(((com.sun.management.OperatingSystemMXBean)bean).getSystemCpuLoad() * 100);
+      return Math.round(((com.sun.management.OperatingSystemMXBean) bean).getCpuLoad() * 100);
     }
     return -1;
   }
@@ -122,7 +122,7 @@ public class SystemMetrics {
     private long getTotalMemory() {
       final OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
       if (bean instanceof com.sun.management.OperatingSystemMXBean) {
-        return ((com.sun.management.OperatingSystemMXBean)bean).getTotalPhysicalMemorySize();
+        return ((com.sun.management.OperatingSystemMXBean) bean).getTotalMemorySize();
       }
       return -1;
     }
@@ -130,7 +130,7 @@ public class SystemMetrics {
     private long getFreeMemory() {
       final OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
       if (bean instanceof com.sun.management.OperatingSystemMXBean) {
-        return ((com.sun.management.OperatingSystemMXBean)bean).getFreePhysicalMemorySize();
+        return ((com.sun.management.OperatingSystemMXBean) bean).getFreeMemorySize();
       }
       return -1;
     }

@@ -89,9 +89,8 @@ public class TraceId implements Comparable<TraceId> {
   @Override
   public boolean equals(final Object obj) {
     if (this == obj) return true;
-    if (!(obj instanceof TraceId)) return false;
+    if (!(obj instanceof final TraceId other)) return false;
 
-    final TraceId other = (TraceId)obj;
     return hi == other.hi && lo == other.lo;
   }
 

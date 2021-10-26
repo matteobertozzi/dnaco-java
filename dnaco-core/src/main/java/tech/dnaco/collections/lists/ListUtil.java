@@ -31,6 +31,11 @@ public final class ListUtil {
     // no-op
   }
 
+  public static <T> T add(final List<T> list, final T value) {
+    list.add(value);
+    return value;
+  }
+
   public static <T> int size(final Collection<T> input) {
     return input != null ? input.size() : 0;
   }

@@ -26,27 +26,44 @@ public class ConcurrentTimeRangeCounter extends TimeRangeCounter {
     super(maxInterval, window, unit);
   }
 
+  @Override
   public void clear(final long now) {
     synchronized (this) {
       super.clear(now);
     }
   }
 
+  @Override
   public long inc() {
     return add(TimeUtil.currentUtcMillis(), 1);
   }
 
+  @Override
   public long dec() {
     return add(TimeUtil.currentUtcMillis(), -1);
   }
 
+  @Override
   public long inc(final long amount) {
     return add(TimeUtil.currentUtcMillis(), amount);
   }
 
+  @Override
   public long add(final long now, final long delta) {
     synchronized (this) {
       return super.add(now, delta);
+    }
+  }
+
+  @Override
+  public void update(final long value) {
+    update(TimeUtil.currentUtcMillis(), value);
+  }
+
+  @Override
+  public void update(final long now, final long value) {
+    synchronized (this) {
+      super.update(now, value);
     }
   }
 

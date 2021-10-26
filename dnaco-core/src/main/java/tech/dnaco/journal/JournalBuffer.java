@@ -25,16 +25,19 @@ import java.util.HashMap;
 import java.util.Set;
 
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
+import tech.dnaco.journal.JournalAsyncWriter.JournalEntryWriter;
 import tech.dnaco.strings.StringUtil;
 
 public class JournalBuffer {
   private final HashMap<String, LogGroup> tenants = new HashMap<>(64);
   private final PagedByteArray buffer = new PagedByteArray(1 << 20);
+  private final JournalEntryWriter writer;
   private final Thread thread;
 
   private LogGroup lastTenant = null;
 
-  public JournalBuffer() {
+  public JournalBuffer(final JournalEntryWriter writer) {
+    this.writer = writer;
     this.thread = Thread.currentThread();
   }
 
@@ -56,7 +59,7 @@ public class JournalBuffer {
 
   public int add(final JournalEntry entry) {
     final LogGroup group = computeIfAbsentLogGroup(entry.getTenantId());
-    group.add(buffer, entry);
+    group.add(buffer, writer, entry);
     return buffer.size();
   }
 
@@ -96,7 +99,7 @@ public class JournalBuffer {
       return tenantId;
     }
 
-    protected void add(final PagedByteArray buffer, final JournalEntry entry) {
+    protected void add(final PagedByteArray buffer, final JournalEntryWriter writer, final JournalEntry entry) {
       final int offset = buffer.size();
 
       // update the previous entry with the next (offset) pointer
@@ -109,7 +112,7 @@ public class JournalBuffer {
 
       // write the new entry: | u32 next (EOF) | entry data... |
       buffer.addFixed32(ENTRY_OFFSET_EOF);
-      entry.write(buffer);
+      writer.writeEntry(buffer, entry);
     }
 
     public void process(final PagedByteArray buffer, final LogBufferEntryProcessor processor)

@@ -119,8 +119,7 @@ public class ByteArraySlice implements BytesSlice {
     if (obj == null) return false;
     if (!(obj instanceof BytesSlice)) return false;
 
-    if (obj instanceof ByteArraySlice) {
-      final ByteArraySlice other = (ByteArraySlice) obj;
+    if (obj instanceof final ByteArraySlice other) {
       return BytesUtil.equals(buf, off, len, other.buf, other.off, other.len);
     }
 
@@ -129,8 +128,7 @@ public class ByteArraySlice implements BytesSlice {
 
   @Override
   public int compareTo(final BytesSlice obj) {
-    if (obj instanceof ByteArraySlice) {
-      final ByteArraySlice other = (ByteArraySlice) obj;
+    if (obj instanceof final ByteArraySlice other) {
       return BytesUtil.compare(buf, off, len, other.buf, other.off, other.len);
     }
     return slowCompare(this, obj);

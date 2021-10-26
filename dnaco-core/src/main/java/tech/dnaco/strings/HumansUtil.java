@@ -98,7 +98,7 @@ public final class HumansUtil {
     }
 
     if (msec < 1000) {
-      return String.format("%dms", msec);
+      return msec + "ms";
     }
 
     final long hours = msec / (60 * 60 * 1000);

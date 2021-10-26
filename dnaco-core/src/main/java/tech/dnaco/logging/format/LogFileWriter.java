@@ -21,6 +21,7 @@ package tech.dnaco.logging.format;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,6 +31,7 @@ import java.util.zip.GZIPOutputStream;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.io.FileUtil;
+import tech.dnaco.io.NullOutputStream;
 import tech.dnaco.journal.JournalBuffer;
 import tech.dnaco.journal.JournalWriter;
 import tech.dnaco.logging.LogUtil.LogLevel;
@@ -83,6 +85,8 @@ public class LogFileWriter implements JournalWriter {
   public LogFileWriter(final File logDir, final int deleteDays) {
     this.logDir = logDir;
     this.deleteDays = deleteDays;
+    System.setErr(new LoggerPrintStream(true));
+    System.setOut(new LoggerPrintStream(false));
   }
 
   @Override
@@ -162,5 +166,32 @@ public class LogFileWriter implements JournalWriter {
   @Override
   public String toString() {
     return "LogFileWriter [logDir=" + logDir + ", deleteDays=" + deleteDays + "]";
+  }
+
+  // ===============================================================================================
+  // Stdout/Stderr log wrapper
+  // Redirect stdout/stderr to the Logger flow.
+  // ===============================================================================================
+  private static final class LoggerPrintStream extends PrintStream {
+    private final boolean errorLog;
+
+    private LoggerPrintStream(final boolean errorLog) {
+      super(NullOutputStream.INSTANCE);
+      this.errorLog = errorLog;
+    }
+
+    @Override
+    public void print(final String message) {
+      Logger.debug(message);
+    }
+
+    @Override
+    public void println(final String message) {
+      if (errorLog) {
+        Logger.error(message);
+      } else {
+        Logger.debug(message);
+      }
+    }
   }
 }

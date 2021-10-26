@@ -235,9 +235,8 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     public boolean equals(final Object obj) {
       if (this == obj) return true;
       if (obj == null) return false;
-      if (!(obj instanceof CollectorInfo)) return false;
+      if (!(obj instanceof final CollectorInfo other)) return false;
 
-      final CollectorInfo other = (CollectorInfo) obj;
       return StringUtil.equals(name, other.name);
     }
   }

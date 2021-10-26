@@ -48,6 +48,17 @@ public final class TimeUtil {
   }
 
   // ===========================================================================
+  //  Time aligned to window related
+  // ===========================================================================
+  public static long currentUtcMillisAlignedToWindow(final long window) {
+    return alignTimeToWindow(currentUtcMillis(), window);
+  }
+
+  public static long alignTimeToWindow(final long timestamp, final long window) {
+    return (timestamp - (timestamp % window));
+  }
+
+  // ===========================================================================
   //  Clock Providers related
   // ===========================================================================
   public static void setClockProvider(final ClockProvider provider) {

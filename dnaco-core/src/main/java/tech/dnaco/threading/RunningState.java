@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public interface RunningState {
   boolean isRunning();
 
-  public class ServiceRunningState implements RunningState {
+  class ServiceRunningState implements RunningState {
     private final AtomicBoolean running;
 
     public ServiceRunningState() {

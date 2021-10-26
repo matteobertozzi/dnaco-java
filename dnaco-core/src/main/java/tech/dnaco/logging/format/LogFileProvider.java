@@ -19,13 +19,15 @@
 
 package tech.dnaco.logging.format;
 
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.journal.JournalAsyncWriter;
+import tech.dnaco.journal.JournalEntry;
 import tech.dnaco.logging.LogEntry;
 import tech.dnaco.logging.LoggingProvider;
 
 public class LogFileProvider extends JournalAsyncWriter implements LoggingProvider {
   public LogFileProvider() {
-    super("logger");
+    super("logger", new LogEntryWriter());
   }
 
   public void start() {
@@ -35,5 +37,16 @@ public class LogFileProvider extends JournalAsyncWriter implements LoggingProvid
   @Override
   public void addToLog(final Thread thread, final LogEntry entry) {
     addToLogQueue(thread, entry);
+  }
+
+  private static final class LogEntryWriter implements JournalEntryWriter {
+    @Override
+    public void writeEntry(final PagedByteArray buffer, final JournalEntry entry) {
+      if (entry instanceof LogEntry) {
+        ((LogEntry) entry).write(buffer);
+      } else {
+        throw new IllegalArgumentException("unexpected entry: " + entry.getClass());
+      }
+    }
   }
 }

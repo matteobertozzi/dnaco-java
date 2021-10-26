@@ -25,6 +25,7 @@ import java.util.HashMap;
 import tech.dnaco.bytes.BytesUtil;
 
 public final class BaseN {
+  public static final char[] BASE_35_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRTUVWXYZ".toCharArray();
   public static final char[] BASE_36_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
   public static final char[] BASE_52_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
   public static final char[] BASE_58_ALPHABET = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".toCharArray();
@@ -431,5 +432,10 @@ public final class BaseN {
       }
       return length;
     }
+  }
+
+  public static void main(final String[] args) {
+    final byte[] b = Base32.decode("fn9dm7txjwk17w5ar5gzaqtqd5dp3y9yf7gbphg3hjr7c51gio7o");
+    System.out.println(BytesUtil.toHexString(b));
   }
 }

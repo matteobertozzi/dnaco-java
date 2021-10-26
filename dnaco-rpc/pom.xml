@@ -11,10 +11,10 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <netty.version>4.1.65.Final</netty.version>
+    <netty.version>4.1.69.Final</netty.version>
     <jctools.version>3.3.0</jctools.version>
 
-    <junit.version>5.7.2</junit.version>
+    <junit.version>5.8.1</junit.version>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -60,6 +60,12 @@
       <version>${netty.version}</version>
       <classifier>osx-x86_64</classifier>
     </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-kqueue</artifactId>
+      <version>${netty.version}</version>
+      <classifier>osx-aarch_64</classifier>
+    </dependency>
 
     <dependency>
       <groupId>org.jctools</groupId>
@@ -88,7 +94,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <release>11</release>
+          <release>17</release>
           <compilerArgs>
             <arg>-proc:none</arg>
             <arg>-parameters</arg>

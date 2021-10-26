@@ -34,4 +34,13 @@ public class TestStringFormat {
     Assertions.assertEquals("abc foo def 1", StringFormat.positionalFormat("abc {1} def {0}", 1, "foo"));
     Assertions.assertEquals("abc foo def 1 ghi", StringFormat.positionalFormat("abc {1} def {0} ghi", 1, "foo"));
   }
+
+  @Test
+  public void testAnnotatedPositionalFormat() {
+    Assertions.assertEquals("abc 1", StringFormat.positionalFormat("abc {0:a_A0-a}", 1));
+    Assertions.assertEquals("abc 1 foo", StringFormat.positionalFormat("abc {0:a_A0-a} {1:b-B1_b}", 1, "foo"));
+    Assertions.assertEquals("abc foo def 1", StringFormat.positionalFormat("abc {1:b-B1_b} def {0:a_A0-a}", 1, "foo"));
+    Assertions.assertEquals("abc foo def 1 ghi", StringFormat.positionalFormat("abc {1:b-B1_b} def {0:a_A0-a} ghi", 1, "foo"));
+    Assertions.assertEquals("abc foo def 2 ghi 1 lmn bar", StringFormat.positionalFormat("abc {1:b-B1_b} def {2} ghi {0:a_A0-a} lmn {3}", 1, "foo", 2, "bar"));
+  }
 }

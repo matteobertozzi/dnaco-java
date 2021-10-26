@@ -172,6 +172,11 @@ public class TestStringUtil {
     Assertions.assertFalse(StringUtil.like(null, "1ab___"));
     Assertions.assertFalse(StringUtil.like(source, null));
     Assertions.assertFalse(StringUtil.like(source, ""));
+
+    final String source2 = "1abcd1abcdef1abc";
+    Assertions.assertTrue(StringUtil.like(source2, "%abc%"));
+    Assertions.assertTrue(StringUtil.like(source2, "%abcdef%"));
+    Assertions.assertFalse(StringUtil.like(source2, "%abcdefg%"));
   }
 
   // ================================================================================

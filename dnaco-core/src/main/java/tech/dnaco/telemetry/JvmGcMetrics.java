@@ -90,11 +90,10 @@ public class JvmGcMetrics {
 
   private void registerListeners() {
     for (final GarbageCollectorMXBean mbean : ManagementFactory.getGarbageCollectorMXBeans()) {
-      if (!(mbean instanceof NotificationEmitter)) {
+      if (!(mbean instanceof final NotificationEmitter notificationEmitter)) {
         continue;
       }
 
-      final NotificationEmitter notificationEmitter = (NotificationEmitter) mbean;
       notificationEmitter.addNotificationListener(JvmGcMetrics::onGcNotification, notification -> notification.getType().equals(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION), this);
     }
   }

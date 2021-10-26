@@ -403,6 +403,20 @@ public final class ArrayUtil {
     array[index] = value;
   }
 
+  public static String[] addSortedIfMissing(final String[] array, final String value) {
+    if (ArrayUtil.isEmpty(array)) return new String[] { value };
+
+    final int index = Arrays.binarySearch(array, value);
+    if (index >= 0) return null;
+
+    final int insertionIndex = -index -1;
+    final String[] newArray = new String[array.length + 1];
+    System.arraycopy(array, 0, newArray, 0, insertionIndex);
+    newArray[insertionIndex] = value;
+    System.arraycopy(array, insertionIndex, newArray, insertionIndex + 1, array.length - insertionIndex);
+    return newArray;
+  }
+
   // ================================================================================
   //  PUBLIC Array Remove related
   // ================================================================================
@@ -546,6 +560,7 @@ public final class ArrayUtil {
     return values;
   }
 
+  @SafeVarargs
   public static <T> T[] addAll(final T[] array1, final T... array2) {
     if (array1 == null) return clone(array2);
     if (array2 == null) return clone(array1);

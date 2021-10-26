@@ -104,9 +104,8 @@ public class TestJsonUtil {
     public boolean equals(final Object obj) {
       if (this == obj)
         return true;
-      if (!(obj instanceof TestSubData))
+      if (!(obj instanceof final TestSubData other))
         return false;
-      final TestSubData other = (TestSubData) obj;
       return a == other.a && Objects.equals(b, other.b) && Objects.equals(strNotSerialized, other.strNotSerialized);
     }
 
@@ -155,8 +154,7 @@ public class TestJsonUtil {
     public boolean equals(final Object obj) {
       if (this == obj) return true;
 
-      if (!(obj instanceof TestData)) return false;
-      final TestData other = (TestData) obj;
+      if (!(obj instanceof final TestData other)) return false;
       return Objects.equals(boolNullValue, other.boolNullValue) && boolValue == other.boolValue
           && Arrays.equals(bytesValue, other.bytesValue) && Objects.equals(enumSetValue, other.enumSetValue)
           && enumValue == other.enumValue && Objects.equals(floatNullValue, other.floatNullValue)

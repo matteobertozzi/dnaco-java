@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.regex.Pattern;
 
 import tech.dnaco.collections.maps.StringMap;
 
@@ -231,7 +232,7 @@ public final class StringUtil {
       if (item == null) continue;
 
       if (index++ > 0) builder.append(delimiter);
-      builder.append(item.toString());
+      builder.append(item);
     }
     return builder.toString();
   }
@@ -246,7 +247,7 @@ public final class StringUtil {
       if (item == null) continue;
 
       if (index++ > 0) builder.append(delimiter);
-      builder.append(item.toString());
+      builder.append(item);
     }
     if (preAndPostDelimiter) builder.append(delimiter);
     return builder.toString();
@@ -409,55 +410,54 @@ public final class StringUtil {
       return true;
     }
 
-    final int sourceLength = source.length();
-    final int expLength = exp.length();
+    return likePattern(exp).matcher(source).matches();
+  }
 
-    boolean fuzzy = false;
-    char lastCharOfExp = 0;
-    int positionOfSource = 0;
-    for (int i = 0; i < expLength; i++) {
-      final char ch = exp.charAt(i);
-
-      final boolean escape = (lastCharOfExp == '\\') && (ch == '%' || ch == '_');
-      if (!escape && ch == '%') {
-        fuzzy = true;
-      } else if (!escape && ch == '_') {
-        if (positionOfSource >= sourceLength) {
-          return false;
-        }
-
-        positionOfSource++;
-      } else if (ch != '\\') {
-        if (positionOfSource >= sourceLength) {
-          return false;
-        }
-
-        if (lastCharOfExp == '%') {
-          final int tp = source.indexOf(ch);
-          if (tp < 0) {
-            return false;
-          }
-
-          if (tp >= positionOfSource) {
-            positionOfSource = tp + 1;
-
-            if (i == expLength - 1 && positionOfSource < sourceLength) {
-              return false;
+  public static Pattern likePattern(final String patternString) {
+    final char escapeChar = '\\';
+    
+    final StringBuilder regex = new StringBuilder(patternString.length() * 2);
+    regex.append('^');
+    boolean escaped = false;
+    for (final char currentChar : patternString.toCharArray()) {
+      if (!(!escaped || currentChar == '%' || currentChar == '_' || currentChar == escapeChar)) {
+        throw new IllegalArgumentException("Escape character must be followed by '%%', '_' or the escape character itself");
+      }
+      //if (shouldEscape && !escaped && (currentChar == escapeChar)) {
+      if (!escaped && (currentChar == escapeChar)) {
+        escaped = true;
+      } else {
+        switch (currentChar) {
+          case '%':
+            regex.append(escaped ? "%" : ".*");
+            escaped = false;
+            break;
+          case '_':
+            regex.append(escaped ? "_" : ".");
+            escaped = false;
+            break;
+          default:
+            // escape special regex characters
+            switch (currentChar) {
+                case '\\':
+                case '^':
+                case '$':
+                case '.':
+                case '*':
+                  regex.append('\\');
             }
-          } else {
-            return false;
-          }
-        } else if (source.charAt(positionOfSource) == ch) {
-          positionOfSource++;
-        } else {
-          return false;
+
+            regex.append(currentChar);
+            escaped = false;
+            break;
         }
       }
-
-      lastCharOfExp = ch;
     }
-
-    return fuzzy || positionOfSource >= sourceLength;
+    if (escaped) {
+      throw new IllegalArgumentException("Escape character must be followed by '%%', '_' or the escape character itself");
+    }
+    regex.append('$');
+    return Pattern.compile(regex.toString());
   }
 
   // ================================================================================

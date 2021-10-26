@@ -101,8 +101,7 @@ public final class Tracer {
   }
 
   protected static void addSpan(final Span span) {
-    if (span instanceof RootSpan) {
-      final RootSpan rootSpan = (RootSpan)span;
+    if (span instanceof final RootSpan rootSpan) {
       TaskMonitor.INSTANCE.addRunningTask(rootSpan);
       localRootSpan.set(rootSpan);
     }
@@ -121,8 +120,7 @@ public final class Tracer {
       Logger.error("LEAK Too many spans in the stack: {}", spanStack.size());
     }
 
-    if (span instanceof RootSpan) {
-      RootSpan rootSpan = (RootSpan)span;
+    if (span instanceof RootSpan rootSpan) {
       if (localRootSpan.get() != rootSpan) {
         throw new IllegalArgumentException("expected " + rootSpan + " to be the current span. " + localRootSpan.get());
       }
@@ -131,7 +129,7 @@ public final class Tracer {
 
       // find the previous RootSpan
       rootSpan = null;
-      for (int i = spanStack.size() - 1; i >= 0; ++i) {
+      for (int i = spanStack.size() - 1; i >= 0; --i) {
         final Span openSpan = spanStack.get(i);
         if (openSpan instanceof RootSpan) {
           rootSpan = (RootSpan)openSpan;

@@ -19,12 +19,9 @@
 
 package tech.dnaco.io;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MultiFileOutputStream extends OutputStream {
   private final OutputStreamSupplier streamSupplier;
@@ -72,7 +69,7 @@ public class MultiFileOutputStream extends OutputStream {
     stream.write(b);
   }
 
-  public void write(final byte b[], int off, int len) throws IOException {
+  public void write(final byte[] b, int off, int len) throws IOException {
     Objects.checkFromIndexSize(off, len, b.length);
     if (len == 0) return;
 
