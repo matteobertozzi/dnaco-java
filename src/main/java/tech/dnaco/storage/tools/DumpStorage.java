@@ -19,7 +19,7 @@ import tech.dnaco.telemetry.CounterMap;
 
 public class DumpStorage {
   public static void main(final String[] args) throws Exception {
-    final String tenantId = "road_safety.dev";
+    final String tenantId = "cc-ai-logistics.dev";
     final String[] groups = new String[] { "__ALL__" };
 
     RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
@@ -30,15 +30,16 @@ public class DumpStorage {
     }
     //if (true) return;
 
+    System.out.println("===================== SCAN ALL ===============");
     final HashSet<String> streetCodes = new HashSet<>();
     try {
       final Iterator<EntityDataRow> it = storage.getKvStore().scanRow(new ByteArraySlice());
       while (it.hasNext()) {
         final EntityDataRow entity = it.next();
-        if (!entity.getSchema().getEntityName().equals("RS_CIPPUS")) continue;
-        System.out.println(entity.getSchema().getEntityName()
-          + " -> " + entity.getOperation() + " -> " + new String(entity.buildRowKey())
-          + " -> " + entity.getObject("streetCode"));
+        //if (!entity.getSchema().getEntityName().equals("RS_CIPPUS")) continue;
+        //System.out.println(entity.getSchema().getEntityName()
+          //+ " -> " + entity.getOperation() + " -> " + new String(entity.buildRowKey())
+          //+ " -> " + entity.getObject("streetCode"));
         streetCodes.add(entity.getObject("streetCode").toString());
       }
     } catch (final Throwable e) {
