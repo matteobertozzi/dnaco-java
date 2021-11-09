@@ -37,11 +37,11 @@ import tech.dnaco.threading.ThreadData.ThreadLocalData;
 import tech.dnaco.threading.ThreadUtil;
 import tech.dnaco.time.TimeUtil;
 
-public class JournalAsyncWriter implements AutoCloseable {
-  private final CopyOnWriteArrayList<JournalWriter> writers = new CopyOnWriteArrayList<>();
-  private final ThreadData<JournalBuffer> localBuffers = new ThreadData<>();
+public class JournalAsyncWriter<T extends JournalEntry> implements AutoCloseable {
+  private final CopyOnWriteArrayList<JournalWriter<T>> writers = new CopyOnWriteArrayList<>();
+  private final ThreadData<JournalBuffer<T>> localBuffers = new ThreadData<>();
   private final AtomicBoolean running = new AtomicBoolean(false);
-  private final JournalEntryWriter entryWriter;
+  private final JournalEntryWriter<T> entryWriter;
 
   private final JournalStats stats;
   private final String name;
@@ -50,7 +50,7 @@ public class JournalAsyncWriter implements AutoCloseable {
 
   private int threadBackPressureSize = 128 << 20; // 128M
 
-  public JournalAsyncWriter(final String name, final JournalEntryWriter entryWriter) {
+  public JournalAsyncWriter(final String name, final JournalEntryWriter<T> entryWriter) {
     this.name = name;
     this.entryWriter = entryWriter;
     this.stats = TelemetryCollectorRegistry.INSTANCE.register(name + "_journal", name + " Journal", null, new JournalStats());
@@ -77,7 +77,7 @@ public class JournalAsyncWriter implements AutoCloseable {
       return;
     }
 
-    Logger.debug("stoping {} log writers: {}", name, writers);
+    Logger.debug("stopping {} log writers: {}", name, writers);
     this.flusherThread.forceFlush();
     ThreadUtil.shutdown(flusherThread);
   }
@@ -87,11 +87,11 @@ public class JournalAsyncWriter implements AutoCloseable {
     stop();
   }
 
-  public void registerWriter(final JournalWriter writer) {
+  public void registerWriter(final JournalWriter<T> writer) {
     this.writers.add(writer);
   }
 
-  public void unregisterWriter(final JournalWriter writer) {
+  public void unregisterWriter(final JournalWriter<T> writer) {
     this.writers.remove(writer);
   }
 
@@ -99,10 +99,10 @@ public class JournalAsyncWriter implements AutoCloseable {
     this.threadBackPressureSize = size;
   }
 
-  public void addToLogQueue(final Thread currentThread, final JournalEntry entry) {
+  public void addToLogQueue(final Thread currentThread, final T entry) {
     try {
       final int bufSize;
-      try (ThreadLocalData<JournalBuffer> buffer = localBuffers.computeIfAbsent(currentThread, this::newBuffer)) {
+      try (ThreadLocalData<JournalBuffer<T>> buffer = localBuffers.computeIfAbsent(currentThread, this::newBuffer)) {
         bufSize = buffer.get().add(entry);
         entry.release();
       }
@@ -116,8 +116,8 @@ public class JournalAsyncWriter implements AutoCloseable {
     }
   }
 
-  private JournalBuffer newBuffer() {
-    return new JournalBuffer(entryWriter);
+  private JournalBuffer<T> newBuffer() {
+    return new JournalBuffer<T>(entryWriter);
   }
 
   private final class LogFlusherThread extends Thread {
@@ -160,7 +160,7 @@ public class JournalAsyncWriter implements AutoCloseable {
           final long startTimeNs = System.nanoTime();
           if ((startTimeNs - cleanerNs) > TimeUnit.HOURS.toNanos(1)) {
             // TODO: execute in another thread
-            for (final JournalWriter writer: writers) writer.manageOldLogs();
+            for (final JournalWriter<T> writer: writers) writer.manageOldLogs();
             cleanerNs = System.nanoTime();
             stats.addManageOldLogs(cleanerNs - startTimeNs);
           }
@@ -182,34 +182,34 @@ public class JournalAsyncWriter implements AutoCloseable {
 
     private void flushQueue() {
       // take charge of the local thread buffers
-      final List<JournalBuffer> buffers = localBuffers.getThreadData();
+      final List<JournalBuffer<T>> buffers = localBuffers.getThreadData();
       if (ListUtil.isEmpty(buffers)) return;
 
       final long now = TimeUtil.currentUtcMillis();
       final long startNs = System.nanoTime();
-      final HashSet<String> tenantIds = new HashSet<>(64);
+      final HashSet<String> groupIds = new HashSet<>(64);
       long bufSize = 0;
       this.flushing = true;
       try {
-        for (final JournalBuffer buf: buffers) {
-          tenantIds.addAll(buf.getTenantIds());
+        for (final JournalBuffer<T> buf: buffers) {
+          groupIds.addAll(buf.getGroupIds());
           bufSize += buf.size();
         }
 
-        for (final String tenantId: tenantIds) {
-          for (final JournalWriter writer: writers) {
-            writer.writeBuffers(tenantId, buffers);
+        for (final String groupId: groupIds) {
+          for (final JournalWriter<T> writer: writers) {
+            writer.writeBuffers(groupId, buffers);
           }
         }
       } finally {
         this.flushing = false;
         final long elapsedNs = System.nanoTime() - startNs;
-        stats.addFlush(now, tenantIds.size(), bufSize, elapsedNs);
+        stats.addFlush(now, groupIds.size(), bufSize, elapsedNs);
       }
     }
   }
 
-  public interface JournalEntryWriter {
-    void writeEntry(PagedByteArray buffer, JournalEntry entry);
+  public interface JournalEntryWriter<T extends JournalEntry> {
+    void writeEntry(PagedByteArray buffer, T entry);
   }
 }

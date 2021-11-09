@@ -52,7 +52,7 @@ public final class JournalStats extends TelemetryCollectorGroup {
     .setLabel("Journal Manage Old Logs Time")
     .register(this, new Histogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
 
-  public void addFlush(final long now, final int tenants, final long bufSize, final long elapsedNs) {
+  public void addFlush(final long now, final int groupIds, final long bufSize, final long elapsedNs) {
     bufferUsage.set(now, bufSize);
     flushTime.set(now, elapsedNs);
     flushTimeHisto.add(elapsedNs);

@@ -33,4 +33,12 @@ public class ConcurrentTimeRangeGauge extends ConcurrentTimeRangeCounter {
   protected void injectZeros(final long now) {
     injectZeros(now, true);
   }
+
+
+  @Override
+  public TimeRangeCounterData getSnapshot() {
+    synchronized (this) {
+      return super.getSnapshot();
+    }
+  }
 }

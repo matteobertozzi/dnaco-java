@@ -19,6 +19,7 @@ package tech.dnaco.telemetry;
 
 import java.util.concurrent.TimeUnit;
 
+import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.time.TimeUtil;
 
 public class TimeRangeCounter implements TelemetryCollector {
@@ -143,5 +144,10 @@ public class TimeRangeCounter implements TelemetryCollector {
       }
       setLastInterval(now);
     }
+  }
+
+  public static void main(final String[] args) {
+    final TimeRangeCounter trc = new TimeRangeCounter(16, 1, TimeUnit.MINUTES);
+    System.out.println(trc.getSnapshot().toHumanReport(new StringBuilder(), HumansUtil.HUMAN_COUNT));
   }
 }

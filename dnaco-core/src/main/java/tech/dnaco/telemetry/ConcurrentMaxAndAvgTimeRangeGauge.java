@@ -41,4 +41,11 @@ public class ConcurrentMaxAndAvgTimeRangeGauge extends MaxAndAvgTimeRangeGauge {
       super.set(TimeUtil.currentUtcMillis(), value);
     }
   }
+
+  @Override
+  public MaxAndAvgTimeRangeGaugeData getSnapshot() {
+    synchronized (this) {
+      return super.getSnapshot();
+    }
+  }
 }

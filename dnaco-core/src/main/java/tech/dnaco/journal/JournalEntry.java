@@ -20,7 +20,7 @@
 package tech.dnaco.journal;
 
 public interface JournalEntry {
-  String getTenantId();
+  String getGroupId();
 
   //void write(PagedByteArray buffer);
 

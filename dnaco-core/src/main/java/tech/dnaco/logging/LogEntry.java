@@ -73,7 +73,7 @@ public abstract class LogEntry implements JournalEntry {
   }
 
   @Override
-  public String getTenantId() {
+  public String getGroupId() {
     return tenantId;
   }
 

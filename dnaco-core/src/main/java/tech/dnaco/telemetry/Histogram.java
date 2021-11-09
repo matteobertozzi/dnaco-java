@@ -63,6 +63,19 @@ public class Histogram implements TelemetryCollector {
     50_000, 75_000, 100_000, 250_000, 500_000, 1_000_000
   };
 
+  // 10, 20, 30
+  //  1, 0,  0
+  // maxValue = 5
+  // bounds = [5], events = [1]
+  // 10, 20, 30
+  //  1, 1,  0
+  // maxValue = 18
+  // bounds = [10, 18], events = [1, 1]
+
+  // 1: bounds=[5] envets=[1]
+  // 2: bounds=[10, 18] events=[1,1]
+  // 3: bounds=[10, 20, 25] events=[1,1]
+  // ---> [10, 20, 25]
   private final long[] bounds;
   private final long[] events;
   private long maxValue;

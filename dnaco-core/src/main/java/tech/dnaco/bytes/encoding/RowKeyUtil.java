@@ -201,4 +201,66 @@ public final class RowKeyUtil {
       return this;
     }
   }
+
+  public static final class RowKeyDecoder {
+    private final byte[] key;
+    private int offset;
+
+    private RowKeyDecoder(final byte[] key) {
+      this.key = key;
+      this.offset = 0;
+    }
+
+    public int getInt8() {
+      return (int) getInt(1);
+    }
+
+    public int getInt16() {
+      return (int) getInt(2);
+    }
+
+    public int getInt24() {
+      return (int) getInt(3);
+    }
+
+    public long getInt32() {
+      return getInt(4);
+    }
+
+    public long addInt40() {
+      return getInt(5);
+    }
+
+    public long addInt48() {
+      return getInt(6);
+    }
+
+    public long addInt56() {
+      return getInt(7);
+    }
+
+    public long addInt64() {
+      return getInt(8);
+    }
+
+    public long getInt(final int bytesWidth) {
+      final long value = IntDecoder.BIG_ENDIAN.readFixed(key, offset, bytesWidth);
+      this.offset = nextKeyComponent(key, offset);
+      return value;
+    }
+
+    public String getString() {
+      final int nextOffset = nextKeyComponent(key, offset);
+      final String value = new String(key, offset, nextOffset - ZERO.length);
+      this.offset = nextOffset;
+      return value;
+    }
+
+    public ByteArraySlice getBytes() {
+      final int nextOffset = nextKeyComponent(key, offset);
+      final ByteArraySlice value = new ByteArraySlice(key, offset, nextOffset - ZERO.length);
+      this.offset = nextOffset;
+      return value;
+    }
+  }
 }

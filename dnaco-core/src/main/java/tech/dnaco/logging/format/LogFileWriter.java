@@ -34,6 +34,7 @@ import tech.dnaco.io.FileUtil;
 import tech.dnaco.io.NullOutputStream;
 import tech.dnaco.journal.JournalBuffer;
 import tech.dnaco.journal.JournalWriter;
+import tech.dnaco.logging.LogEntry;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.format.LogFormat.LogEntryWriter;
@@ -43,7 +44,7 @@ import tech.dnaco.telemetry.TelemetryCollector;
 import tech.dnaco.telemetry.TelemetryCollectorGroup;
 import tech.dnaco.telemetry.TimeRangeCounter;
 
-public class LogFileWriter implements JournalWriter {
+public class LogFileWriter implements JournalWriter<LogEntry> {
   private static final DateTimeFormatter LOG_FOLDER_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
   private static final DateTimeFormatter ROLL_DATE_FORMAT = DateTimeFormatter.ofPattern("HHmmssSSS");
   private static final int ROLL_SIZE = 32 << 20;
@@ -90,7 +91,7 @@ public class LogFileWriter implements JournalWriter {
   }
 
   @Override
-  public void writeBuffers(final String tenantId, final List<JournalBuffer> buffers) {
+  public void writeBuffers(final String tenantId, final List<JournalBuffer<LogEntry>> buffers) {
     final ZonedDateTime now = ZonedDateTime.now();
 
     final File logDayDir = new File(logDir, LOG_FOLDER_DATE_FORMAT.format(now));
@@ -112,8 +113,8 @@ public class LogFileWriter implements JournalWriter {
       try (GZIPOutputStream stream = new GZIPOutputStream(fileStream)) {
         try (LogEntryWriter deltaWriter = LogFormat.CURRENT.newEntryWriter()) {
           deltaWriter.newBlock(stream);
-          for (final JournalBuffer threadBuf: buffers) {
-            if (!threadBuf.hasTenantId(tenantId)) continue;
+          for (final JournalBuffer<LogEntry> threadBuf: buffers) {
+            if (!threadBuf.hasGroupId(tenantId)) continue;
 
             deltaWriter.reset(stream, threadBuf.getThread());
             threadBuf.process(tenantId, (buf, off) -> deltaWriter.add(stream, buf, off));

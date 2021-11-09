@@ -21,8 +21,8 @@ package tech.dnaco.journal;
 
 import java.util.List;
 
-public interface JournalWriter {
+public interface JournalWriter<T extends JournalEntry> {
   void manageOldLogs();
 
-  void writeBuffers(String tenantId, List<JournalBuffer> buffers);
+  void writeBuffers(String groupId, List<JournalBuffer<T>> buffers);
 }

@@ -68,11 +68,6 @@ public class ConcurrentTimeRangeCounter extends TimeRangeCounter {
   }
 
   @Override
-  public String getType() {
-    return "TIME_RANGE_COUNTER";
-  }
-
-  @Override
   public TimeRangeCounterData getSnapshot() {
     synchronized (this) {
       return super.getSnapshot();

@@ -40,6 +40,15 @@ public class ByteArrayReader extends BytesInputStream {
     this.rpos = bufOff;
   }
 
+  public ByteArrayReader(final ByteArraySlice slice) {
+    this(slice.rawBuffer(), slice.offset(), slice.length());
+  }
+
+  @Override
+  public int available() {
+    return (bufOff + bufLen) - rpos;
+  }
+
   @Override
   public void reset() {
     this.rpos = bufOff;
@@ -73,8 +82,14 @@ public class ByteArrayReader extends BytesInputStream {
   }
 
   @Override
+  public long skip(final long n) {
+    this.rpos += n;
+    return n;
+  }
+
+  @Override
   public int read() {
-    return rpos < bufLen ? (buffer[rpos++] & 0xff) : -1;
+    return available() > 0 ? (buffer[rpos++] & 0xff) : -1;
   }
 
   @Override

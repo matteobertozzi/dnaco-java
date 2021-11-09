@@ -152,7 +152,7 @@ public abstract class AbstractClient implements StopSignal {
     if (userDisconnected) return;
 
     final int waitTime = retryLogic.nextWaitIntervalMillis();
-    Logger.debug("reschedule connection in {}", HumansUtil.humanTimeMillis(waitTime));
+    Logger.debug("reschedule connection to {} in {}", socketAddress, HumansUtil.humanTimeMillis(waitTime));
     scheduledRetry = getEventLoopGroup().schedule((Runnable) this::connect, waitTime, TimeUnit.MILLISECONDS);
   }
 

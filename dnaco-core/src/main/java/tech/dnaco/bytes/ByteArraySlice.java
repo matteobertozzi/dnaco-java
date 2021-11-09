@@ -17,6 +17,8 @@
 
 package tech.dnaco.bytes;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
 
 import tech.dnaco.collections.arrays.ArrayUtil.ByteArrayConsumer;
@@ -97,9 +99,13 @@ public class ByteArraySlice implements BytesSlice {
     consumer.accept(buf, off + offset, length);
   }
 
+  public void writeTo(final OutputStream stream) throws IOException {
+    stream.write(buf, off, len);
+  }
+
   @Override
   public String toString() {
-    return "BytesSlice [buf=" + new String(buf, off, len) + ", off=" + off + ", len=" + len + "]";
+    return "BytesSlice [off=" + off + ", len=" + len + ", buf=" + new String(buf, off, len) + "]";
   }
 
   @Override

@@ -28,6 +28,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import tech.dnaco.bytes.ByteArrayReader;
+import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.strings.StringUtil;
 
@@ -87,6 +89,15 @@ public abstract class DataFormat {
     if (BytesUtil.isEmpty(data)) return null;
     try {
       return getObjectMapper().readValue(data, valueType);
+    } catch (final Exception e) {
+      throw new DataFormatException(e);
+    }
+  }
+
+  public <T> T fromBytes(final ByteArraySlice data, final Class<T> valueType) {
+    if (data.isEmpty()) return null;
+    try (ByteArrayReader reader = new ByteArrayReader(data)) {
+      return fromStream(reader, valueType);
     } catch (final Exception e) {
       throw new DataFormatException(e);
     }
