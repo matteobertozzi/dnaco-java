@@ -131,6 +131,7 @@ public final class LogFileUtil {
 
       File logFile = logsTracker.getLastBlockFile();
       if (logFile == null || logFile.length() > ROLL_SIZE) {
+        Logger.debug("roll logFile:{} logSize:{}", logFile, logFile != null ? logFile.length() : 0);
         logFile = logsTracker.addNewFile();
       }
 
@@ -335,12 +336,12 @@ public final class LogFileUtil {
         this.offset = newOffset;
         this.nextOffset = newOffset;
         this.fileNames.clear();
-        Logger.debug("new offset set to tail {}/{}", offset, nextOffset);
+        Logger.debug("{} new offset set to tail {}/{}", getName(), offset, nextOffset);
         return;
       }
 
       if (newOffset > maxOffset) {
-        throw new IOException("invalid offset " + newOffset + ", max offset is " + maxOffset);
+        throw new IOException(getName() + " invalid offset " + newOffset + ", max offset is " + maxOffset);
       }
 
       int fileCount = fileNames.size();
@@ -355,13 +356,13 @@ public final class LogFileUtil {
       if (fileCount > 0) {
         final long firstOffset = offsetFromFileName(fileNames.get(0));
         if (newOffset < firstOffset) {
-          throw new IOException("invalid offset " + newOffset + ", first log available is " + firstOffset);
+          throw new IOException(getName() + " invalid offset " + newOffset + ", first log available is " + firstOffset);
         }
 
         // calculate offset & next offset
         this.offset = newOffset;
         this.nextOffset = (fileNames.size() > 1) ? offsetFromFileName(fileNames.get(1)) : maxOffset;
-        Logger.debug("new offset set to {}/{}, files {}", offset, nextOffset, fileNames);
+        Logger.debug("{} new offset set to {}/{}, files {}", getName(), offset, nextOffset, fileNames);
         return;
       }
 
@@ -369,6 +370,11 @@ public final class LogFileUtil {
     }
 
     public synchronized boolean hasMore() {
+      if (getBlockAvailable() > 0) return true;
+      if (fileNames.size() < 2) return false;
+
+      // grab the next log
+      nextLog();
       return getBlockAvailable() > 0;
     }
 
@@ -414,28 +420,37 @@ public final class LogFileUtil {
       dataPublishedNotifier.add(consumer);
     }
 
-    public synchronized void consume(final long length) throws IOException {
+    public synchronized void consume(final long length) {
       final long blkAvail = getBlockAvailable();
 
       this.offset += length;
       this.blkOffset += length;
-      Logger.debug("consume {}. avail:{} offset:{} blkOffset:{}", length, blkAvail, offset, blkOffset);
+      Logger.debug("{} consume {}. avail:{} offset:{} blkOffset:{}", getName(), length, blkAvail, offset, blkOffset);
       if (length < blkAvail) return;
 
-      final String fileName = fileNames.remove(0);
-      Logger.trace("log {} fully consumed. current offset {}/{}", fileName, offset, maxOffset);
-
       // nothing more available
-      this.blkOffset = 0;
-      if (offset == maxOffset) return;
+      if (offset == maxOffset) {
+        Logger.trace("{} log {} fully consumed. current offset {}/{}", getName(), fileNames.get(0), offset, maxOffset);
+        return;
+      }
+
+      // grab the next log
+      nextLog();
+    }
+
+    private void nextLog() {
+      // grab the next log
+      final String fileName = fileNames.remove(0);
+      Logger.trace("{} log {} fully consumed. current offset {}/{}", getName(), fileName, offset, maxOffset);
 
       // check the next file and the current offset
       final String nextFile = fileNames.get(0);
       if (offsetFromFileName(nextFile) != offset) {
-        throw new IOException("expected log starting from offset " + offset + ", got " + nextFile);
+        throw new IllegalStateException(getName() + " expected log starting from offset " + offset + ", got " + nextFile);
       }
 
       // calculate next offset
+      this.blkOffset = 0;
       this.nextOffset = (fileNames.size() > 1) ? offsetFromFileName(fileNames.get(1)) : maxOffset;
     }
   }

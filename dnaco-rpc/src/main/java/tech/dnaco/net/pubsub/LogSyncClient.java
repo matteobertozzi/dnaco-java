@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import io.netty.bootstrap.Bootstrap;
@@ -27,7 +28,13 @@ import tech.dnaco.net.frame.DnacoFrameDecoder;
 import tech.dnaco.net.pubsub.LogFileUtil.LogOffsetStore;
 import tech.dnaco.net.pubsub.LogFileUtil.LogsTracker;
 import tech.dnaco.net.util.ByteBufIntUtil;
+import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.ConcurrentTimeRangeCounter;
+import tech.dnaco.telemetry.TelemetryCollector;
+import tech.dnaco.telemetry.TelemetryCollectorGroup;
+import tech.dnaco.telemetry.TelemetryCollectorRegistry;
 import tech.dnaco.time.RetryUtil;
+import tech.dnaco.time.TimeUtil;
 
 public class LogSyncClient extends AbstractClient {
   public static final class LogState {
@@ -141,6 +148,7 @@ public class LogSyncClient extends AbstractClient {
     final int length = (int) fileRegion.count();
     state.setLastSentChunkSize(length);
     Logger.trace("PUBLISH: SEND OFFSET:{} LENGTH:{}", offset, length);
+    LogSyncClientStats.getInstance(consumer.getName()).send(offset, length, consumer.getMaxOffset());
 
     // PUBLISH
     // +------------+--------+-----------------+
@@ -170,6 +178,14 @@ public class LogSyncClient extends AbstractClient {
     final long count = Math.min(logAvail, 1 << 20);
     Logger.debug("TRY PUBLISH REGION {} logOff={} logAvail={} count={} length={}",
       logFile, logOffset, logAvail, count, logFile.length());
+    if (logOffset + logAvail >= logFile.length()) {
+      final long newCount = Math.min(1 << 20, logFile.length() - logOffset);
+      if (newCount != count) {
+        Logger.error("WRONG LOG-REGION OFFSET {} logOff={} logAvail={} count={} length={}",
+          logFile, logOffset, logAvail, count, logFile.length());
+      }
+    }
+
     return new DefaultFileRegion(logFile, logOffset, count);
   }
 
@@ -277,6 +293,39 @@ public class LogSyncClient extends AbstractClient {
           throw new UnsupportedOperationException();
       }
       state.waiting = false;
+    }
+  }
+
+  public static final class LogSyncClientStats extends TelemetryCollectorGroup {
+    private final ConcurrentTimeRangeCounter sentSize = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_SIZE)
+      .setName("sent_size")
+      .setLabel("Sent Size")
+      .register(this, new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
+
+    private final ConcurrentTimeRangeCounter availSize = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_SIZE)
+      .setName("avail_size")
+      .setLabel("Avail Size")
+      .register(this, new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
+
+    private LogSyncClientStats() {
+      // no-op
+    }
+
+    public static LogSyncClientStats getInstance(final String logId) {
+      final String groupName = "log_sync_client_" + logId;
+
+      final LogSyncClientStats stats = TelemetryCollectorRegistry.INSTANCE.get(groupName);
+      if (stats != null) return stats;
+
+      return TelemetryCollectorRegistry.INSTANCE.register(groupName, "Log Sync Client " + logId, null, new LogSyncClientStats());
+    }
+
+    public void send(final long offset, final int length, final long maxOffset) {
+      final long now = TimeUtil.currentUtcMillis();
+      sentSize.add(now, length);
+      availSize.update(now, maxOffset - offset);
     }
   }
 }

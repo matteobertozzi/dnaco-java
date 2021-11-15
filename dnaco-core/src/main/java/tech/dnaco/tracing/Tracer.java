@@ -68,7 +68,12 @@ public final class Tracer {
 
   public static TraceId getCurrentTraceId() {
     final Span task = getCurrentTask();
-    return task != null ? task.getTraceId() : TraceId.NULL_TRACE_ID;
+    if (task != null) return task.getTraceId();
+
+    final Span span = getCurrentSpan();
+    if (span != null) return span.getTraceId();
+
+    return TraceId.NULL_TRACE_ID;
   }
 
   public static Span newSubTask(final TraceId traceId) {

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -20,6 +21,11 @@ import tech.dnaco.net.pubsub.LogFileUtil.LogsTracker;
 import tech.dnaco.net.pubsub.LogFileUtil.LogsTrackerSupplier;
 import tech.dnaco.net.util.ByteBufIntUtil;
 import tech.dnaco.net.util.FileUtil;
+import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.ConcurrentTimeRangeCounter;
+import tech.dnaco.telemetry.TelemetryCollector;
+import tech.dnaco.telemetry.TelemetryCollectorGroup;
+import tech.dnaco.telemetry.TelemetryCollectorRegistry;
 
 public class LogSyncService extends AbstractService {
   private final LogSyncServiceHandler handler;
@@ -178,6 +184,7 @@ public class LogSyncService extends AbstractService {
 
       File logFile = seq.getLastBlockFile();
       if (logFile == null || logFile.length() > ROLL_SIZE) {
+        Logger.debug("roll logFile:{} logSize:{}", logFile, logFile != null ? logFile.length() : 0);
         logFile = seq.addNewFile();
       }
 
@@ -195,6 +202,33 @@ public class LogSyncService extends AbstractService {
       }
 
       seq.addData(dataLength);
+      LogSyncServiceStats.getInstance(seq.getName()).received(dataLength);
+    }
+  }
+
+
+  public static final class LogSyncServiceStats extends TelemetryCollectorGroup {
+    private final ConcurrentTimeRangeCounter recvSize = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_SIZE)
+      .setName("received_size")
+      .setLabel("Received Size")
+      .register(this, new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
+
+    private LogSyncServiceStats() {
+      // no-op
+    }
+
+    public static LogSyncServiceStats getInstance(final String logId) {
+      final String groupName = "log_sync_service_" + logId;
+
+      final LogSyncServiceStats stats = TelemetryCollectorRegistry.INSTANCE.get(groupName);
+      if (stats != null) return stats;
+
+      return TelemetryCollectorRegistry.INSTANCE.register(groupName, "Log Sync Service " + logId, null, new LogSyncServiceStats());
+    }
+
+    public void received(final long length) {
+      recvSize.inc(length);
     }
   }
 }

@@ -30,11 +30,12 @@ import tech.dnaco.journal.JournalEntry;
 import tech.dnaco.logging.format.LogFormat;
 import tech.dnaco.tracing.SpanId;
 import tech.dnaco.tracing.TraceId;
+import tech.dnaco.util.Serialization.SerializationName;
 
 public abstract class LogEntry implements JournalEntry {
   public static final DateTimeFormatter LOG_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
-  public enum LogEntryType { FLUSH, RESET, MESSAGE, DATA, HTTP }
+  public enum LogEntryType { FLUSH, RESET, MESSAGE, DATA, HTTP, TABLE, JSON }
 
   private static final LogEntryType[] LOG_ENTRY_TYPES = LogEntryType.values();
   public static LogEntryType entryTypeFromOrdinal(final int ordinal) {
@@ -53,6 +54,7 @@ public abstract class LogEntry implements JournalEntry {
   private TraceId traceId;
   private SpanId spanId;
 
+  @SerializationName("type")
   public abstract LogEntryType getType();
 
   @Override

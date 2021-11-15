@@ -45,6 +45,10 @@ import tech.dnaco.telemetry.TelemetryCollectorGroup;
 import tech.dnaco.telemetry.TimeRangeCounter;
 
 public class LogFileWriter implements JournalWriter<LogEntry> {
+  static {
+    Logger.EXCLUDE_CLASSES.add(LoggerPrintStream.class.getName());
+  }
+
   private static final DateTimeFormatter LOG_FOLDER_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
   private static final DateTimeFormatter ROLL_DATE_FORMAT = DateTimeFormatter.ofPattern("HHmmssSSS");
   private static final int ROLL_SIZE = 32 << 20;

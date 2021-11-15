@@ -20,7 +20,6 @@
 package tech.dnaco.tracing;
 
 import tech.dnaco.logging.Logger;
-import tech.dnaco.logging.LoggerSession;
 
 class RootSpan extends Span {
   static {
@@ -29,13 +28,6 @@ class RootSpan extends Span {
 
 	protected RootSpan(final TraceId traceId, final SpanId parentSpanId, final SpanId spanId) {
 		super(traceId, parentSpanId, spanId);
-
-    final LoggerSession session = Logger.getSession();
-    if (session != null) {
-      setTenantId(session.getTenantId());
-      setAttribute(TraceAttributes.MODULE, session.getModuleId());
-      setAttribute(TraceAttributes.OWNER, session.getOwnerId());
-    }
 	}
 
   @Override

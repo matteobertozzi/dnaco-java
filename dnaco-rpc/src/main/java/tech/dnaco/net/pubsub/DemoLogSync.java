@@ -53,10 +53,10 @@ public class DemoLogSync {
         journal.registerWriter(new LogWriter(localStorageTracker::get));
         journal.start(100);
 
-        for (int i = 0; i < 10000; ++i) {
-          final byte[] data = RandData.generateBytes((20 + i) % 20);
-          journal.addToLogQueue(Thread.currentThread(), new LogSyncMessage("topic-" + (i % 3), data));
-          if ((i + 1) % 1000 == 0) ThreadUtil.sleep(2, TimeUnit.SECONDS);
+        for (int i = 0; i < 1_000_000; ++i) {
+          final byte[] data = RandData.generateBytes(1024);
+          journal.addToLogQueue(Thread.currentThread(), new LogSyncMessage("topic-" + (i % 1), data));
+          if ((i + 1) % 1000 == 0) ThreadUtil.sleep(500, TimeUnit.MILLISECONDS);
         }
         journal.stop();
         journal.close();

@@ -181,6 +181,18 @@ public class LogFormatV0 implements LogFormat {
     public void add(final OutputStream stream, final PagedByteArray entryBuffer, final int entryOffset)
         throws IOException {
       final LogJournalEntryHeader head = LogFormat.readJournalHeader(entryBuffer, entryOffset);
+      final int type;
+      switch (LogEntryType.values()[head.type]) {
+        case HTTP:
+          return;
+        case JSON:
+        case TABLE:
+          type = LogEntryType.DATA.ordinal();
+          break;
+        default:
+          type = head.type;
+          break;
+      }
 
       final boolean sameModule = Arrays.equals(head.module, lastModule);
       final boolean sameOwner = Arrays.equals(head.owner, lastOwner);
@@ -189,7 +201,7 @@ public class LogFormatV0 implements LogFormat {
       // | module Nb | owner Nb | data Nb |
 
       // write type (1byte)
-      stream.write(head.type);
+      stream.write(type);
 
       // write delta-timestamp (vint)
       IntEncoder.writeUnsignedVarLong(stream, head.timestamp - lastTimestamp);

@@ -213,6 +213,28 @@ public final class Logger {
   }
 
   public static void add(final Thread thread, final LogEntry entry) {
+    final Span task = Tracer.getCurrentTask();
+    final Span span = Tracer.getCurrentSpan();
+    final StringObjectMap taskAttrs = task != null ? task.getAttributes() : EMPTY_MAP;
+    final StringObjectMap spanAttrs = span != null ? span.getAttributes() : EMPTY_MAP;
+    final String tenantId = StringUtil.defaultIfEmpty(span != null ? span.getTenantId() : null, task != null ? task.getTenantId() : null);
+
+    final LoggerSession session = localSession.get();
+    final long timestamp = TimeUtil.currentUtcMillis();
+
+    // --- LogEntry ---
+    entry.setThread(thread);
+    entry.setTenantId(StringUtil.defaultIfEmpty(tenantId, StringUtil.defaultIfEmpty(session.getTenantId(), "unknown")));
+    entry.setModule(moduleFromSpan(taskAttrs, spanAttrs, session.getModuleId()));
+    entry.setOwner(ownerFromSpan(taskAttrs, spanAttrs, session.getOwnerId()));
+    entry.setTimestamp(timestamp);
+    entry.setTraceId(Tracer.getCurrentTraceId());
+    entry.setSpanId(Tracer.getCurrentSpanId());
+
+    addRaw(thread, entry);
+  }
+
+  public static void addRaw(final Thread thread, final LogEntry entry) {
     entry.setSeqId();
     provider.addToLog(thread, entry);
   }
@@ -284,40 +306,42 @@ public final class Logger {
   private static final StringObjectMap EMPTY_MAP = new StringObjectMap(0);
   private static void logRaw(final LogLevel level, final Throwable exception,
       final String format, final String[] args) {
-    final long timestamp = TimeUtil.currentUtcMillis();
     final Thread thread = Thread.currentThread();
-    final Span task = Tracer.getCurrentTask();
-    final Span span = Tracer.getCurrentSpan();
-    final StringObjectMap taskAttrs = task != null ? task.getAttributes() : EMPTY_MAP;
-    final StringObjectMap spanAttrs = span != null ? span.getAttributes() : EMPTY_MAP;
-    final String tenantId = StringUtil.defaultIfEmpty(span != null ? span.getTenantId() : null, task != null ? task.getTenantId() : null);
-
-    final LoggerSession session = localSession.get();
 
     // skipFrames = 4 -> [0: lookupLineClassAndMethod(), 1: logRaw(), 2: log(level, ...), 3: info(), 4:userFunc()]
     final String classAndMethod = LogUtil.lookupLineClassAndMethod(4);
 
     final LogEntryMessage entry = new LogEntryMessage();
-    // --- LogEntry ---
-    entry.setThread(thread);
-    entry.setTenantId(StringUtil.defaultIfEmpty(tenantId, StringUtil.defaultIfEmpty(session.getTenantId(), "unknown")));
-    entry.setModule(spanAttrs.getString(TraceAttributes.MODULE, taskAttrs.getString(TraceAttributes.MODULE, StringUtil.defaultIfEmpty(session.getModuleId(), "unknown"))));
-    entry.setOwner(spanAttrs.getString(TraceAttributes.OWNER, taskAttrs.getString(TraceAttributes.OWNER, StringUtil.defaultIfEmpty(session.getOwnerId(), "unknown"))));
-    entry.setTimestamp(timestamp);
-    entry.setTraceId(Tracer.getCurrentTraceId());
-    entry.setSpanId(Tracer.getCurrentSpanId());
-    // --- LogEntryMessage ---
     entry.setLevel(level);
     entry.setClassAndMethod(classAndMethod);
     entry.setMsgFormat(format);
     entry.setMsgArgs(args);
     entry.setException(exception);
-
     add(thread, entry);
 
     if (failureProvider != null && level.ordinal() <= failureLevel.ordinal()) {
       failureProvider.addToLog(thread, entry);
     }
+  }
+
+  private static String ownerFromSpan(final StringObjectMap taskAttrs, final StringObjectMap spanAttrs, final String sessionOwner) {
+    String owner = taskAttrs.getString(TraceAttributes.SESSION_USER_NAME, null);
+    if (owner != null) return owner;
+    owner = taskAttrs.getString(TraceAttributes.SESSION_USER_ID, null);
+    if (owner != null) return owner;
+    owner = spanAttrs.getString(TraceAttributes.SESSION_USER_NAME, null);
+    if (owner != null) return owner;
+    owner = spanAttrs.getString(TraceAttributes.SESSION_USER_ID, null);
+    if (owner != null) return owner;
+    return StringUtil.defaultIfEmpty(sessionOwner, "unknown");
+  }
+
+  private static String moduleFromSpan(final StringObjectMap taskAttrs, final StringObjectMap spanAttrs, final String sessionModule) {
+    String module = taskAttrs.getString(TraceAttributes.MODULE, null);
+    if (module != null) return module;
+    module = spanAttrs.getString(TraceAttributes.MODULE, null);
+    if (module != null) return module;
+    return StringUtil.defaultIfEmpty(sessionModule, "unknown");
   }
 
   // ===============================================================================================

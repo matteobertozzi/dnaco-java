@@ -42,9 +42,10 @@ public final class TaskMonitor {
   }
 
   private final CopyOnWriteArrayList<Consumer<Span>> taskCompletedListeners = new CopyOnWriteArrayList<>();
+  private final Set<Class<? extends Span>> supportedTaskTypes = ConcurrentHashMap.newKeySet();
 
-  private final Set<RootSpan> runningTasks = ConcurrentHashMap.newKeySet(128);
-  private final RootSpan[] recentlyCompletedTracers = new RootSpan[16];
+  private final Set<Span> runningTasks = ConcurrentHashMap.newKeySet(128);
+  private final Span[] recentlyCompletedTracers = new Span[16];
   private final AtomicLong recentlyCompletedIndex = new AtomicLong(0);
 
   private final CounterMap tenantCpuTime = new TelemetryCollector.Builder()
@@ -54,19 +55,26 @@ public final class TaskMonitor {
     .register(new CounterMap());
 
   private TaskMonitor() {
-    // no-op
+    supportedTaskTypes.add(RootSpan.class);
+  }
+
+  public void setSupportedTaskTypes(final Set<Class<? extends Span>> types) {
+    supportedTaskTypes.clear();
+    supportedTaskTypes.addAll(types);
   }
 
   public void addTaskCompletedListener(final Consumer<Span> consumer) {
     this.taskCompletedListeners.add(consumer);
   }
 
-  protected void addRunningTask(final RootSpan task) {
+  public void addRunningTask(final Span task) {
+    if (!supportedTaskTypes.contains(task.getClass())) return;
+
     runningTasks.add(task);
   }
 
-  protected void addCompletedTask(final RootSpan task) {
-    runningTasks.remove(task);
+  public void addCompletedTask(final Span task) {
+    if (!runningTasks.remove(task)) return;
 
     final int index = (int) (recentlyCompletedIndex.incrementAndGet() & (recentlyCompletedTracers.length - 1));
     recentlyCompletedTracers[index] = task;
@@ -82,8 +90,8 @@ public final class TaskMonitor {
     }
   }
 
-  public List<RootSpan> getRecentlyCompletedTasks() {
-    final ArrayList<RootSpan> tasks = new ArrayList<>(recentlyCompletedTracers.length);
+  public List<Span> getRecentlyCompletedTasks() {
+    final ArrayList<Span> tasks = new ArrayList<>(recentlyCompletedTracers.length);
     for (int i = 0; i < recentlyCompletedTracers.length; ++i) {
       if (recentlyCompletedTracers[i] == null) continue;
       tasks.add(recentlyCompletedTracers[i]);
@@ -93,19 +101,19 @@ public final class TaskMonitor {
   }
 
   public StringBuilder addActiveTasksToHumanReport(final StringBuilder report) {
-    final ArrayList<RootSpan> activeTasks = new ArrayList<>(runningTasks);
+    final ArrayList<Span> activeTasks = new ArrayList<>(runningTasks);
     activeTasks.sort((a, b) -> Long.compare(b.getStartTime(), a.getStartTime()));
 
     final HumansTableView table = new HumansTableView();
     table.addColumns("Thread", "TenantId", "TraceId", "Queue Time", "Run Time", "Name");
 
     final long now = System.nanoTime();
-    for (final RootSpan task: activeTasks) {
+    for (final Span task: activeTasks) {
       final StringObjectMap attrs = task.getAttributes();
       final long queueTime = attrs.getLong(TraceAttributes.QUEUE_TIME, -1);
       final long elapsed = now - task.getStartNs();
 
-      table.addRow(attrs.getString(TraceAttributes.THREAD_NAME, null),
+      table.addRow(task.getThreadName(),
         task.getTenantId(),
         task.getTraceId() + ":" + task.getParentSpanId() + ":" + task.getSpanId(),
         queueTime >= 0 ? HumansUtil.humanTimeNanos(queueTime) : "",
@@ -120,11 +128,11 @@ public final class TaskMonitor {
     final HumansTableView table = new HumansTableView();
     table.addColumns("Thread", "TenantId", "TraceId", "Start Time", "Queue Time", "Execution Time", "Name", "Status");
 
-    for (final RootSpan task: getRecentlyCompletedTasks()) {
+    for (final Span task: getRecentlyCompletedTasks()) {
       final StringObjectMap attrs = task.getAttributes();
       final long queueTime = attrs.getLong(TraceAttributes.QUEUE_TIME, -1);
 
-      table.addRow(attrs.getString(TraceAttributes.THREAD_NAME, null),
+      table.addRow(task.getThreadName(),
         task.getTenantId(),
         task.getTraceId() + ":" + task.getParentSpanId() + ":" + task.getSpanId(),
         HumansUtil.humanDate(task.getStartTime()),

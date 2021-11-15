@@ -52,32 +52,35 @@ public class JsonArray extends JsonElement implements Iterable<JsonElement> {
     return elements.get(index);
   }
 
-  public void add(final boolean value) {
-    add(new JsonPrimitive(value));
+  public JsonArray add(final boolean value) {
+    return add(new JsonPrimitive(value));
   }
 
-  public void add(final long value) {
-    add(new JsonPrimitive(value));
+  public JsonArray add(final long value) {
+    return add(new JsonPrimitive(value));
   }
 
-  public void add(final double value) {
-    add(new JsonPrimitive(value));
+  public JsonArray add(final double value) {
+    return add(new JsonPrimitive(value));
   }
 
-  public void add(final String value) {
-    add(value == null ? JsonNull.INSTANCE : new JsonPrimitive(value));
+  public JsonArray add(final String value) {
+    return add(value == null ? JsonNull.INSTANCE : new JsonPrimitive(value));
   }
 
-  public void add(final JsonElement element) {
+  public JsonArray add(final JsonElement element) {
     elements.add(element != null ? element : JsonNull.INSTANCE);
+    return this;
   }
 
-  public void set(final int index, final JsonElement element) {
+  public JsonArray set(final int index, final JsonElement element) {
     elements.set(index, element);
+    return this;
   }
 
-  public void remove(final int index) {
+  public JsonArray remove(final int index) {
     elements.remove(index);
+    return this;
   }
 
   @Override

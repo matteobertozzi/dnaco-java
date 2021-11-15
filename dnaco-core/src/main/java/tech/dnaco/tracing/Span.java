@@ -19,6 +19,7 @@
 
 package tech.dnaco.tracing;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +30,7 @@ import tech.dnaco.logging.Logger;
 import tech.dnaco.logging.LoggerSession;
 import tech.dnaco.time.TimeUtil;
 
-public class Span implements AutoCloseable {
+public class Span implements Closeable {
   static {
     Logger.EXCLUDE_CLASSES.add(Span.class.getName());
   }
@@ -58,8 +59,12 @@ public class Span implements AutoCloseable {
   }
 
   protected Span(final TraceId traceId, final SpanId parentSpanId, final SpanId spanId) {
+    this(traceId, parentSpanId, spanId, Thread.currentThread().getName());
+  }
+
+  protected Span(final TraceId traceId, final SpanId parentSpanId, final SpanId spanId, final String threadName) {
     this.callerMethod = LogUtil.lookupLineClassAndMethod(2);
-    this.threadName = Thread.currentThread().getName();
+    this.threadName = threadName;
     this.traceId = traceId;
     this.parentSpanId = parentSpanId;
     this.spanId = spanId;
@@ -67,7 +72,14 @@ public class Span implements AutoCloseable {
     this.startNs = System.nanoTime();
     this.label = this.callerMethod;
     this.status = SpanStatus.IN_PROGRESS;
-    Tracer.addSpan(this);
+
+    final LoggerSession session = Logger.getSession();
+    if (session != null) {
+      setTenantId(session.getTenantId());
+      setAttribute(TraceAttributes.MODULE, session.getModuleId());
+    }
+
+    addToTracer();
   }
 
   @Override
@@ -76,6 +88,15 @@ public class Span implements AutoCloseable {
       // try (Span span = Tracer.newSpan()) { ... }
       completed();
     }
+    removeFromTracer();
+  }
+
+  protected void addToTracer() {
+    Logger.debug("add to tracer: {}", this);
+    Tracer.addSpan(this);
+  }
+
+  protected void removeFromTracer() {
     Tracer.closeSpan(this);
   }
 
@@ -229,11 +250,20 @@ public class Span implements AutoCloseable {
   }
 
   public Span startSpan(final SpanId parentSpanId) {
-    return new Span(getTraceId(), parentSpanId, Tracer.getProvider().newSpanId());
+    final Span span = new Span(getTraceId(), parentSpanId, Tracer.getProvider().newSpanId());
+    span.setTenantId(tenantId);
+    return span;
   }
 
   @Override
   public String toString() {
-    return "Span [parentSpanId=" + parentSpanId + ", spanId=" + spanId + ", startTs=" + startTime + "]";
+    return getClass().getName() + " [traceId=" + traceId
+      + ", parentSpanId=" + parentSpanId
+      + ", spanId=" + spanId
+      + ", startTs=" + startTime
+      + ", tenantId=" + tenantId
+      + ", module=" + this.getModule()
+      + ", caller=" + callerMethod
+      + "]";
   }
 }

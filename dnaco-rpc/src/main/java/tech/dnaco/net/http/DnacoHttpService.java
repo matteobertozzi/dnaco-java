@@ -241,7 +241,7 @@ public class DnacoHttpService extends AbstractService {
     entry.setTimestamp(System.currentTimeMillis());
     entry.setTraceId(Tracer.getCurrentTraceId());
     entry.setSpanId(Tracer.getCurrentSpanId());
-    Logger.add(thread, entry);
+    Logger.addRaw(thread, entry);
   }
 
   // ================================================================================
