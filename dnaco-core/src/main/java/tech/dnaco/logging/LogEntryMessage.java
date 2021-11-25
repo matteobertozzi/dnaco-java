@@ -93,19 +93,7 @@ public class LogEntryMessage extends LogEntry {
   public StringBuilder humanReport(final StringBuilder report) {
     super.humanReport(report);
     report.append(" ").append(level).append(" ").append(classAndMethod).append(" - ");
-
-    if (ArrayUtil.isEmpty(msgArgs)) {
-      report.append(msgFormat);
-    } else {
-      // try to apply the usal formatter "aaa {} bbbb {}"
-      int argsOffset = StringFormat.applyFormat(report, msgFormat, msgArgs);
-
-      // if there are unprocessed args append them with a space
-      while (argsOffset < msgArgs.length) {
-        report.append(' ').append(msgArgs[argsOffset++]);
-      }
-    }
-
+    StringFormat.applyFormatExt(report, msgFormat, msgArgs);
     if (exception != null) report.append(" - ").append(exception);
     return report;
   }

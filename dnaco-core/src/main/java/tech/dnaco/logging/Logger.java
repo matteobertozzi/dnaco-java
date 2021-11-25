@@ -213,18 +213,17 @@ public final class Logger {
   }
 
   public static void add(final Thread thread, final LogEntry entry) {
+    final long timestamp = TimeUtil.currentUtcMillis();
+
     final Span task = Tracer.getCurrentTask();
     final Span span = Tracer.getCurrentSpan();
+    final LoggerSession session = localSession.get();
     final StringObjectMap taskAttrs = task != null ? task.getAttributes() : EMPTY_MAP;
     final StringObjectMap spanAttrs = span != null ? span.getAttributes() : EMPTY_MAP;
-    final String tenantId = StringUtil.defaultIfEmpty(span != null ? span.getTenantId() : null, task != null ? task.getTenantId() : null);
-
-    final LoggerSession session = localSession.get();
-    final long timestamp = TimeUtil.currentUtcMillis();
 
     // --- LogEntry ---
     entry.setThread(thread);
-    entry.setTenantId(StringUtil.defaultIfEmpty(tenantId, StringUtil.defaultIfEmpty(session.getTenantId(), "unknown")));
+    entry.setTenantId(tenantFromSpan(task, span, session.getTenantId()));
     entry.setModule(moduleFromSpan(taskAttrs, spanAttrs, session.getModuleId()));
     entry.setOwner(ownerFromSpan(taskAttrs, spanAttrs, session.getOwnerId()));
     entry.setTimestamp(timestamp);
@@ -237,6 +236,39 @@ public final class Logger {
   public static void addRaw(final Thread thread, final LogEntry entry) {
     entry.setSeqId();
     provider.addToLog(thread, entry);
+  }
+
+  private static String tenantFromSpan(final Span task, final Span span, final String sessionTenantId) {
+    String tenantId;
+    if (task != null) {
+      tenantId = task.getTenantId();
+      if (tenantId != null) return tenantId;
+    }
+    if (span != null) {
+      tenantId = span.getTenantId();
+      if (tenantId != null) return tenantId;
+    }
+    return StringUtil.defaultIfEmpty(sessionTenantId, "unknown");
+  }
+
+  private static String ownerFromSpan(final StringObjectMap taskAttrs, final StringObjectMap spanAttrs, final String sessionOwner) {
+    String owner = taskAttrs.getString(TraceAttributes.SESSION_USER_NAME, null);
+    if (owner != null) return owner;
+    owner = taskAttrs.getString(TraceAttributes.SESSION_USER_ID, null);
+    if (owner != null) return owner;
+    owner = spanAttrs.getString(TraceAttributes.SESSION_USER_NAME, null);
+    if (owner != null) return owner;
+    owner = spanAttrs.getString(TraceAttributes.SESSION_USER_ID, null);
+    if (owner != null) return owner;
+    return StringUtil.defaultIfEmpty(sessionOwner, "unknown");
+  }
+
+  private static String moduleFromSpan(final StringObjectMap taskAttrs, final StringObjectMap spanAttrs, final String sessionModule) {
+    String module = taskAttrs.getString(TraceAttributes.MODULE, null);
+    if (module != null) return module;
+    module = spanAttrs.getString(TraceAttributes.MODULE, null);
+    if (module != null) return module;
+    return StringUtil.defaultIfEmpty(sessionModule, "unknown");
   }
 
   // ===============================================================================================
@@ -322,26 +354,6 @@ public final class Logger {
     if (failureProvider != null && level.ordinal() <= failureLevel.ordinal()) {
       failureProvider.addToLog(thread, entry);
     }
-  }
-
-  private static String ownerFromSpan(final StringObjectMap taskAttrs, final StringObjectMap spanAttrs, final String sessionOwner) {
-    String owner = taskAttrs.getString(TraceAttributes.SESSION_USER_NAME, null);
-    if (owner != null) return owner;
-    owner = taskAttrs.getString(TraceAttributes.SESSION_USER_ID, null);
-    if (owner != null) return owner;
-    owner = spanAttrs.getString(TraceAttributes.SESSION_USER_NAME, null);
-    if (owner != null) return owner;
-    owner = spanAttrs.getString(TraceAttributes.SESSION_USER_ID, null);
-    if (owner != null) return owner;
-    return StringUtil.defaultIfEmpty(sessionOwner, "unknown");
-  }
-
-  private static String moduleFromSpan(final StringObjectMap taskAttrs, final StringObjectMap spanAttrs, final String sessionModule) {
-    String module = taskAttrs.getString(TraceAttributes.MODULE, null);
-    if (module != null) return module;
-    module = spanAttrs.getString(TraceAttributes.MODULE, null);
-    if (module != null) return module;
-    return StringUtil.defaultIfEmpty(sessionModule, "unknown");
   }
 
   // ===============================================================================================

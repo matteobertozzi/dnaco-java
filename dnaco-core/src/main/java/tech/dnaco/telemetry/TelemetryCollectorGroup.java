@@ -47,6 +47,12 @@ public class TelemetryCollectorGroup implements TelemetryCollector {
     return (info != null) ? (T) info.collector : null;
   }
 
+  @SuppressWarnings("unchecked")
+  public <T extends TelemetryCollector> T remove(final String name) {
+    final CollectorInfo info = collectorMap.remove(name);
+    return (info != null) ? (T) info.collector : null;
+  }
+
   public String humanReport() {
     return humanReport(new StringBuilder(1 << 20));
   }

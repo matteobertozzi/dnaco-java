@@ -3,6 +3,7 @@ package tech.dnaco.net.pubsub;
 import java.io.File;
 import java.nio.file.Files;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
@@ -38,11 +39,14 @@ public class DemoLogSync {
       localStorageTracker.registerNewTopicListener(tracker -> {
         try {
           tracker.setOffset(tracker.getMaxOffset());
+          tracker.cleanupFiles(Duration.ofHours(5));
           client.add(tracker);
         } catch (final Throwable e) {
           Logger.error(e, "uncaught exception during tracker registration: {}", tracker);
         }
       });
+
+      // start log-sync client
       client.connect("127.0.0.1", 57025);
       while (!client.isConnected()) Thread.yield();
       client.setReady();
@@ -54,9 +58,13 @@ public class DemoLogSync {
         journal.start(100);
 
         for (int i = 0; i < 1_000_000; ++i) {
+          final String logId = "topic-" + (i % 1);
           final byte[] data = RandData.generateBytes(1024);
-          journal.addToLogQueue(Thread.currentThread(), new LogSyncMessage("topic-" + (i % 1), data));
-          if ((i + 1) % 1000 == 0) ThreadUtil.sleep(500, TimeUnit.MILLISECONDS);
+          journal.addToLogQueue(Thread.currentThread(), new LogSyncMessage(logId, data));
+          if ((i + 1) % 1000 == 0) {
+            //localStorageTracker.get(logId).cleanupFiles(Duration.ofSeconds(10));
+            ThreadUtil.sleep(500, TimeUnit.MILLISECONDS);
+          }
         }
         journal.stop();
         journal.close();

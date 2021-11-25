@@ -8,6 +8,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.Duration;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,12 +47,18 @@ public final class LogFileUtil {
   }
 
   public static String newFileName(final long offset) {
-    return String.format("%020d.%s", offset, HumansUtil.toHumanTs(ZonedDateTime.now()));
+    return String.format("%020d.%s", offset, HumansUtil.toHumanTs(ZonedDateTime.now(ZoneOffset.UTC)));
   }
 
   public static long offsetFromFileName(final String name) {
     final int offsetEof = name.indexOf('.');
     return Long.parseLong(name, 0, offsetEof, 10);
+  }
+
+  public static long timestampFromFileName(final String name) {
+    final int offsetEof = name.indexOf('.');
+    final long humanTs = Long.parseLong(name, offsetEof + 1, name.length(), 10);
+    return HumansUtil.fromUtcHumanTs(humanTs).toInstant().toEpochMilli();
   }
 
   @FunctionalInterface
@@ -102,6 +110,10 @@ public final class LogFileUtil {
         listener.accept(tracker);
       }
       return tracker;
+    }
+
+    public void remove(final String logId) {
+      trackers.remove(logId);
     }
 
     private LogsTracker newTracker(final String topic) {
@@ -215,13 +227,22 @@ public final class LogFileUtil {
   }
 
   public static class SimpleLogEntryReader {
-    public static void read(final File logFile, final long offset, final long avail,
+    public static long read(final File logFile, final long offset, final long avail,
         final LogEntryProcessor processor) throws Exception {
-      try (final InputStream stream = new LimitedInputStream(new FileInputStream(logFile), offset + avail)) {
+      try (final LimitedInputStream stream = new LimitedInputStream(new FileInputStream(logFile), offset + avail)) {
         stream.skipNBytes(offset);
 
+        long consumed = 0;
         while (stream.available() > 0) {
-          final byte[] block = readBlock(stream);
+          final byte[] block;
+          try {
+            block = readBlock(stream);
+          } catch (final EOFException e) {
+            Logger.trace("got EOF while reading block {}", e.getMessage());
+            break;
+          }
+
+          consumed = stream.consumed();
           try (ByteArrayReader blockReader = new ByteArrayReader(block)) {
             while (blockReader.available() > 0) {
               final int length = IntDecoder.readUnsignedVarInt(blockReader);
@@ -231,6 +252,7 @@ public final class LogFileUtil {
             }
           }
         }
+        return consumed;
       }
     }
 
@@ -322,6 +344,52 @@ public final class LogFileUtil {
       return this;
     }
 
+    private void cleanupFiles() {
+      cleanupFiles(Duration.ofHours(12));
+    }
+
+    public synchronized boolean cleanupFiles(final Duration retainTime) {
+      final String[] files = logsDir.list();
+      if (ArrayUtil.isEmpty(files)) {
+        Logger.trace("no log files: {}", logsDir);
+        logsDir.delete();
+        return true;
+      }
+
+      // logs name are in the format of <OFFSET>.<not-imporant>
+      // so they will get sorted by offset.
+      Arrays.sort(files);
+
+      int removedCount = 0;
+      final long retainMs = retainTime.toMillis();
+      final long now = System.currentTimeMillis();
+      for (final String fileName: files) {
+        final long logOffset = offsetFromFileName(fileName);
+        if (offset < logOffset) break;
+
+        Logger.info("{} log file {} is candidate for removal", getName(), fileName);
+        if (fileNames.contains(fileName)) break; // be safe
+
+        final long delta = now - timestampFromFileName(fileName);
+        if (delta < retainMs) {
+          Logger.debug("{} log file {} is in the retain period {}: {}",
+            getName(), fileName, HumansUtil.humanTimeMillis(retainMs), HumansUtil.humanTimeMillis(delta));
+          break;
+        }
+
+        Logger.info("{} removing {} created {}", getName(), fileName, HumansUtil.humanTimeMillis(delta));
+        new File(logsDir, fileName).delete();
+        removedCount++;
+      }
+
+      if (removedCount == files.length) {
+        Logger.info("{} removing empty dir", getName(), logsDir);
+        logsDir.delete();
+        return true;
+      }
+      return false;
+    }
+
     public synchronized long getMaxOffset() {
       return maxOffset;
     }
@@ -337,6 +405,7 @@ public final class LogFileUtil {
         this.nextOffset = newOffset;
         this.fileNames.clear();
         Logger.debug("{} new offset set to tail {}/{}", getName(), offset, nextOffset);
+        this.cleanupFiles();
         return;
       }
 
@@ -363,6 +432,7 @@ public final class LogFileUtil {
         this.offset = newOffset;
         this.nextOffset = (fileNames.size() > 1) ? offsetFromFileName(fileNames.get(1)) : maxOffset;
         Logger.debug("{} new offset set to {}/{}, files {}", getName(), offset, nextOffset, fileNames);
+        this.cleanupFiles();
         return;
       }
 
@@ -452,25 +522,28 @@ public final class LogFileUtil {
       // calculate next offset
       this.blkOffset = 0;
       this.nextOffset = (fileNames.size() > 1) ? offsetFromFileName(fileNames.get(1)) : maxOffset;
+
+      // cleanup
+      this.cleanupFiles();
     }
   }
 
   public static class LogSyncMessage implements JournalEntry {
-    private final String topic;
+    private final String logId;
     private final byte[] message;
 
-    public LogSyncMessage(final String topic, final String message) {
-      this(topic, message.getBytes());
+    public LogSyncMessage(final String logId, final String message) {
+      this(logId, message.getBytes());
     }
 
-    public LogSyncMessage(final String topic, final byte[] message) {
-      this.topic = topic;
+    public LogSyncMessage(final String logId, final byte[] message) {
+      this.logId = logId;
       this.message = message;
     }
 
     @Override
     public String getGroupId() {
-      return topic;
+      return logId;
     }
 
     @Override
@@ -489,6 +562,15 @@ public final class LogFileUtil {
 
   public static void main(final String[] args) throws Exception {
     final LogsStorage storage = new LogsStorage(new File("logs.sync"));
+
+    if (true) {
+      final long now = System.currentTimeMillis();
+      final long t = timestampFromFileName("00000000000000000000.20211115205345");
+      System.out.println("NOW: " + now);
+      System.out.println("TIM: " + t);
+      System.out.println("DEL: " + (now - t));
+      return;
+    }
 
     if (false) {
       final JournalAsyncWriter<LogSyncMessage> journal = new JournalAsyncWriter<>("pubsub", new LogSyncMessageWriter());
@@ -519,10 +601,10 @@ public final class LogFileUtil {
                         + " AVAIL: " + tracker.getBlockAvailable()
                         + " FILE: " + tracker.getBlockFile()
                         + " index: " + i);
-        SimpleLogEntryReader.read(block, tracker.getBlockOffset(), tracker.getBlockAvailable(), data -> {
+        final long consumed = SimpleLogEntryReader.read(block, tracker.getBlockOffset(), tracker.getBlockAvailable(), data -> {
           System.out.println(" -> entry: " + CborFormat.INSTANCE.fromBytes(data, JsonObject.class));
         });
-        tracker.consume(tracker.getBlockAvailable());
+        tracker.consume(consumed);
         break;
       }
     }

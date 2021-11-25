@@ -53,9 +53,7 @@ public class LogFileReader {
   }
 
   private static String tenantIdFromFile(final String name) {
-    final int index = name.indexOf('.');
-    if (index < 0) return name;
-    return name.substring(0, index);
+    return name;
   }
 
   public void skipToEnd() throws IOException {
@@ -73,8 +71,10 @@ public class LogFileReader {
           lineCount++;
           if (predicate.test(reader.getEntryHeader())) {
             final LogEntry entry = reader.readEntryData();
-            entry.setTenantId(tenantId);
-            consumer.accept(entry, lineCount);
+            if (entry != null) {
+              entry.setTenantId(tenantId);
+              consumer.accept(entry, lineCount);
+            }
           } else {
             reader.skipEntryData();
           }

@@ -27,6 +27,14 @@
       <version>${project.version}</version>
     </dependency>
 
+    <!-- https://mvnrepository.com/artifact/me.lemire.integercompression/JavaFastPFOR -->
+<dependency>
+    <groupId>me.lemire.integercompression</groupId>
+    <artifactId>JavaFastPFOR</artifactId>
+    <version>0.1.12</version>
+</dependency>
+
+
     <!-- Encoding -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>

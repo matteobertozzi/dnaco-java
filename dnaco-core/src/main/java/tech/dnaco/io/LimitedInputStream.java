@@ -7,19 +7,23 @@ import java.io.InputStream;
 public class LimitedInputStream extends FilterInputStream {
   private final long maxReadable;
 
-  private long read;
+  private long consumed;
 
   public LimitedInputStream(final InputStream in, final long maxReadable) {
     super(in);
     this.maxReadable = maxReadable;
-    this.read = 0;
+    this.consumed = 0;
+  }
+
+  public long consumed() {
+    return consumed;
   }
 
   public int read() throws IOException {
-    if (read == maxReadable) return -1;
+    if (consumed == maxReadable) return -1;
 
     final int c = super.read();
-    if (c >= 0) read++;
+    if (c >= 0) consumed++;
     return c;
   }
 
@@ -28,11 +32,11 @@ public class LimitedInputStream extends FilterInputStream {
   }
 
   public int read(final byte b[], final int off, final int len) throws IOException {
-    if (read == maxReadable) return -1;
+    if (consumed == maxReadable) return -1;
 
-    final long avail = maxReadable - read;
+    final long avail = maxReadable - consumed;
     final int n = super.read(b, off, (len > avail) ? (int) avail : len);
-    if (n >= 0) read += n;
+    if (n >= 0) consumed += n;
     return n;
   }
 }

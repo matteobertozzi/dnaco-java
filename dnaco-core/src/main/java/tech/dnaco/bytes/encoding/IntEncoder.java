@@ -20,6 +20,8 @@ package tech.dnaco.bytes.encoding;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import tech.dnaco.collections.arrays.ByteArray;
+
 public abstract class IntEncoder {
   public static final IntEncoder LITTLE_ENDIAN = new LittleEndian();
   public static final IntEncoder BIG_ENDIAN = new BigEndian();
@@ -51,6 +53,7 @@ public abstract class IntEncoder {
   public void writeFixed64(final OutputStream stream, final long v) throws IOException { writeFixed(stream, v, 8); }
 
   public abstract void writeFixed(final OutputStream stream, final long v, final int bytesWidth) throws IOException;
+  public abstract void writeFixed(final ByteArray stream, final long v, final int bytesWidth);
 
   // ================================================================================
   //  Variable Size methods
@@ -73,6 +76,17 @@ public abstract class IntEncoder {
       length++;
     }
     stream.write((int)(v & 0x7F));
+    return length + 1;
+  }
+
+  public static int writeUnsignedVarLong(final ByteArray stream, long v) {
+    int length = 0;
+    while ((v & 0xFFFFFFFFFFFFFF80L) != 0L) {
+      stream.add((int)((v & 0x7F) | 0x80));
+      v >>>= 7;
+      length++;
+    }
+    stream.add((int)(v & 0x7F));
     return length + 1;
   }
 
@@ -105,6 +119,13 @@ public abstract class IntEncoder {
       writeFixed(buf, 0, v, bytesWidth);
       stream.write(buf, 0, bytesWidth);
     }
+
+    @Override
+    public void writeFixed(final ByteArray stream, final long v, final int bytesWidth) {
+      final byte[] buf = new byte[bytesWidth];
+      writeFixed(buf, 0, v, bytesWidth);
+      stream.add(buf, 0, bytesWidth);
+    }
   }
 
   // ================================================================================
@@ -126,6 +147,13 @@ public abstract class IntEncoder {
     public void writeFixed(final OutputStream stream, final long v, final int bytesWidth) throws IOException {
       for (int i = 0; i < bytesWidth; ++i) {
         stream.write((byte)((v >>> (i << 3)) & 0xff));
+      }
+    }
+
+    @Override
+    public void writeFixed(final ByteArray stream, final long v, final int bytesWidth) {
+      for (int i = 0; i < bytesWidth; ++i) {
+        stream.add((byte)((v >>> (i << 3)) & 0xff));
       }
     }
   }

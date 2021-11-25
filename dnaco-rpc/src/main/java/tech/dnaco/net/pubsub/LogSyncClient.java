@@ -41,7 +41,7 @@ public class LogSyncClient extends AbstractClient {
     private final LogsTracker tracker;
     private final ByteBuf topic;
 
-    private boolean waiting = false;
+    private long waiting = 0;
     private int lastSentChunkSize;
 
     public LogState(final LogsTracker consumer, final ByteBuf topic, final int lastSentChunkSize) {
@@ -136,11 +136,11 @@ public class LogSyncClient extends AbstractClient {
     fireEvent(state);
   }
 
-  private boolean tryPublish(final LogState state) {
+  private long tryPublish(final LogState state) {
     final LogsTracker consumer = state.consumer();
     if (!consumer.hasMore()) {
       Logger.debug("NOTHING TO PUBLISH");
-      return false;
+      return 0;
     }
 
     final FileRegion fileRegion = getFileRegion(consumer);
@@ -168,7 +168,7 @@ public class LogSyncClient extends AbstractClient {
     packet.writeBytes(topic.slice());
     write(packet);
     writeAndFlush(fileRegion);
-    return true;
+    return System.nanoTime();
   }
 
   private DefaultFileRegion getFileRegion(final LogsTracker consumer) {
@@ -256,8 +256,13 @@ public class LogSyncClient extends AbstractClient {
     }
 
     private void tryPublish(final LogState state) {
-      if (state.waiting) {
-        Logger.debug("WAITING FOR ACK");
+      if (state.waiting > 0) {
+        final long since = System.nanoTime() - state.waiting;
+        if (since > TimeUnit.MINUTES.toNanos(5)) {
+          Logger.warn("WAITING FOR {} ACK since {}", state.topic, HumansUtil.humanTimeNanos(since));
+        } else {
+          Logger.debug("WAITING FOR {} ACK since {}", state.topic, HumansUtil.humanTimeNanos(since));
+        }
       } else {
         state.waiting = client.tryPublish(state);
       }
@@ -292,7 +297,7 @@ public class LogSyncClient extends AbstractClient {
           Logger.warn("NACK RECEIVED");
           throw new UnsupportedOperationException();
       }
-      state.waiting = false;
+      state.waiting = 0;
     }
   }
 

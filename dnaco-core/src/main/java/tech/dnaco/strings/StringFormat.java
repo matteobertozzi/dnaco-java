@@ -25,6 +25,8 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import tech.dnaco.collections.arrays.ArrayUtil;
+
 public final class StringFormat {
   private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\{([-_a-zA-Z0-9]*)}");
   private static final Pattern POSITIONAL_PATTERN = Pattern.compile("\\{(([0-9]+)(\\:[-_a-zA-Z0-9]+)*)}");
@@ -83,6 +85,20 @@ public final class StringFormat {
     return argsIndex;
   }
 
+  public static void applyFormatExt(final StringBuilder msgBuilder, final String format, final Object[] args) {
+    if (ArrayUtil.isEmpty(args)) {
+      msgBuilder.append(format);
+    } else {
+      // try to apply the usal formatter "aaa {} bbbb {}"
+      int argsOffset = StringFormat.applyFormat(msgBuilder, format, args);
+
+      // if there are unprocessed args append them with a space
+      while (argsOffset < args.length) {
+        msgBuilder.append(' ').append(args[argsOffset++]);
+      }
+    }
+  }
+
   public static int indexOfKeywordArgument(final String format, final String key) {
     final Matcher m = KEYWORD_PATTERN.matcher(format);
     for (int i = 0; m.find(); ++i) {
@@ -123,14 +139,14 @@ public final class StringFormat {
   public static String valueOf(final Object value) {
     if (value == null) return "null";
     if (value.getClass().isArray()) {
-      if (value instanceof byte[] bArray) return Arrays.toString(bArray);
-      if (value instanceof int[] iArray) return Arrays.toString(iArray);
-      if (value instanceof long[] lArray) return Arrays.toString(lArray);
-      if (value instanceof float[] fArray) return Arrays.toString(fArray);
-      if (value instanceof double[] dArrary) return Arrays.toString(dArrary);
-      if (value instanceof Object[] oArray) return Arrays.toString(oArray);
+      if (value instanceof final byte[] bArray) return Arrays.toString(bArray);
+      if (value instanceof final int[] iArray) return Arrays.toString(iArray);
+      if (value instanceof final long[] lArray) return Arrays.toString(lArray);
+      if (value instanceof final float[] fArray) return Arrays.toString(fArray);
+      if (value instanceof final double[] dArrary) return Arrays.toString(dArrary);
+      if (value instanceof final Object[] oArray) return Arrays.toString(oArray);
     }
-    if (value instanceof Map<?, ?> map) return stringMapValue(map);
+    if (value instanceof final Map<?, ?> map) return stringMapValue(map);
     return String.valueOf(value);
   }
 
@@ -148,13 +164,13 @@ public final class StringFormat {
     return builder.toString();
   }
 
-  public static void main(String[] args) {
-    long startTime = System.nanoTime();
-    StringBuilder builder = new StringBuilder(1 << 20);
+  public static void main(final String[] args) {
+    final long startTime = System.nanoTime();
+    final StringBuilder builder = new StringBuilder(1 << 20);
     for (int i = 0; i < 100_000_000; ++i) {
       builder.append(valueOf(new int[] { i }));
     }
-    long endTime = System.nanoTime();
+    final long endTime = System.nanoTime();
     System.out.println(builder.length() + " -> " + HumansUtil.humanTimeNanos(endTime - startTime));
   }
 }
