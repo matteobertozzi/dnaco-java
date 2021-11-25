@@ -1,4 +1,4 @@
-package tech.dnaco.net.pubsub;
+package tech.dnaco.net.logsync;
 
 import java.io.File;
 import java.util.List;
@@ -25,8 +25,8 @@ import tech.dnaco.net.ClientEventLoop;
 import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.frame.DnacoFrame;
 import tech.dnaco.net.frame.DnacoFrameDecoder;
-import tech.dnaco.net.pubsub.LogFileUtil.LogOffsetStore;
-import tech.dnaco.net.pubsub.LogFileUtil.LogsTracker;
+import tech.dnaco.net.logsync.LogFileUtil.LogOffsetStore;
+import tech.dnaco.net.logsync.LogFileUtil.LogsConsumer;
 import tech.dnaco.net.util.ByteBufIntUtil;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.telemetry.ConcurrentTimeRangeCounter;
@@ -38,13 +38,13 @@ import tech.dnaco.time.TimeUtil;
 
 public class LogSyncClient extends AbstractClient {
   public static final class LogState {
-    private final LogsTracker tracker;
+    private final LogsConsumer tracker;
     private final ByteBuf topic;
 
     private long waiting = 0;
     private int lastSentChunkSize;
 
-    public LogState(final LogsTracker consumer, final ByteBuf topic, final int lastSentChunkSize) {
+    public LogState(final LogsConsumer consumer, final ByteBuf topic, final int lastSentChunkSize) {
       this.tracker = consumer;
       this.topic = topic;
       this.lastSentChunkSize = lastSentChunkSize;
@@ -54,7 +54,7 @@ public class LogSyncClient extends AbstractClient {
       this.lastSentChunkSize = size;
     }
 
-    public LogsTracker consumer() {
+    public LogsConsumer consumer() {
       return this.tracker;
     }
 
@@ -65,14 +65,14 @@ public class LogSyncClient extends AbstractClient {
     public void consumeLastChunk(final List<LogOffsetStore> stores) throws Exception {
       final long newOffset = tracker.getOffset() + lastSentChunkSize;
       for (final LogOffsetStore store: stores) {
-        store.store(tracker, newOffset);
+        store.store(tracker.getLogsId(), newOffset);
       }
       tracker.consume(lastSentChunkSize);
     }
 
     public void setOffset(final List<LogOffsetStore> stores, final long offset) throws Exception {
       for (final LogOffsetStore store: stores) {
-        store.store(tracker, offset);
+        store.store(tracker.getLogsId(), offset);
       }
       tracker.setOffset(offset);
     }
@@ -91,12 +91,12 @@ public class LogSyncClient extends AbstractClient {
     return this;
   }
 
-  public void add(final LogsTracker tracker) {
-    final ByteBuf topic = Unpooled.wrappedBuffer(tracker.getName().getBytes());
-    final LogState state = new LogState(tracker, topic, 0);
-    topics.put(topic, state);
+  public void add(final LogsConsumer consumer) {
+    final ByteBuf logsId = Unpooled.wrappedBuffer(consumer.getLogsId().getBytes());
+    final LogState state = new LogState(consumer, logsId, 0);
+    topics.put(logsId, state);
     trackers.add(state);
-    tracker.registerDataPublishedListener(x -> this.dataPublished(state));
+    consumer.registerDataPublishedListener(x -> this.dataPublished(state));
   }
 
   public static LogSyncClient newTcpClient(final ClientEventLoop eloop, final RetryUtil.RetryLogic retryLogic) {
@@ -137,7 +137,7 @@ public class LogSyncClient extends AbstractClient {
   }
 
   private long tryPublish(final LogState state) {
-    final LogsTracker consumer = state.consumer();
+    final LogsConsumer consumer = state.consumer();
     if (!consumer.hasMore()) {
       Logger.debug("NOTHING TO PUBLISH");
       return 0;
@@ -171,7 +171,7 @@ public class LogSyncClient extends AbstractClient {
     return System.nanoTime();
   }
 
-  private DefaultFileRegion getFileRegion(final LogsTracker consumer) {
+  private DefaultFileRegion getFileRegion(final LogsConsumer consumer) {
     final File logFile = consumer.getBlockFile();
     final long logOffset = consumer.getBlockOffset();
     final long logAvail = consumer.getBlockAvailable();
@@ -253,6 +253,12 @@ public class LogSyncClient extends AbstractClient {
       } else {
         super.userEventTriggered(ctx, evt);
       }
+    }
+
+    @Override
+    public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+      Logger.error(cause, "uncaught exception: {}", ctx.channel().remoteAddress());
+      ctx.close();
     }
 
     private void tryPublish(final LogState state) {

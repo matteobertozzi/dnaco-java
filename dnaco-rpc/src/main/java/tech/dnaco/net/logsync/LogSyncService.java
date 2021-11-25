@@ -1,4 +1,4 @@
-package tech.dnaco.net.pubsub;
+package tech.dnaco.net.logsync;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,8 +17,8 @@ import tech.dnaco.net.AbstractService;
 import tech.dnaco.net.frame.DnacoFrame;
 import tech.dnaco.net.frame.DnacoFrameDecoder;
 import tech.dnaco.net.frame.DnacoFrameEncoder;
-import tech.dnaco.net.pubsub.LogFileUtil.LogsTracker;
-import tech.dnaco.net.pubsub.LogFileUtil.LogsTrackerSupplier;
+import tech.dnaco.net.logsync.LogFileUtil.LogsFileTracker;
+import tech.dnaco.net.logsync.LogFileUtil.LogsTrackerSupplier;
 import tech.dnaco.net.util.ByteBufIntUtil;
 import tech.dnaco.net.util.FileUtil;
 import tech.dnaco.strings.HumansUtil;
@@ -167,13 +167,13 @@ public class LogSyncService extends AbstractService {
       this.logsTrackerSupplier = logsTrackerSupplier;
     }
 
-    public LogsTracker getTopicSequence(final String topic) {
+    public LogsFileTracker getTopicSequence(final String topic) {
       return logsTrackerSupplier.getLogsTracker(topic);
     }
 
     @Override
     public void publish(final ByteBuf topic, final long offset, final ByteBuf data) throws IOException {
-      final LogsTracker seq = getTopicSequence(topic.toString(StandardCharsets.UTF_8));
+      final LogsFileTracker seq = getTopicSequence(topic.toString(StandardCharsets.UTF_8));
 
       if (seq.getMaxOffset() < offset) {
         Logger.warn("missing data, expected offset {} got {}", seq.getMaxOffset(), offset);
@@ -188,21 +188,22 @@ public class LogSyncService extends AbstractService {
         logFile = seq.addNewFile();
       }
 
-      Logger.debug(" -> " + logFile + " -> " + logFile.exists() + " -> " + offset);
       if (logFile.exists()) {
         try (FileChannel channel = FileUtil.openFile(logFile.toPath())) {
           final long fileOffset = logFile.length();
+          Logger.debug(" -> " + logFile + " -> " + logFile.exists() + " -> " + offset + " -> APPEND " + fileOffset);
           FileUtil.write(channel, fileOffset, data);
         }
       } else {
         logFile.getParentFile().mkdirs();
         try (FileChannel channel = FileUtil.createEmptyFile(logFile.toPath())) {
+          Logger.debug(" -> " + logFile + " -> " + logFile.exists() + " -> " + offset + " -> NEW FILE");
           FileUtil.write(channel, 0, data);
         }
       }
 
       seq.addData(dataLength);
-      LogSyncServiceStats.getInstance(seq.getName()).received(dataLength);
+      LogSyncServiceStats.getInstance(seq.getLogsId()).received(dataLength);
     }
   }
 
