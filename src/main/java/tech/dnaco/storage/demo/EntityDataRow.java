@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntitySchema.Operation;
 
 public class EntityDataRow {
@@ -112,6 +113,10 @@ public class EntityDataRow {
   }
 
   public static EntityDataRow fromMap(final EntitySchema schema, final Map<String, Object> kvs) {
+    if (schema.userFieldsCount() != kvs.size()) {
+      Logger.debug("{} missing fields: {} vs {}", schema.getEntityName(), schema.getFieldNames(), kvs.keySet());
+    }
+
     final EntityDataRows rows = new EntityDataRows(schema, schema.userFieldsCount() == kvs.size()).newRow();
     for (final Entry<String, Object> entry: kvs.entrySet()) {
       rows.addObject(entry.getKey(), entry.getValue());

@@ -20,10 +20,12 @@
 package tech.dnaco.storage.demo.driver;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.concurrent.TimeUnit;
 
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.CompactionStyle;
@@ -45,6 +47,7 @@ import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
 import tech.dnaco.storage.demo.EntitySchema;
+import tech.dnaco.strings.HumansUtil;
 
 public class RocksDbKvStore extends AbstractKvStore {
   private static BlockBasedTableConfig tableConfig = null;
@@ -82,11 +85,12 @@ public class RocksDbKvStore extends AbstractKvStore {
     dbOptions.setTableFormatConfig(tableConfig);
     dbOptions.setWriteBufferSize(16 << 20);
     dbOptions.setCompressionType(CompressionType.ZSTD_COMPRESSION);
-    dbOptions.setCompactionStyle(CompactionStyle.UNIVERSAL);
+    dbOptions.setCompactionStyle(CompactionStyle.LEVEL);
     dbOptions.setMaxWriteBufferNumber(2);
     dbOptions.setOptimizeFiltersForHits(true);
     dbOptions.setCreateIfMissing(true);
     dbOptions.setKeepLogFileNum(1);
+    dbOptions.setLogFileTimeToRoll(Duration.ofDays(1).toSeconds());
 
     final File dbPath = new File(storageDir, getProjectId());
     Logger.debug("loading {} store from {}", getProjectId(), dbPath);
@@ -102,7 +106,7 @@ public class RocksDbKvStore extends AbstractKvStore {
         db.flush(opts);
       }
     } catch (final Exception e) {
-      Logger.error(e, "failed to flush db");
+      Logger.error(e, "failed to flush db {}", getProjectId());
     }
     IOUtil.closeQuietly(db);
     IOUtil.closeQuietly(dbOptions);
@@ -149,11 +153,22 @@ public class RocksDbKvStore extends AbstractKvStore {
     db.deleteRange(prefix, prefixEndKey(prefix));
   }
 
+  private long lastFlush = System.nanoTime();
+
   @Override
   public void flush() throws Exception {
+    final long now = System.nanoTime();
+    if ((now - lastFlush) < TimeUnit.MINUTES.toNanos(5)) {
+      Logger.debug("skipping requested flush on {} last flush was {}",
+        getProjectId(), HumansUtil.humanTimeNanos(now - lastFlush));
+      return;
+    }
+
     try (FlushOptions opts = new FlushOptions()) {
       db.flush(opts);
     }
+    Logger.debug("flush took {}", HumansUtil.humanTimeSince(now));
+    lastFlush = now;
   }
 
   // ================================================================================

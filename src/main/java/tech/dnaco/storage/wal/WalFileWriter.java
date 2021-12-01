@@ -18,7 +18,7 @@ import tech.dnaco.telemetry.TelemetryCollectorGroup;
 import tech.dnaco.telemetry.TimeRangeCounter;
 import tech.dnaco.telemetry.TimeRangeGauge;
 
-public class WalFileWriter implements JournalWriter {
+public class WalFileWriter implements JournalWriter<WalEntry> {
   private static final DateTimeFormatter ROLL_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmssSSS");
 
   private static final int ROLL_SIZE = 32 << 20;
@@ -70,7 +70,7 @@ public class WalFileWriter implements JournalWriter {
   }
 
   @Override
-  public void writeBuffers(final String tenantId, final List<JournalBuffer> buffers) {
+  public void writeBuffers(final String tenantId, final List<JournalBuffer<WalEntry>> buffers) {
     final File logDayDir = new File(StorageConfig.INSTANCE.getWalStorageDir(tenantId), "latest");
     final File logFile = new File(logDayDir, tenantId);
     logFile.getParentFile().mkdirs();

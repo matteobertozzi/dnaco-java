@@ -42,6 +42,7 @@ import tech.dnaco.storage.demo.EntitySchema.Operation;
 import tech.dnaco.storage.demo.driver.AbstractKvStore;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.KeyValConsumer;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.RowPredicate;
+import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
 
 public final class StorageLogic {
@@ -110,7 +111,7 @@ public final class StorageLogic {
   // ================================================================================
   public boolean addRow(final Transaction txn, final EntityDataRow row) throws Exception {
     row.setSeqId(Long.MAX_VALUE);
-    Logger.debug("add row: {}", row);
+    Logger.debug("{} row {hasAllFields}: {}", row.getOperation(), row.hasAllFields(), row);
     switch (row.getOperation()) {
       case INSERT: return insertRow(txn, row);
       case UPSERT: return upsertRow(txn, row);
@@ -257,11 +258,13 @@ public final class StorageLogic {
       return false;
     }
 
+    final long startTime = System.nanoTime();
     commitLock.lock();
     try {
       // prepare
       final long maxCommitId = getMaxCommitId();
-      Logger.debug("PREPARE {}: txn.maxSeqId {} maxCommitId {}", txn.getTxnId(), txn.getMaxSeqId(), maxCommitId);
+      Logger.debug("PREPARE {}: {txnMaxSeqId} {maxCommitId} {lockWait}",
+        txn.getTxnId(), txn.getMaxSeqId(), maxCommitId, HumansUtil.humanTimeSince(startTime));
       if (maxCommitId != txn.getMaxSeqId()) {
         storage.scanRow(txnKeyPrefix, (txnRow) -> {
           final byte[] key = txnRow.buildRowKey();
@@ -291,9 +294,12 @@ public final class StorageLogic {
         return true;
       });
       txn.setState(Transaction.State.COMMITTED);
+      Logger.debug("COMMITED {} in {}", txn.getTxnId(), HumansUtil.humanTimeSince(startTime));
       // TODO: update txn state
       storage.deletePrefix(txnKeyPrefix);
+      Logger.debug("CLEANED {} in {}", txn.getTxnId(), HumansUtil.humanTimeSince(startTime));
       storage.flush();
+      Logger.debug("FLUSHED {} in {}", txn.getTxnId(), HumansUtil.humanTimeSince(startTime));
       return true;
     } finally {
       commitLock.unlock();

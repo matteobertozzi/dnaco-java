@@ -13,7 +13,7 @@ public class WalEntry implements JournalEntry {
   }
 
   @Override
-  public String getTenantId() {
+  public String getGroupId() {
     return tenantId;
   }
 

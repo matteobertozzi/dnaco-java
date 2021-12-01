@@ -21,6 +21,7 @@ package tech.dnaco.storage.demo;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import com.gullivernet.commons.util.VerifyArg;
@@ -34,11 +35,13 @@ import tech.dnaco.strings.StringUtil;
 public class EntityDataRows {
   private final ArrayList<byte[]> values = new ArrayList<>();
   private final EntitySchema schema;
-  private boolean hasAllFields;
+  private final BitSet fieldSet;
+  private final boolean oldHasAllFields;
 
   public EntityDataRows(final EntitySchema schema, final boolean hasAllFields) {
     this.schema = VerifyArg.verifyNotNull("schema", schema);
-    this.hasAllFields = hasAllFields;
+    this.fieldSet = new BitSet(schema.fieldsCount());
+    this.oldHasAllFields = hasAllFields;
   }
 
   public EntitySchema getSchema() {
@@ -46,7 +49,9 @@ public class EntityDataRows {
   }
 
   public boolean hasAllFields() {
-    return hasAllFields;
+    final boolean hasAllFieldsSet = fieldSet.nextClearBit(0) >= schema.fieldsCount();
+    Logger.debug("HAS ALL FIELDS SET: {old} vs {new} -> {}", oldHasAllFields, hasAllFieldsSet, values);
+    return oldHasAllFields;
   }
 
   public boolean isEmpty() {
@@ -84,9 +89,14 @@ public class EntityDataRows {
     }
   }
 
+  private void valueSet(final int index, final byte[] value) {
+    values.set(index, value);
+    fieldSet.set(index);
+  }
+
   public void add(final int fieldIndex, final byte[] value) {
     final int index = (values.size() - schema.fieldsCount()) + fieldIndex;
-    values.set(index, value);
+    valueSet(index, value);
   }
 
   public void add(final String fieldName, final byte[] value) {
@@ -122,7 +132,6 @@ public class EntityDataRows {
   }
 
   public void copyFrom(final EntityDataRow oldRow) {
-    this.hasAllFields = oldRow.hasAllFields();
     for (final String fieldName: schema.getFieldNames()) {
       add(fieldName, oldRow.get(fieldName));
     }
@@ -130,14 +139,14 @@ public class EntityDataRows {
 
   public void copyFrom(final EntityDataRows oldRow) {
     for (int i = 0; i < oldRow.values.size(); ++i) {
-      values.set(i, oldRow.values.get(i));
+      valueSet(i, oldRow.values.get(i));
     }
   }
 
   public void setSeqId(final int rowIndex, final long seqId) {
     final int fieldIndex = schema.getFieldIndex(EntitySchema.SYS_FIELD_SEQID);
     final int rowOffset = rowIndex * schema.fieldsCount();
-    values.set(rowOffset + fieldIndex, EntityData.encodeInt(seqId));
+    valueSet(rowOffset + fieldIndex, EntityData.encodeInt(seqId));
   }
 
   public long getSeqId(final int rowIndex) {
@@ -149,7 +158,7 @@ public class EntityDataRows {
   public void setOperation(final int rowIndex, final Operation operation) {
     final int fieldIndex = schema.getFieldIndex(EntitySchema.SYS_FIELD_OPERATION);
     final int rowOffset = rowIndex * schema.fieldsCount();
-    values.set(rowOffset + fieldIndex, EntityData.encodeInt(operation.ordinal()));
+    valueSet(rowOffset + fieldIndex, EntityData.encodeInt(operation.ordinal()));
   }
 
   public EntitySchema.Operation getOperation(final int rowIndex) {
@@ -161,7 +170,7 @@ public class EntityDataRows {
   public void setTimestamp(final int rowIndex, final long timestamp) {
     final int fieldIndex = schema.getFieldIndex(EntitySchema.SYS_FIELD_TIMESTAMP);
     final int rowOffset = rowIndex * schema.fieldsCount();
-    values.set(rowOffset + fieldIndex, EntityData.encodeInt(timestamp));
+    valueSet(rowOffset + fieldIndex, EntityData.encodeInt(timestamp));
   }
 
   public long getTimestamp(final int rowIndex) {
@@ -207,7 +216,7 @@ public class EntityDataRows {
     for (final String fieldName: schema.getNonKeyFields()) {
       final int fieldIndex = schema.getFieldIndex(fieldName);
       if (values.get(rowOffset + fieldIndex) == null) {
-        values.set(rowOffset + fieldIndex, other.get(fieldName));
+        valueSet(rowOffset + fieldIndex, other.get(fieldName));
       }
     }
   }

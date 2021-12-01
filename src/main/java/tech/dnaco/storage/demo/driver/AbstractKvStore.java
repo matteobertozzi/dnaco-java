@@ -236,6 +236,10 @@ public abstract class AbstractKvStore {
     }
   }
 
+  public interface RawKeyValConsumer {
+    void accept(byte[] key, byte[] value) throws Exception;
+  }
+
   public interface KeyValConsumer {
     void accept(ByteArraySlice key, byte[] value) throws Exception;
   }

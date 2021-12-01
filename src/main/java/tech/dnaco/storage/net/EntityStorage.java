@@ -7,11 +7,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import com.gullivernet.commons.util.DateUtil;
 import com.gullivernet.commons.util.VerifyArg;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.collections.LongValue;
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntityDataRow;
@@ -43,8 +45,11 @@ import tech.dnaco.storage.net.models.TransactionCommitRequest;
 import tech.dnaco.storage.net.models.TransactionStatusResponse;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.telemetry.ConcurrentMaxAndAvgTimeRangeGauge;
+import tech.dnaco.telemetry.ConcurrentTopK;
 import tech.dnaco.telemetry.CounterMap;
 import tech.dnaco.telemetry.TelemetryCollector;
+import tech.dnaco.telemetry.TopK.TopType;
 import tech.dnaco.tracing.Tracer;
 
 public final class EntityStorage {
@@ -55,6 +60,18 @@ public final class EntityStorage {
     .setName("entity_storage_ops_count")
     .setLabel("Entity Storage Ops Count")
     .register(new CounterMap());
+
+  private final ConcurrentMaxAndAvgTimeRangeGauge modifyRows = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_COUNT)
+    .setName("entity_storage_modify_row_count")
+    .setLabel("Entity Storage Modify Row Count")
+    .register(new ConcurrentMaxAndAvgTimeRangeGauge(24 * 60, 1, TimeUnit.MINUTES));
+
+  private final ConcurrentTopK modifyTopRows = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_COUNT)
+    .setName("entity_storage_modify_top_row_count")
+    .setLabel("Entity Storage Modify Top Row Count")
+    .register(new ConcurrentTopK(TopType.MIN_MAX, 32));
 
   public void createEntitySchema(final ClientSchema request) throws Exception {
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
@@ -283,6 +300,7 @@ public final class EntityStorage {
     }
 
     // add to TXN log
+    final LongValue rowCount = new LongValue();
     final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
     for (final JsonEntityDataRows jsonRows: request.getRows()) {
@@ -295,6 +313,7 @@ public final class EntityStorage {
           txn.setState(Transaction.State.FAILED);
           return false;
         }
+        rowCount.incrementAndGet();
         return true;
       });
     }
@@ -302,8 +321,11 @@ public final class EntityStorage {
     commitIfLocalTxn(storage, txn);
 
     final long elapsed = System.nanoTime() - startTime;
-    Logger.debug("{} {} {} took {}",
-      operation, request.getTenantId(), schema.getEntityName(), HumansUtil.humanTimeNanos(elapsed));
+    Logger.debug("{} {} {} took {} for {} rows",
+      operation, request.getTenantId(), schema.getEntityName(),
+      HumansUtil.humanTimeNanos(elapsed), rowCount.get());
+    modifyRows.update(rowCount.get());
+    modifyTopRows.add(request.getTenantId() + " " + operation + " " + schema.getEntityName(), rowCount.get());
 
     return new TransactionStatusResponse(txn.getState());
   }
