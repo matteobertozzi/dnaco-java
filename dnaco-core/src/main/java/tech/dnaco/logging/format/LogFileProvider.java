@@ -21,12 +21,13 @@ package tech.dnaco.logging.format;
 
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.journal.JournalAsyncWriter;
+import tech.dnaco.journal.JournalGroupedBuffer;
 import tech.dnaco.logging.LogEntry;
 import tech.dnaco.logging.LoggingProvider;
 
 public class LogFileProvider extends JournalAsyncWriter<LogEntry> implements LoggingProvider {
   public LogFileProvider() {
-    super("logger", new LogEntryWriter());
+    super("logger", () -> new JournalGroupedBuffer<>(LogEntryWriter.INSTANCE));
   }
 
   public void start() {
@@ -39,6 +40,8 @@ public class LogFileProvider extends JournalAsyncWriter<LogEntry> implements Log
   }
 
   private static final class LogEntryWriter implements JournalEntryWriter<LogEntry> {
+    private static final LogEntryWriter INSTANCE = new LogEntryWriter();
+
     @Override
     public void writeEntry(final PagedByteArray buffer, final LogEntry entry) {
       entry.write(buffer);

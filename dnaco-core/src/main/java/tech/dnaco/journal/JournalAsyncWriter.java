@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.collections.lists.ListUtil;
@@ -41,7 +42,7 @@ public class JournalAsyncWriter<T extends JournalEntry> implements AutoCloseable
   private final CopyOnWriteArrayList<JournalWriter<T>> writers = new CopyOnWriteArrayList<>();
   private final ThreadData<JournalBuffer<T>> localBuffers = new ThreadData<>();
   private final AtomicBoolean running = new AtomicBoolean(false);
-  private final JournalEntryWriter<T> entryWriter;
+  private final Supplier<JournalBuffer<T>> bufferSupplier;
 
   private final JournalStats stats;
   private final String name;
@@ -50,9 +51,9 @@ public class JournalAsyncWriter<T extends JournalEntry> implements AutoCloseable
 
   private int threadBackPressureSize = 128 << 20; // 128M
 
-  public JournalAsyncWriter(final String name, final JournalEntryWriter<T> entryWriter) {
+  public JournalAsyncWriter(final String name, final Supplier<JournalBuffer<T>> bufferSupplier) {
     this.name = name;
-    this.entryWriter = entryWriter;
+    this.bufferSupplier = bufferSupplier;
     this.stats = TelemetryCollectorRegistry.INSTANCE.register(name + "_journal", name + " Journal", null, new JournalStats());
   }
 
@@ -102,7 +103,7 @@ public class JournalAsyncWriter<T extends JournalEntry> implements AutoCloseable
   public void addToLogQueue(final Thread currentThread, final T entry) {
     try {
       final int bufSize;
-      try (ThreadLocalData<JournalBuffer<T>> buffer = localBuffers.computeIfAbsent(currentThread, this::newBuffer)) {
+      try (ThreadLocalData<JournalBuffer<T>> buffer = localBuffers.computeIfAbsent(currentThread, bufferSupplier::get)) {
         bufSize = buffer.get().add(entry);
         entry.release();
       }
@@ -114,10 +115,6 @@ public class JournalAsyncWriter<T extends JournalEntry> implements AutoCloseable
     } catch (final Throwable e) {
       Logger.logToStderr(LogLevel.ERROR, e, "unable to add entry to the journal: thread={} entry={}", currentThread, entry);
     }
-  }
-
-  private JournalBuffer<T> newBuffer() {
-    return new JournalBuffer<T>(entryWriter);
   }
 
   private final class LogFlusherThread extends Thread {
@@ -192,6 +189,8 @@ public class JournalAsyncWriter<T extends JournalEntry> implements AutoCloseable
       this.flushing = true;
       try {
         for (final JournalBuffer<T> buf: buffers) {
+          buf.flush();
+
           groupIds.addAll(buf.getGroupIds());
           bufSize += buf.size();
         }

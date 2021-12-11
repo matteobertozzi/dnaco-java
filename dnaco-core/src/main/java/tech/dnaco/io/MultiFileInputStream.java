@@ -48,10 +48,15 @@ public class MultiFileInputStream extends InputStream {
   }
 
   public int available() throws IOException {
-    if (stream == null) {
-      return 0; // no way to signal EOF from available()
+    while (stream != null) {
+      final int n = stream.available();
+      if (n > 0) return n;
+
+      nextStream();
     }
-    return stream.available();
+
+    // no way to signal EOF from available()
+    return 0;
   }
 
   public int read() throws IOException {

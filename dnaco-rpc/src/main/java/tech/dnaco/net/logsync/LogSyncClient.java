@@ -1,6 +1,7 @@
 package tech.dnaco.net.logsync;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -29,58 +30,71 @@ import tech.dnaco.net.logsync.LogFileUtil.LogOffsetStore;
 import tech.dnaco.net.logsync.LogFileUtil.LogsConsumer;
 import tech.dnaco.net.util.ByteBufIntUtil;
 import tech.dnaco.strings.HumansUtil;
-import tech.dnaco.telemetry.ConcurrentTimeRangeCounter;
+import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
 import tech.dnaco.telemetry.TelemetryCollector;
-import tech.dnaco.telemetry.TelemetryCollectorGroup;
-import tech.dnaco.telemetry.TelemetryCollectorRegistry;
+import tech.dnaco.telemetry.TelemetryCollectorData;
 import tech.dnaco.time.RetryUtil;
-import tech.dnaco.time.TimeUtil;
 
 public class LogSyncClient extends AbstractClient {
   public static final class LogState {
-    private final LogsConsumer tracker;
-    private final ByteBuf topic;
+    private final LogsConsumer consumer;
+    private final ByteBuf logsId;
 
     private long waiting = 0;
     private int lastSentChunkSize;
 
-    public LogState(final LogsConsumer consumer, final ByteBuf topic, final int lastSentChunkSize) {
-      this.tracker = consumer;
-      this.topic = topic;
-      this.lastSentChunkSize = lastSentChunkSize;
+    private long publishedSize = 0;
+    private long publishedTs = 0;
+
+    public LogState(final ByteBuf logsId, final LogsConsumer consumer) {
+      this.consumer = consumer;
+      this.logsId = logsId;
+      this.lastSentChunkSize = 0;
     }
 
     public void setLastSentChunkSize(final int size) {
       this.lastSentChunkSize = size;
+      this.publishedSize += size;
+      this.publishedTs = System.nanoTime();
     }
 
     public LogsConsumer consumer() {
-      return this.tracker;
+      return this.consumer;
     }
 
     public ByteBuf topic() {
-      return this.topic;
+      return this.logsId;
+    }
+
+    public String getLogsId() {
+      return consumer.getLogsId();
     }
 
     public void consumeLastChunk(final List<LogOffsetStore> stores) throws Exception {
-      final long newOffset = tracker.getOffset() + lastSentChunkSize;
+      final long newOffset = consumer.getOffset() + lastSentChunkSize;
       for (final LogOffsetStore store: stores) {
-        store.store(tracker.getLogsId(), newOffset);
+        store.store(consumer.getLogsId(), newOffset);
       }
-      tracker.consume(lastSentChunkSize);
+      consumer.consume(lastSentChunkSize);
     }
 
     public void setOffset(final List<LogOffsetStore> stores, final long offset) throws Exception {
       for (final LogOffsetStore store: stores) {
-        store.store(tracker.getLogsId(), offset);
+        store.store(consumer.getLogsId(), offset);
       }
-      tracker.setOffset(offset);
+      consumer.setOffset(offset);
     }
   }
 
   private final CopyOnWriteArrayList<LogOffsetStore> offsetStores = new CopyOnWriteArrayList<>();
   private final ConcurrentHashMap<ByteBuf, LogState> topics = new ConcurrentHashMap<>();
   private final CopyOnWriteArrayList<LogState> trackers = new CopyOnWriteArrayList<>();
+
+  private final LogSyncClientStats stats = new TelemetryCollector.Builder()
+    .setName("log_sync_client")
+    .setLabel("Log Sync Client")
+    .setUnit(HumansUtil.HUMAN_COUNT)
+    .register(new LogSyncClientStats());
 
   protected LogSyncClient(final Bootstrap bootstrap, final RetryUtil.RetryLogic retryLogic) {
     super(bootstrap, retryLogic);
@@ -92,11 +106,23 @@ public class LogSyncClient extends AbstractClient {
   }
 
   public void add(final LogsConsumer consumer) {
-    final ByteBuf logsId = Unpooled.wrappedBuffer(consumer.getLogsId().getBytes());
-    final LogState state = new LogState(consumer, logsId, 0);
+    final ByteBuf logsId = logsIdAsByteBuf(consumer.getLogsId());
+    final LogState state = new LogState(logsId, consumer);
     topics.put(logsId, state);
     trackers.add(state);
+    Logger.debug("add {logsId} {state}", logsId, state);
     consumer.registerDataPublishedListener(x -> this.dataPublished(state));
+  }
+
+  public void remove(final LogsConsumer consumer) {
+    final ByteBuf logsId = logsIdAsByteBuf(consumer.getLogsId());
+    final LogState state = topics.remove(logsId);
+    trackers.remove(state);
+    Logger.debug("remove {logsId}", logsId);
+  }
+
+  private static ByteBuf logsIdAsByteBuf(final String logsId) {
+    return Unpooled.wrappedBuffer(logsId.getBytes(StandardCharsets.UTF_8));
   }
 
   public static LogSyncClient newTcpClient(final ClientEventLoop eloop, final RetryUtil.RetryLogic retryLogic) {
@@ -148,7 +174,6 @@ public class LogSyncClient extends AbstractClient {
     final int length = (int) fileRegion.count();
     state.setLastSentChunkSize(length);
     Logger.trace("PUBLISH: SEND OFFSET:{} LENGTH:{}", offset, length);
-    LogSyncClientStats.getInstance(consumer.getName()).send(offset, length, consumer.getMaxOffset());
 
     // PUBLISH
     // +------------+--------+-----------------+
@@ -265,9 +290,9 @@ public class LogSyncClient extends AbstractClient {
       if (state.waiting > 0) {
         final long since = System.nanoTime() - state.waiting;
         if (since > TimeUnit.MINUTES.toNanos(5)) {
-          Logger.warn("WAITING FOR {} ACK since {}", state.topic, HumansUtil.humanTimeNanos(since));
+          Logger.warn("WAITING FOR {} ACK since {}", state.getLogsId(), HumansUtil.humanTimeNanos(since));
         } else {
-          Logger.debug("WAITING FOR {} ACK since {}", state.topic, HumansUtil.humanTimeNanos(since));
+          Logger.debug("WAITING FOR {} ACK since {}", state.getLogsId(), HumansUtil.humanTimeNanos(since));
         }
       } else {
         state.waiting = client.tryPublish(state);
@@ -275,14 +300,14 @@ public class LogSyncClient extends AbstractClient {
     }
 
     private void pubAckReceived(final LogState state, final int flags, final ByteBuf data) throws Exception {
-      Logger.debug("ACK PACKET RECEIVED flags:{}", flags);
+      Logger.debug("{} ACK PACKET RECEIVED flags:{}", state.getLogsId(), flags);
       switch (flags >> 2) {
         case 0:
           // PUBACK
           // +------------+-----------------+-------+
           // | 001 000 TT | topic-len-bytes | topic |
           // +------------+-----------------+-------+
-          Logger.debug("ACK RECEIVED");
+          Logger.debug("{} ACK RECEIVED", state.getLogsId());
           state.consumeLastChunk(client.offsetStores);
           break;
         case 1:
@@ -291,7 +316,7 @@ public class LogSyncClient extends AbstractClient {
           // | 001 001 TT | topic-len-bytes | topic | reset-voffset |
           // +------------+-----------------+-------+---------------+
           final long offset = ByteBufIntUtil.readVarLong(data);
-          Logger.warn("NACK/RESET RECEIVED offset:{}", offset);
+          Logger.warn("{} NACK/RESET RECEIVED offset:{}", state.getLogsId(), offset);
           state.setOffset(client.offsetStores, offset);
           state.setLastSentChunkSize(0);
           break;
@@ -300,43 +325,41 @@ public class LogSyncClient extends AbstractClient {
           // +------------+-----------------+-------+
           // | 001 010 TT | topic-len-bytes | topic |
           // +------------+-----------------+-------+
-          Logger.warn("NACK RECEIVED");
+          Logger.warn("{} NACK RECEIVED", state.getLogsId());
           throw new UnsupportedOperationException();
       }
       state.waiting = 0;
     }
   }
 
-  public static final class LogSyncClientStats extends TelemetryCollectorGroup {
-    private final ConcurrentTimeRangeCounter sentSize = new TelemetryCollector.Builder()
-      .setUnit(HumansUtil.HUMAN_SIZE)
-      .setName("sent_size")
-      .setLabel("Sent Size")
-      .register(this, new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
-
-    private final ConcurrentTimeRangeCounter availSize = new TelemetryCollector.Builder()
-      .setUnit(HumansUtil.HUMAN_SIZE)
-      .setName("avail_size")
-      .setLabel("Avail Size")
-      .register(this, new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
-
-    private LogSyncClientStats() {
-      // no-op
+  private final class LogSyncClientStats implements TelemetryCollector, TelemetryCollectorData {
+    @Override
+    public String getType() {
+      return "LOGS_SYNC";
     }
 
-    public static LogSyncClientStats getInstance(final String logId) {
-      final String groupName = "log_sync_client_" + logId;
-
-      final LogSyncClientStats stats = TelemetryCollectorRegistry.INSTANCE.get(groupName);
-      if (stats != null) return stats;
-
-      return TelemetryCollectorRegistry.INSTANCE.register(groupName, "Log Sync Client " + logId, null, new LogSyncClientStats());
+    @Override
+    public TelemetryCollectorData getSnapshot() {
+      return this;
     }
 
-    public void send(final long offset, final int length, final long maxOffset) {
-      final long now = TimeUtil.currentUtcMillis();
-      sentSize.add(now, length);
-      availSize.update(now, maxOffset - offset);
+    @Override
+    public StringBuilder toHumanReport(final StringBuilder report, final HumanLongValueConverter humanConverter) {
+      final long now = System.nanoTime();
+      for (final LogState logState: trackers) {
+        final long offset = logState.consumer().getOffset();
+        final long maxOffset = logState.consumer().getMaxOffset();
+        report.append("\n");
+        report.append(drawPercent(logState.getLogsId(), (double)offset/maxOffset)).append(":");
+        report.append(" published:").append(HumansUtil.humanSize(logState.publishedSize));
+        report.append(" lastPublish:").append(HumansUtil.humanTimeNanos(now - logState.publishedTs));
+      }
+      report.append("\n");
+      return report;
+    }
+
+    private static String drawPercent(final String id, final double percent) {
+      return String.format("%-40s %6.2f%% %-10s", id, percent * 100, "=".repeat((int) Math.round(percent * 10)));
     }
   }
 }

@@ -403,6 +403,46 @@ public final class ArrayUtil {
     array[index] = value;
   }
 
+  public static int[] sortedInsert(final int[] source, final int insertionIndex, final int value) {
+    final int[] newArray = new int[source.length + 1];
+    System.arraycopy(source, 0, newArray, 0, insertionIndex);
+    newArray[insertionIndex] = value;
+    System.arraycopy(source, insertionIndex, newArray, insertionIndex + 1, source.length - insertionIndex);
+    return newArray;
+  }
+
+  public static long[] sortedInsert(final long[] source, final int insertionIndex, final long value) {
+    final long[] newArray = new long[source.length + 1];
+    System.arraycopy(source, 0, newArray, 0, insertionIndex);
+    newArray[insertionIndex] = value;
+    System.arraycopy(source, insertionIndex, newArray, insertionIndex + 1, source.length - insertionIndex);
+    return newArray;
+  }
+
+  public static float[] sortedInsert(final int[] source, final int insertionIndex, final float value) {
+    final float[] newArray = new float[source.length + 1];
+    System.arraycopy(source, 0, newArray, 0, insertionIndex);
+    newArray[insertionIndex] = value;
+    System.arraycopy(source, insertionIndex, newArray, insertionIndex + 1, source.length - insertionIndex);
+    return newArray;
+  }
+
+  public static double[] sortedInsert(final double[] source, final int insertionIndex, final double value) {
+    final double[] newArray = new double[source.length + 1];
+    System.arraycopy(source, 0, newArray, 0, insertionIndex);
+    newArray[insertionIndex] = value;
+    System.arraycopy(source, insertionIndex, newArray, insertionIndex + 1, source.length - insertionIndex);
+    return newArray;
+  }
+
+  public static String[] sortedInsert(final String[] source, final int insertionIndex, final String value) {
+    final String[] newArray = new String[source.length + 1];
+    System.arraycopy(source, 0, newArray, 0, insertionIndex);
+    newArray[insertionIndex] = value;
+    System.arraycopy(source, insertionIndex, newArray, insertionIndex + 1, source.length - insertionIndex);
+    return newArray;
+  }
+
   public static String[] addSortedIfMissing(final String[] array, final String value) {
     if (ArrayUtil.isEmpty(array)) return new String[] { value };
 

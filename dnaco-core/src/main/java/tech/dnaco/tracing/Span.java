@@ -92,7 +92,6 @@ public class Span implements Closeable {
   }
 
   protected void addToTracer() {
-    Logger.debug("add to tracer: {}", this);
     Tracer.addSpan(this);
   }
 

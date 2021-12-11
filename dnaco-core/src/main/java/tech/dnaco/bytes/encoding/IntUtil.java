@@ -31,11 +31,11 @@ public final class IntUtil {
   }
 
   public static int size(final int v) {
-    return (getWidth(v) + 7) >> 3;
+    return v == 0 ? 1 : (getWidth(v) + 7) >> 3;
   }
 
   public static int size(final long v) {
-    return (getWidth(v) + 7) >> 3;
+    return v == 0 ? 1 : (getWidth(v) + 7) >> 3;
   }
 
   public static int unsignedVarLongSize(long v) {
@@ -45,5 +45,21 @@ public final class IntUtil {
       v >>>= 7;
     } while (v != 0);
     return result;
+  }
+
+  public static int zigZagEncode(final int n) {
+    return (n << 1) ^ (n >> 31);
+  }
+
+  public static long zigZagEncode(final long n) {
+    return (n << 1) ^ (n >> 63);
+  }
+
+  public static int zigZagDecode(final int n) {
+    return (n >> 1) ^ -(n & 1);
+  }
+
+  public static long zigZagDecode(final long n) {
+    return (n >> 1) ^ -(n & 1);
   }
 }

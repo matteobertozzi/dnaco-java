@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -41,8 +42,16 @@ import tech.dnaco.net.rpc.DnacoRpcHandler.RpcSessionConnected;
 import tech.dnaco.net.rpc.DnacoRpcHandler.RpcSessionDisconnected;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.telemetry.ConcurrentMaxAndAvgTimeRangeGauge;
+import tech.dnaco.telemetry.TelemetryCollector;
 
 public class DnacoRpcDispatcher {
+  private final ConcurrentMaxAndAvgTimeRangeGauge execTime = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_TIME_NANOS)
+      .setName("dnaco_rpc_exec_time")
+      .setLabel("RPC Execution Time")
+      .register(new ConcurrentMaxAndAvgTimeRangeGauge(24 * 60, 1, TimeUnit.MINUTES));
+
   private final HashMap<ByteBuf, RpcHandler> rpcRequestMapping = new HashMap<>(256);
   private final HashMap<ByteBuf, List<RpcHandler>> rpcEventMapping = new HashMap<>(256);
   private final ArrayList<RpcSessionEventHandler> rpcSessionDisconnectedMappings = new ArrayList<>();
@@ -169,6 +178,7 @@ public class DnacoRpcDispatcher {
   //  Packet Management Related
   // ====================================================================================================
   protected void handlePacket(final DnacoRpcSession session, final DnacoRpcPacket msg) {
+    final long startTime = System.nanoTime();
     switch (msg.getPacketType()) {
       case REQUEST:
         handleRpcRequest(session, (DnacoRpcRequest) msg);
@@ -185,6 +195,7 @@ public class DnacoRpcDispatcher {
         session.close();
         break;
     }
+    execTime.update(System.nanoTime() - startTime);
   }
 
   private void handleRpcRequest(final DnacoRpcSession ctx, final DnacoRpcRequest request) {

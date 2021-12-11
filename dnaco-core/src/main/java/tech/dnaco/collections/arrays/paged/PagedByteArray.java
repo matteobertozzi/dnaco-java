@@ -20,6 +20,7 @@ package tech.dnaco.collections.arrays.paged;
 import java.io.IOException;
 import java.util.Arrays;
 
+import tech.dnaco.collections.arrays.ByteArray;
 import tech.dnaco.util.BitUtil;
 
 public class PagedByteArray {
@@ -58,6 +59,27 @@ public class PagedByteArray {
 
   public boolean isNotEmpty() {
     return pageItems > 0 || pageCount > 1;
+  }
+
+  // ================================================================================
+  //  PUBLIC toByteArray related methods
+  // ================================================================================
+  public byte[] toByteArray() {
+    return toByteArray(0);
+  }
+
+  public byte[] toByteArray(final int off) {
+    return toByteArray(off, size() - off);
+  }
+
+  public byte[] toByteArray(final int off, final int len) {
+    try {
+      final ByteArray array = new ByteArray(len);
+      forEach(off, len, array::add);
+      return array.drain();
+    } catch (final Throwable e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // ================================================================================

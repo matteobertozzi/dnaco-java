@@ -69,7 +69,7 @@ public abstract class IntDecoder {
   }
 
   public static int readUnsignedVarInt(final byte[] buf, final int off) {
-    return (int) readUnsignedVarLong(buf, off);
+    return Math.toIntExact(readUnsignedVarLong(buf, off));
   }
 
   public static long readUnsignedVarLong(final InputStream stream) throws IOException {
@@ -84,7 +84,7 @@ public abstract class IntDecoder {
   }
 
   public static int readUnsignedVarInt(final InputStream stream) throws IOException {
-    return (int) readUnsignedVarLong(stream);
+    return Math.toIntExact(readUnsignedVarLong(stream));
   }
 
   // ================================================================================

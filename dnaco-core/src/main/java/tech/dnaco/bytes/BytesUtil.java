@@ -17,8 +17,11 @@
 
 package tech.dnaco.bytes;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.strings.StringUtil;
 
 public final class BytesUtil {
@@ -240,6 +243,23 @@ public final class BytesUtil {
       length += data[i].length;
     }
     return length;
+  }
+
+  // ================================================================================
+  //  String to Bytes
+  // ================================================================================
+  public static byte[][] toBytes(final String[] values) {
+    return toBytes(values, StandardCharsets.UTF_8);
+  }
+
+  public static byte[][] toBytes(final String[] values, final Charset charsets) {
+    if (ArrayUtil.isEmpty(values)) return new byte[0][];
+
+    final byte[][] bValues = new byte[values.length][];
+    for (int i = 0; i < values.length; ++i) {
+      bValues[i] = values[i].getBytes(charsets);
+    }
+    return bValues;
   }
 
   // ================================================================================

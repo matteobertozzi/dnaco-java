@@ -22,6 +22,7 @@ package tech.dnaco.collections.maps;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,10 @@ import java.util.TreeSet;
 public final class MapUtil {
   private MapUtil() {
     // no-op
+  }
+
+  public static <K, V> Map<K, V> newHashMap(final int expectedSize) {
+    return new HashMap<K, V>(expectedSize * 4);
   }
 
   public static <K, V> int size(final Map<K, V> input) {

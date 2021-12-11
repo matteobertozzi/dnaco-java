@@ -18,24 +18,27 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import tech.dnaco.bytes.ByteArrayReader;
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.bytes.encoding.IntEncoder;
 import tech.dnaco.bytes.encoding.IntUtil;
+import tech.dnaco.collections.LongValue;
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.collections.arrays.paged.PagedByteArrayWriter;
-import tech.dnaco.data.CborFormat;
 import tech.dnaco.data.compression.ZstdUtil;
-import tech.dnaco.data.json.JsonObject;
 import tech.dnaco.io.IOUtil;
 import tech.dnaco.io.LimitedInputStream;
+import tech.dnaco.io.MultiFileInputStream;
+import tech.dnaco.io.MultiFileInputStream.InputStreamSupplier;
 import tech.dnaco.journal.JournalAsyncWriter;
 import tech.dnaco.journal.JournalAsyncWriter.JournalEntryWriter;
 import tech.dnaco.journal.JournalBuffer;
 import tech.dnaco.journal.JournalEntry;
+import tech.dnaco.journal.JournalGroupedBuffer;
 import tech.dnaco.journal.JournalWriter;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.logging.Logger;
@@ -76,8 +79,13 @@ public final class LogFileUtil {
     void store(String logsId, long offset) throws Exception;
   }
 
+  public interface LogsEventListener {
+    void newLogEvent(LogsFileTracker tracker);
+    void removeLogEvent(LogsFileTracker tracker);
+  }
+
   public static class LogsTrackerManager {
-    private final CopyOnWriteArrayList<LogsTrackerConsumer> newLogsListeners = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<LogsEventListener> logsEventListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<String, LogsFileTracker> trackers = new ConcurrentHashMap<>();
     private final LogsStorage storage;
 
@@ -89,8 +97,8 @@ public final class LogFileUtil {
       return storage.getLogsIds();
     }
 
-    public LogsTrackerManager registerNewLogsListener(final LogsTrackerConsumer consumer) {
-      this.newLogsListeners.add(consumer);
+    public LogsTrackerManager registerLogsEventListener(final LogsEventListener listener) {
+      this.logsEventListeners.add(listener);
       return this;
     }
 
@@ -106,14 +114,18 @@ public final class LogFileUtil {
         trackers.put(logsId, tracker);
       }
 
-      for (final LogsTrackerConsumer listener: newLogsListeners) {
-        listener.accept(tracker);
+      for (final LogsEventListener listener: logsEventListeners) {
+        listener.newLogEvent(tracker);
       }
       return tracker;
     }
 
     public void remove(final String logId) {
-      trackers.remove(logId);
+      final LogsFileTracker tracker = trackers.get(logId);
+      for (final LogsEventListener listener: logsEventListeners) {
+        listener.removeLogEvent(tracker);
+      }
+      trackers.remove(logId, tracker);
     }
 
     private LogsFileTracker newTracker(final String logsId) {
@@ -227,36 +239,47 @@ public final class LogFileUtil {
   }
 
   public static class SimpleLogEntryReader {
-    public static long read(final File logFile, final long offset, final long avail,
-        final LogEntryProcessor processor) throws Exception {
-      try (final LimitedInputStream stream = new LimitedInputStream(new FileInputStream(logFile), offset + avail)) {
-        stream.skipNBytes(offset);
-
-        long consumed = 0;
-        while (stream.available() > 0) {
-          final byte[] block;
-          try {
-            block = readBlock(stream);
-          } catch (final EOFException e) {
-            Logger.trace("got EOF while reading block {}", e.getMessage());
-            break;
-          }
-
-          consumed = stream.consumed();
-          try (ByteArrayReader blockReader = new ByteArrayReader(block)) {
-            while (blockReader.available() > 0) {
-              final int length = IntDecoder.readUnsignedVarInt(blockReader);
-              final ByteArraySlice data = new ByteArraySlice(block, blockReader.readOffset(), length);
-              processor.process(data);
-              blockReader.skip(length);
-            }
-          }
-        }
-        return consumed;
+    public static long read(final LogsConsumer consumer, final long timeLimitNs, final LogEntryProcessor processor) throws Exception {
+      final LogsConsumerInputStreamSupplier streamSupplier = new LogsConsumerInputStreamSupplier(consumer);
+      try (final MultiFileInputStream stream = new MultiFileInputStream(streamSupplier)) {
+        return read(stream, streamSupplier, timeLimitNs, processor);
       }
     }
 
-    private static byte[] readBlock(final InputStream stream) throws IOException {
+    private static long read(final MultiFileInputStream stream,
+        final LogsConsumerInputStreamSupplier streamSupplier, final long timeLimitNs,
+        final LogEntryProcessor processor) throws Exception {
+      final LongValue blkLength = new LongValue();
+      final long startTime = System.nanoTime();
+      long consumed = 0;
+      while (stream.available() > 0) {
+        final byte[] block;
+        try {
+          block = readBlock(stream, blkLength);
+          consumed += blkLength.get();
+        } catch (final EOFException e) {
+          System.out.println("EOF");
+          Logger.trace("got EOF while reading block {consumed}: {}", consumed, e.getMessage());
+          break;
+        }
+
+        try (ByteArrayReader blockReader = new ByteArrayReader(block)) {
+          while (blockReader.available() > 0) {
+            final int length = IntDecoder.readUnsignedVarInt(blockReader);
+            final ByteArraySlice data = new ByteArraySlice(block, blockReader.readOffset(), length);
+            processor.process(data);
+            blockReader.skip(length);
+          }
+        }
+
+        if (streamSupplier.getBlkIndex() > 0 || (System.nanoTime() - startTime) >= timeLimitNs) {
+          break;
+        }
+      }
+      return consumed;
+    }
+
+    private static byte[] readBlock(final InputStream stream, final LongValue consumed) throws IOException {
       // +-------------+---------+----------+
       // | -- -- -- -- | blk len | zblk len |
       // +-------------+---------+----------+
@@ -272,6 +295,7 @@ public final class LogFileUtil {
       if (ZstdUtil.decompress(block, zblock, 0, zLength) != length) {
         throw new IOException("unexpected zstd decompress length");
       }
+      consumed.set(1 + blkLenBytes + zblkLenBytes + zLength);
       return block;
     }
   }
@@ -317,6 +341,10 @@ public final class LogFileUtil {
       return tracker.getLogsId();
     }
 
+    private ArrayList<String> getFileNames() {
+      return new ArrayList<>(fileNames);
+    }
+
     public synchronized void setOffset(final long newOffset) {
       this.offset = 0;
       this.blkOffset = 0;
@@ -325,9 +353,11 @@ public final class LogFileUtil {
 
       fileNames.clear();
       fileNames.addAll(tracker.getFileNames());
+      Logger.debug("{} try setting {newOffset} {maxOffset} - {} files", getLogsId(), newOffset, maxOffset, fileNames.size());
       if (fileNames.isEmpty()) return;
 
       if (newOffset > maxOffset) {
+        Logger.fatal("{} invalid offset {newOffset} {maxOffset} - {}", getLogsId(), newOffset, maxOffset, fileNames);
         throw new IllegalArgumentException(getLogsId() + " invalid offset " + newOffset + ", max offset is " + maxOffset);
       }
 
@@ -343,6 +373,7 @@ public final class LogFileUtil {
       if (fileCount > 0) {
         final long firstOffset = offsetFromFileName(fileNames.get(0));
         if (newOffset < firstOffset) {
+          Logger.fatal("{} invalid offset {newOffset} {firstOffset} - {}", getLogsId(), newOffset, firstOffset, fileNames);
           throw new IllegalArgumentException(getLogsId() + " invalid offset " + newOffset + ", first log available is " + firstOffset);
         }
 
@@ -359,7 +390,7 @@ public final class LogFileUtil {
 
     public synchronized boolean hasMore() {
       if (getBlockAvailable() > 0) return true;
-      if (fileNames.size() < 2) return false;
+      if (fileNames.size() <= 1) return false;
 
       // grab the next log
       nextLog();
@@ -387,32 +418,43 @@ public final class LogFileUtil {
       return tracker.getFile(fileNames.get(0));
     }
 
-    public synchronized void consume(final long length) {
-      if (length < 0 || length > getBlockAvailable()) {
-        Logger.fatal("CONSUMED SOMETHING WRONG {}: {consumedLength} {blkAvail}",
-          getLogsId(), length, getBlockAvailable());
-      }
-
-      this.offset += length;
-      this.blkOffset += length;
-
-      final long blkAvail = getBlockAvailable();
-      Logger.debug("{} consume {}. avail:{} offset:{} blkOffset:{}", getLogsId(), length, blkAvail, offset, blkOffset);
-      if (blkAvail > 0) return;
-
-      // nothing more available
-      if (offset == maxOffset) {
-        Logger.trace("{} log {} fully consumed. current offset {}/{}", getLogsId(), fileNames.get(0), offset, maxOffset);
+    public synchronized void consume(long consumed) {
+      if (consumed <= 0) {
+        Logger.debug("{} nothing consumed: {blkAvail} {offset}/{maxOffset} - {files}",
+          getLogsId(), getBlockAvailable(), offset, maxOffset, fileNames);
         return;
       }
 
-      if (fileNames.size() == 1) {
-        Logger.fatal("TRYING TO GRAB A NON EXISTENT NEXT LOG {}: {offset} {maxOffset}: {blkAvail} {blkOff}: {nextOffset} {files}",
-          getLogsId(), offset, maxOffset, blkAvail, blkOffset, nextOffset, fileNames);
-      }
+      while (consumed > 0) {
+        final long length = Math.min(consumed, getBlockAvailable());
+        if (length <= 0) {
+          Logger.debug("{} CONSUMED SOMETHING WRONG: {consumedLength}: {blkAvail} {offset}/{maxOffset} - {files}",
+            getLogsId(), consumed, getBlockAvailable(), offset, maxOffset, fileNames);
+          throw new UnsupportedOperationException();
+        }
 
-      // grab the next log
-      nextLog();
+        consumed -= length;
+        this.offset += length;
+        this.blkOffset += length;
+
+        final long blkAvail = getBlockAvailable();
+        Logger.debug("{} consume {}. avail:{} offset:{} blkOffset:{}", getLogsId(), length, blkAvail, offset, blkOffset);
+        if (blkAvail > 0) return;
+
+        // nothing more available
+        if (offset == maxOffset) {
+          Logger.trace("{} log {} fully consumed. current offset {}/{}", getLogsId(), fileNames.get(0), offset, maxOffset);
+          return;
+        }
+
+        if (fileNames.size() == 1) {
+          Logger.fatal("TRYING TO GRAB A NON EXISTENT NEXT LOG {}: {offset} {maxOffset}: {blkAvail} {blkOff}: {nextOffset} {files}",
+            getLogsId(), offset, maxOffset, blkAvail, blkOffset, nextOffset, fileNames);
+        }
+
+        // grab the next log
+        nextLog();
+      }
     }
 
     private void nextLog() {
@@ -452,6 +494,47 @@ public final class LogFileUtil {
     }
   }
 
+  private static final class LogsConsumerInputStreamSupplier implements InputStreamSupplier {
+    private final ArrayList<String> fileNames;
+    private final LogsConsumer consumer;
+    private long offset;
+    private long blkIndex;
+
+    private LogsConsumerInputStreamSupplier(final LogsConsumer consumer) {
+      this.fileNames = consumer.getFileNames();
+      this.consumer = consumer;
+      this.offset = consumer.getOffset();
+      this.blkIndex = 0;
+    }
+
+    private long getBlkIndex() {
+      return blkIndex;
+    }
+
+    @Override
+    public InputStream get() throws IOException {
+      if (fileNames.isEmpty()) return null;
+
+      final boolean isNotFirst = (offset > consumer.getOffset());
+
+      // grab the next log
+      final String fileName = fileNames.remove(0);
+      final File file = consumer.tracker.getFile(fileName);
+      final long fileLength = file.length();
+      final long avail = Math.min(fileLength, consumer.getMaxOffset() - offset);
+      offset += avail;
+      blkIndex++;
+
+      if (isNotFirst) {
+        return new LimitedInputStream(new FileInputStream(file), avail);
+      }
+
+      final LimitedInputStream stream = new LimitedInputStream(new FileInputStream(file), avail);
+      stream.skipNBytes(consumer.getBlockOffset());
+      return stream;
+    }
+  }
+
   public static class LogsFileTracker {
     private final ArrayList<Consumer<LogsFileTracker>> dataPublishedNotifier = new ArrayList<>();
     private final ArrayList<LogsConsumer> consumers = new ArrayList<>();
@@ -475,15 +558,20 @@ public final class LogFileUtil {
       return new File(logsDir, name);
     }
 
-    public synchronized File getLastBlockFile() {
-      if (fileNames.isEmpty()) return null;
-
-      // TODO: PERF: cache?
-      return getFile(fileNames.get(fileNames.size() - 1));
-    }
-
     private synchronized List<String> getFileNames() {
       return fileNames;
+    }
+
+    private synchronized long getGatingSequence() {
+      long minSeq = maxOffset;
+      for (final LogsConsumer consumer: this.consumers) {
+        minSeq = Math.min(minSeq, consumer.getOffset());
+      }
+      return minSeq;
+    }
+
+    public synchronized List<LogsConsumer> getConsumers() {
+      return new ArrayList<>(consumers);
     }
 
     public synchronized void loadFiles() {
@@ -507,55 +595,61 @@ public final class LogFileUtil {
       final long lastOffset = offsetFromFileName(lastFileName);
       final long lastSize = lastFile.length();
       this.maxOffset = lastOffset + lastSize;
-      Logger.debug("found {} logs, last offset {} size {}", files.length, lastOffset, lastSize);
-    }
-
-    private long getGatingSequence() {
-      long minSeq = maxOffset;
-      for (final LogsConsumer consumer: this.consumers) {
-        minSeq = Math.min(minSeq, consumer.getOffset());
-      }
-      return minSeq;
-    }
-
-    private void cleanupFiles() {
-      cleanupFiles(Duration.ofHours(12));
+      Logger.debug("found {} logs, {lastOffset} {lastSize} - {maxOffset}", files.length, lastOffset, lastSize, maxOffset);
     }
 
     public synchronized boolean cleanupFiles(final Duration retainTime) {
+      return cleanupFiles(retainTime, getGatingSequence());
+    }
+
+    public synchronized boolean cleanupAllFiles(final Duration retainTime, final long gatingSequence) {
+      final boolean fullyCleaned = cleanupFiles(retainTime, gatingSequence);
+      if (fullyCleaned || fileNames.size() > 1) {
+        return fullyCleaned;
+      }
+
+      if (gatingSequence < maxOffset) {
+        Logger.info("{} still in use {gatingSeq}/{maxOffset}: {} files active",
+          getLogsId(), gatingSequence, fileNames.size());
+        return false;
+      }
+
+      final String fileName = fileNames.remove(0);
+      Logger.info("{} {gatingSeq}/{maxOffset} removing {}", getLogsId(), gatingSequence, maxOffset, fileName);
+      new File(logsDir, fileName).delete();
+
+      Logger.info("{} removing empty dir", getLogsId(), logsDir);
+      return logsDir.delete();
+    }
+
+    private synchronized boolean cleanupFiles(final Duration retainTime, final long gatingSequence) {
       if (fileNames.isEmpty()) {
         Logger.trace("no log files: {}", logsDir);
         logsDir.delete();
         return true;
       }
 
-      final long gatingSequence = getGatingSequence();
-
       final long retainMs = retainTime.toMillis();
       final long now = System.currentTimeMillis();
-      while (!fileNames.isEmpty()) {
-        final String fileName = fileNames.get(0);
-        final long logOffset = offsetFromFileName(fileName);
+      while (fileNames.size() > 1) {
+        final String nextFileName = fileNames.get(1);
+        final long logOffset = offsetFromFileName(nextFileName);
         if (gatingSequence < logOffset) break;
 
-        Logger.info("{} log file {} is candidate for removal", getLogsId(), fileName);
+        final String fileName = fileNames.get(0);
+        Logger.info("{} log file {} is candidate for removal {gatingSeq}", getLogsId(), fileName, gatingSequence);
         final long delta = now - timestampFromFileName(fileName);
         if (delta < retainMs) {
           Logger.debug("{} log file {} is in the retain period {}: {}",
             getLogsId(), fileName, HumansUtil.humanTimeMillis(retainMs), HumansUtil.humanTimeMillis(delta));
           break;
         }
-
-        Logger.info("{} removing {} created {}", getLogsId(), fileName, HumansUtil.humanTimeMillis(delta));
+        Logger.info("{} {gatingSeq} removing {} created {}",
+          getLogsId(), gatingSequence, fileName, HumansUtil.humanTimeMillis(delta));
         new File(logsDir, fileName).delete();
         fileNames.remove(0);
       }
 
-      if (fileNames.isEmpty()) {
-        Logger.info("{} removing empty dir", getLogsId(), logsDir);
-        logsDir.delete();
-        return true;
-      }
       return false;
     }
 
@@ -564,6 +658,13 @@ public final class LogFileUtil {
     // ==========================================================================================
     public synchronized long getMaxOffset() {
       return maxOffset;
+    }
+
+    public synchronized File getLastBlockFile() {
+      if (fileNames.isEmpty()) return null;
+
+      // TODO: PERF: cache?
+      return getFile(fileNames.get(fileNames.size() - 1));
     }
 
     public synchronized File addNewFile() {
@@ -600,6 +701,14 @@ public final class LogFileUtil {
       consumers.add(consumer);
       return consumer;
     }
+
+    public synchronized void removeConsumer(final LogsConsumer consumer) {
+      consumers.remove(consumer);
+    }
+
+    public synchronized void removeAllConsumers() {
+      consumers.clear();
+    }
   }
 
   public static class LogSyncMessage implements JournalEntry {
@@ -627,6 +736,12 @@ public final class LogFileUtil {
   }
 
   public static class LogSyncMessageWriter implements JournalEntryWriter<LogSyncMessage> {
+    public static final LogSyncMessageWriter INSTANCE = new LogSyncMessageWriter();
+
+    private LogSyncMessageWriter() {
+      // no-op
+    }
+
     @Override
     public void writeEntry(final PagedByteArray buffer, final LogSyncMessage entry) {
       buffer.addFixed32(entry.message.length);
@@ -634,20 +749,15 @@ public final class LogFileUtil {
     }
   }
 
+  public static final Supplier<JournalBuffer<LogSyncMessage>> LOG_SYNC_MESSAGE_JOURNAL_SUPPLIER =
+    () -> new JournalGroupedBuffer<>(LogSyncMessageWriter.INSTANCE);
+
   public static void main(final String[] args) throws Exception {
     final LogsStorage storage = new LogsStorage(new File("logs.sync"));
 
-    if (true) {
-      final long now = System.currentTimeMillis();
-      final long t = timestampFromFileName("00000000000000000000.20211115205345");
-      System.out.println("NOW: " + now);
-      System.out.println("TIM: " + t);
-      System.out.println("DEL: " + (now - t));
-      return;
-    }
-
     if (false) {
-      final JournalAsyncWriter<LogSyncMessage> journal = new JournalAsyncWriter<>("pubsub", new LogSyncMessageWriter());
+      new LogSyncMessageWriter();
+      final JournalAsyncWriter<LogSyncMessage> journal = new JournalAsyncWriter<>("pubsub", LOG_SYNC_MESSAGE_JOURNAL_SUPPLIER);
       journal.registerWriter(new LogWriter(groupId -> {
         final LogsFileTracker tracker = new LogsFileTracker(storage.getLogsDir(groupId));
         tracker.loadFiles();
@@ -664,24 +774,23 @@ public final class LogFileUtil {
     }
 
     if (true) {
-      final LogsFileTracker tracker = new LogsFileTracker(storage.getLogsDir("service.task.bHb0DAu7ys34XpwVCnilH"));
+      final LogsFileTracker tracker = new LogsFileTracker(storage.getLogsDir("service.logs.usXoYD4NOY4Iial1Aw5yq"));
       tracker.loadFiles();
 
       final LogsConsumer consumer = tracker.newConsumer("foo", 0);
       consumer.setOffset(0);
 
       for (int i = 0; consumer.hasMore(); ++i) {
-        final File block = consumer.getBlockFile();
-        System.out.println("OFFSET:" + consumer.getOffset()
+        System.out.println(" OFFSET:" + consumer.getOffset()
                         + " BLKOFF: " + consumer.getBlockOffset()
                         + " AVAIL: " + consumer.getBlockAvailable()
                         + " FILE: " + consumer.getBlockFile()
                         + " index: " + i);
-        final long consumed = SimpleLogEntryReader.read(block, consumer.getBlockOffset(), consumer.getBlockAvailable(), data -> {
-          System.out.println(" -> entry: " + CborFormat.INSTANCE.fromBytes(data, JsonObject.class));
-        });
+        //final long consumed = SimpleLogEntryReader.read(block, consumer.getBlockOffset(), consumer.getBlockAvailable(), data -> {
+          //System.out.println(" -> entry: " + CborFormat.INSTANCE.fromBytes(data, JsonObject.class));
+        //});
+        final long consumed = SimpleLogEntryReader.read(consumer, Duration.ofMinutes(1).toNanos(), data -> {});
         consumer.consume(consumed);
-        break;
       }
     }
   }
