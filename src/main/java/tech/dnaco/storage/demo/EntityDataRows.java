@@ -50,7 +50,7 @@ public class EntityDataRows {
 
   public boolean hasAllFields() {
     final boolean hasAllFieldsSet = fieldSet.nextClearBit(0) >= schema.fieldsCount();
-    Logger.debug("HAS ALL FIELDS SET: {old} vs {new} -> {}", oldHasAllFields, hasAllFieldsSet, values);
+    //Logger.debug("HAS ALL FIELDS SET: {old} vs {new} -> {}", oldHasAllFields, hasAllFieldsSet, values);
     return oldHasAllFields;
   }
 

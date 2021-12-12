@@ -56,6 +56,7 @@ public final class EntityBackupScheduled extends ScheduledTask {
       });
       stream.flush();
     }
+
     final String hash = BytesUtil.toHexString(cksum.digest());
     final File bkpFile = new File(backupDir, hash + "." + projectId);
     file.renameTo(bkpFile);

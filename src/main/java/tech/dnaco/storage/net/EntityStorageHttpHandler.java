@@ -24,6 +24,11 @@ public class EntityStorageHttpHandler implements RestRequestHandler {
     EntityStorage.INSTANCE.createEntitySchema(request);
   }
 
+  @UriMapping(uri = "/v0/entity/schema/drop", method = HttpMethod.POST)
+  public void dropEntitySchema(final ClientSchema request) throws Exception {
+    EntityStorage.INSTANCE.dropEntitySchema(request);
+  }
+
   @UriMapping(uri = "/v0/entity/schema/edit", method = HttpMethod.POST)
   public void editEntitySchema(final ClientSchema request) throws Exception {
     EntityStorage.INSTANCE.editEntitySchema(request);
@@ -70,6 +75,11 @@ public class EntityStorageHttpHandler implements RestRequestHandler {
   @UriMapping(uri = "/v0/entity/delete-filtered", method = HttpMethod.POST)
   public TransactionStatusResponse deleteEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
     return EntityStorage.INSTANCE.deleteEntityWithFilter(request);
+  }
+
+  @UriMapping(uri = "/v0/entity/truncate", method = HttpMethod.POST)
+  public TransactionStatusResponse deleteEntityWithFilter(final ModificationRequest request) throws Exception {
+    return EntityStorage.INSTANCE.truncateEntity(request);
   }
 
   @UriMapping(uri = "/v0/commit", method = HttpMethod.POST)

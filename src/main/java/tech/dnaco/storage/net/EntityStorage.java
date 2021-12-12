@@ -27,6 +27,7 @@ import tech.dnaco.storage.demo.logic.Query.QueryCache;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
 import tech.dnaco.storage.demo.logic.Transaction;
+import tech.dnaco.storage.demo.logic.Transaction.State;
 import tech.dnaco.storage.net.CachedScannerResults.CachedScanResults;
 import tech.dnaco.storage.net.EntityStorageScheduled.TableStats;
 import tech.dnaco.storage.net.models.ClientSchema;
@@ -98,6 +99,11 @@ public final class EntityStorage {
     schema.setKey(keys.toArray(new String[0]));
 
     storage.registerSchema(schema);
+  }
+
+  public void dropEntitySchema(final ClientSchema request) throws Exception {
+    final StorageLogic storage = Storage.getInstance(request.getTenantId());
+    storage.dropEntity(request.getName());
   }
 
   public void editEntitySchema(final ClientSchema request) throws Exception {
@@ -205,6 +211,15 @@ public final class EntityStorage {
       request.getTenantId(), schema.getEntityName(), HumansUtil.humanTimeNanos(elapsed));
 
     return new TransactionStatusResponse(txn.getState());
+  }
+
+  public TransactionStatusResponse truncateEntity(final ModificationRequest request) throws Exception {
+    Tracer.getCurrentTask().setTenantId(request.getTenantId());
+    VerifyArg.verifyEmpty("txnId", request.getTxnId());
+
+    final StorageLogic storage = Storage.getInstance(request.getTenantId());
+    storage.truncateEntity(request.getEntity());
+    return new TransactionStatusResponse(State.COMMITTED);
   }
 
   public TransactionStatusResponse deleteEntity(final ModificationRequest request) throws Exception {

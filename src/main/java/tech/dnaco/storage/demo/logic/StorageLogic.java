@@ -20,15 +20,19 @@
 package tech.dnaco.storage.demo.logic;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.gullivernet.commons.util.DateUtil;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.bytes.encoding.RowKeyUtil;
 import tech.dnaco.collections.iterators.AbstractFilteredIterator;
 import tech.dnaco.collections.iterators.FilteredIterator;
 import tech.dnaco.collections.iterators.MergeIterator;
@@ -111,7 +115,7 @@ public final class StorageLogic {
   // ================================================================================
   public boolean addRow(final Transaction txn, final EntityDataRow row) throws Exception {
     row.setSeqId(Long.MAX_VALUE);
-    Logger.debug("{} row {hasAllFields}: {}", row.getOperation(), row.hasAllFields(), row);
+    //Logger.debug("{} row {hasAllFields}: {}", row.getOperation(), row.hasAllFields(), row);
     switch (row.getOperation()) {
       case INSERT: return insertRow(txn, row);
       case UPSERT: return upsertRow(txn, row);
@@ -322,6 +326,52 @@ public final class StorageLogic {
     return true;
   }
 
+
+  // ================================================================================
+  //  Drop Entity related
+  // ================================================================================
+  private Set<String> findEntityGroups(final String entityName) throws Exception {
+    final HashSet<String> groups = new HashSet<>(64);
+    scanAll((key, val) -> {
+      final List<byte[]> keyParts = RowKeyUtil.decodeKey(key.buffer());
+      final String group = new String(keyParts.get(0));
+      if (group.startsWith(EntitySchema.SYS_TXN_PREFIX)) {
+        // no-op
+      } else {
+        final String table = new String(keyParts.get(1));
+        if (StringUtil.equals(table, entityName)) {
+          groups.add(group);
+        }
+      }
+    });
+    return groups;
+  }
+
+  public void truncateEntity(final String entityName) throws Exception {
+    final long startTime = System.nanoTime();
+
+    commitLock.lock();
+    try {
+      Logger.debug("looking up {entityName} groups", entityName);
+      final Set<String> groups = findEntityGroups(entityName);
+      Logger.debug("found {} groups in entity {entityName} took {}",
+        groups.size(), entityName, HumansUtil.humanTimeSince(startTime));
+
+      truncate(entityName, groups);
+      Logger.info("dropping {} groups in entity {entityName} took {}",
+        groups.size(), entityName, HumansUtil.humanTimeSince(startTime));
+    } finally {
+      commitLock.unlock();
+    }
+  }
+
+  public void dropEntity(final String entityName) throws Exception {
+    final long startTime = System.nanoTime();
+    truncateEntity(entityName);
+    dropSchema(entityName);
+    Logger.info("{entityName} dropped in {}", entityName, HumansUtil.humanTimeSince(startTime));
+  }
+
   // ================================================================================
   //  Scan related
   // ================================================================================
@@ -346,15 +396,56 @@ public final class StorageLogic {
 
   public void scanRow(final Transaction txn, final ByteArraySlice prefix,
       final boolean includeDeleted, final RowPredicate consumer) throws Exception {
+    final ArrayList<byte[]> toDelete = new ArrayList<>();
     final PeekIterator<EntityDataRow> it = scanRow(txn, prefix, includeDeleted);
     while (it.hasNext()) {
       final EntityDataRow row = it.next();
+      if (row.getOperation() == Operation.DELETE) {
+        toDelete.add(row.buildRowKey());
+      }
       //System.out.println(" ---> " + row);
       if (!consumer.test(row)) {
         break;
       }
     }
     while (it.hasNext()) it.next();
+  }
+
+  public void truncate(final EntitySchema schema, final Set<String> groups) throws Exception {
+    truncate(schema.getEntityName(), groups);
+  }
+
+  private void truncate(final String entityName, final Set<String> groups) throws Exception {
+    for (final String groupId: groups) {
+      final ByteArraySlice keyPrefix = RowKeyUtil.newKeyBuilder()
+        .add(groupId)
+        .add(entityName)
+        .addKeySeparator()
+        .slice();
+      Logger.debug("deleting {entityName} records for {group}", entityName, groupId);
+      storage.deletePrefix(keyPrefix);
+    }
+    storage.flush();
+  }
+
+  public void cleanup(final EntitySchema schema, final Set<String> groups) throws Exception {
+    for (final String groupId: groups) {
+      final ArrayList<byte[]> toDelete = new ArrayList<>();
+      final ByteArraySlice key = RowKeyUtil.newKeyBuilder().add(groupId).add(schema.getEntityName()).addKeySeparator().slice();
+      Logger.debug("loookup rows for {scheam} {group}", schema.getEntityName(), groupId);
+      storage.scanRow(key, row -> {
+        if (row.getOperation() == Operation.DELETE) {
+          toDelete.add(row.buildRowKey());
+        }
+        return true;
+      });
+
+      Logger.debug("deleting {} rows for {scheam} {group}", toDelete.size(), schema.getEntityName(), groupId);
+      for (final byte[] dk: toDelete) {
+        storage.deletePrefix(new ByteArraySlice(dk));
+      }
+      Logger.debug("deleted {} rows for {scheam} {group}", toDelete.size(), schema.getEntityName(), groupId);
+    }
   }
 
   public EntityDataRow getRow(final Transaction txn, final EntityDataRow row) throws Exception {

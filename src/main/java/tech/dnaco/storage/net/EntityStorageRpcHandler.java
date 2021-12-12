@@ -46,6 +46,11 @@ public class EntityStorageRpcHandler implements DnacoRpcHandler {
     return EntityStorage.INSTANCE.deleteEntityWithFilter(request);
   }
 
+  @RpcRequest("/v0/entity/truncate")
+  public TransactionStatusResponse deleteEntityWithFilter(final ModificationRequest request) throws Exception {
+    return EntityStorage.INSTANCE.truncateEntity(request);
+  }
+
   @RpcRequest("/v0/commit")
   public TransactionStatusResponse commit(final TransactionCommitRequest request) throws Exception {
     return EntityStorage.INSTANCE.commit(request);

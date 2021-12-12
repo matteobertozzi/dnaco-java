@@ -96,6 +96,7 @@ public class RocksDbKvStore extends AbstractKvStore {
     Logger.debug("loading {} store from {}", getProjectId(), dbPath);
     dbPath.getParentFile().mkdirs();
     db = RocksDB.open(dbOptions, dbPath.getAbsolutePath());
+    compact();
   }
 
   @Override
@@ -158,7 +159,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   @Override
   public void flush() throws Exception {
     final long now = System.nanoTime();
-    if ((now - lastFlush) < TimeUnit.MINUTES.toNanos(5)) {
+    if ((now - lastFlush) < TimeUnit.HOURS.toNanos(1)) {
       Logger.debug("skipping requested flush on {} last flush was {}",
         getProjectId(), HumansUtil.humanTimeNanos(now - lastFlush));
       return;
@@ -169,6 +170,14 @@ public class RocksDbKvStore extends AbstractKvStore {
     }
     Logger.debug("flush took {}", HumansUtil.humanTimeSince(now));
     lastFlush = now;
+    compact();
+  }
+
+  @Override
+  public void compact() throws Exception {
+    final long startTime = System.nanoTime();
+    db.compactRange();
+    Logger.debug("{} compacted in {}", getProjectId(), HumansUtil.humanTimeSince(startTime));
   }
 
   // ================================================================================

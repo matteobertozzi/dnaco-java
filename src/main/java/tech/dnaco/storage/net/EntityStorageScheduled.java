@@ -48,9 +48,12 @@ public class EntityStorageScheduled extends ScheduledTask {
 	}
 
   private static void processProject(final String projectId) throws Exception {
+    Storage.getInstance(projectId).getKvStore().compact();
+
     final ByteArray prevKey = new ByteArray(64);
     final AtomicLong totalSize = new AtomicLong(0);
     final HashMap<String, TableStats> tables = new HashMap<>();
+    Logger.debug("lookup stats for {}", projectId);
     Storage.getInstance(projectId).scanAll((key, val) -> {
       final List<byte[]> keyParts = RowKeyUtil.decodeKey(key.buffer());
       totalSize.addAndGet(key.length() + val.length);
@@ -77,6 +80,13 @@ public class EntityStorageScheduled extends ScheduledTask {
         }
       }
     });
+
+    /*
+    Logger.debug("cleaning up {}", projectId);
+    for (final EntitySchema schema: Storage.getInstance(projectId).getEntitySchemas()) {
+      final TableStats stats = tables.get(schema.getEntityName());
+      Storage.getInstance(projectId).cleanup(schema, stats.getGroups());
+    }*/
 
     tableStats.put(projectId, tables);
 

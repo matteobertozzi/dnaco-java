@@ -55,6 +55,11 @@ public class MemoryKvStore extends AbstractKvStore {
     // no-op
   }
 
+  @Override
+  public void compact() {
+    // no-op
+  }
+
   // ================================================================================
   //  Put Related
   // ================================================================================

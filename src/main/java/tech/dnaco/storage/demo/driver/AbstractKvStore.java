@@ -80,6 +80,8 @@ public abstract class AbstractKvStore {
   protected abstract void openKvStore() throws Exception;
   protected abstract void shutdownKvStore();
 
+  public abstract void compact() throws Exception;
+
   private void loadCounters() throws Exception {
     final long startTime = System.nanoTime();
     final Iterator<Entry<ByteArraySlice, byte[]>> it = this.scanPrefix(SYS_COUNTERS);
@@ -134,6 +136,7 @@ public abstract class AbstractKvStore {
     key.add("schema");
     key.add(entityName);
     delete(key.slice());
+    schemas.remove(entityName);
   }
 
   public EntitySchema getSchema(final byte[] entityName) {
@@ -215,18 +218,22 @@ public abstract class AbstractKvStore {
     final EntitySchema schema = row.getSchema();
     final byte[] rowKey = row.buildRowKey(txnId);
 
-    final List<String> fields = schema.getNonKeyFields();
-    for (int i = fields.size() - 1; i >= 0; --i) {
-      final String field = fields.get(i);
-      final ByteArraySlice key = new RowKeyBuilder(rowKey).add(field).slice();
-      if (schema.isSysField(field)) {
-        final byte[] val = row.get(field);
-        //System.out.println("DEL-PUT " + key);
-        this.put(key, val);
-      } else {
-        //System.out.println("DELETE " + key);
-        this.delete(key);
+    if (schema.getSync()) {
+      final List<String> fields = schema.getNonKeyFields();
+      for (int i = fields.size() - 1; i >= 0; --i) {
+        final String field = fields.get(i);
+        final ByteArraySlice key = new RowKeyBuilder(rowKey).add(field).slice();
+        if (schema.isSysField(field)) {
+          final byte[] val = row.get(field);
+          //System.out.println("DEL-PUT " + key);
+          this.put(key, val);
+        } else {
+          //System.out.println("DELETE " + key);
+          this.delete(key);
+        }
       }
+    } else {
+      this.deletePrefix(new ByteArraySlice(rowKey));
     }
   }
 
