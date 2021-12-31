@@ -107,6 +107,7 @@ public abstract class AbstractClient implements StopSignal {
   }
 
   public void setState(final ClientState state) {
+    System.out.println("OLD STATE " + this.state + " -> NEW STATE " + state);
     final boolean ready = (this.state == ClientState.CONNECTED && state == ClientState.READY);
     this.state = state;
     if (ready) {

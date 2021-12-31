@@ -55,8 +55,8 @@ public final class FileUtil {
   // ===============================================================================================
   //  File Name related
   // ===============================================================================================
-  public static final Comparator<File> FILE_NAME_COMPARATOR = (a, b) -> StringUtil.compareTo(a.getName(), b.getName());
-  public static final Comparator<File> FILE_NAME_REVERSED_COMPARATOR = (a, b) -> StringUtil.compareTo(b.getName(), a.getName());
+  public static final Comparator<File> FILE_NAME_COMPARATOR = (a, b) -> StringUtil.compare(a.getName(), b.getName());
+  public static final Comparator<File> FILE_NAME_REVERSED_COMPARATOR = (a, b) -> StringUtil.compare(b.getName(), a.getName());
 
   public static boolean nameEndsWith(final String fileName, final String... acceptedExt) {
     for (int i = 0; i < acceptedExt.length; ++i) {

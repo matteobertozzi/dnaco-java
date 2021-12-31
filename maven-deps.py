@@ -89,6 +89,7 @@ def fetch_versions(pkg):
         versions[k] = sorted(versions[k], reverse=True, key=parse_version)
       return versions
   except Exception as e:
+    print('fail', pkg, MVN_REPO_URL + pkg, e)
     return None
 
 def find_next_major(versions, major):

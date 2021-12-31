@@ -53,9 +53,10 @@ public final class RemoteAddress {
       return StringUtil.defaultIfEmpty(getRemoteAddressFromHeaders(request), defaultAddr);
     }
 
-    if (!(remoteAddr instanceof InetSocketAddress)) return remoteAddr.toString();
+    if (!(remoteAddr instanceof final InetSocketAddress inetAddr)) {
+      return remoteAddr.toString();
+    }
 
-    final InetSocketAddress inetAddr = (InetSocketAddress)remoteAddr;
     if (!inetAddr.getAddress().isLoopbackAddress()) {
       return NetUtil.toSocketAddressString(inetAddr);
     }

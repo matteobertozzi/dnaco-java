@@ -3,6 +3,7 @@ package tech.dnaco.net.logsync;
 import java.io.File;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.bytes.BytesUtil;
@@ -21,12 +22,11 @@ import tech.dnaco.net.logsync.LogFileUtil.SimpleLogEntryReader;
 import tech.dnaco.net.logsync.LogSyncService.LogSyncServiceStoreHandler;
 import tech.dnaco.threading.ThreadUtil;
 import tech.dnaco.time.RetryUtil;
-import tech.dnaco.util.RandData;
 
 public class DemoLogSync {
   public static void main(final String[] args) throws Exception {
-    Logger.setDefaultLevel(LogLevel.TRACE);
-    final String[] TOPICS = new String[] { "topic-0" }; //, "topic-1", "topic-2" };
+    Logger.setDefaultLevel(LogLevel.WARNING);
+    final String[] TOPICS = new String[] { "topic-0", "topic-1", "topic-2" };
 
     try (final ServiceEventLoop eventLoop = new ServiceEventLoop(1, 1)) {
       // bind log-sync service
@@ -49,7 +49,7 @@ public class DemoLogSync {
       for (final String logsId: localStorageTracker.getLogsIds()) {
         final LogsFileTracker tracker = localStorageTracker.get(logsId);
         final long offset = tracker.getMaxOffset();
-        if (tracker.cleanupAllFiles(Duration.ofHours(5), offset)) {
+        if (tracker.cleanupAllFiles(Duration.ofSeconds(5), offset)) {
           Logger.debug("{} all files removed", logsId);
           continue;
         }
@@ -85,10 +85,36 @@ public class DemoLogSync {
         journal.registerWriter(new LogWriter(localStorageTracker::get));
         journal.start(100);
 
-        for (int i = 0; i < 10_000; ++i) {
-          final String logId = "topic-" + (i % TOPICS.length);
-          final byte[] data = RandData.generateBytes(1024);
+        final long startTime = System.nanoTime();
+        long lastReport = startTime;
+        for (long i = 0; (System.nanoTime() - startTime) < TimeUnit.MINUTES.toNanos(5); ++i) {
+          final String logId = "topic-" + (i % (TOPICS.length - (i > 20_000 ? 1 : 0)));
+          final byte[] data = ("event-" + i).getBytes();
           journal.addToLogQueue(Thread.currentThread(), new LogSyncMessage(logId, data));
+          ThreadUtil.sleep(10 + Math.round(Math.random() * 1000), TimeUnit.MICROSECONDS);
+
+          if ((System.nanoTime() - lastReport) > TimeUnit.SECONDS.toNanos(1)) {
+            lastReport = System.nanoTime();
+            System.out.println("\n".repeat(40));
+            System.out.println("local storage");
+            for (final String logsId: localStorageTracker.getLogsIds()) {
+              final LogsFileTracker tracker = localStorageTracker.get(logsId);
+              tracker.cleanupAllFiles(Duration.ofSeconds(1), tracker.getGatingSequence());
+              System.out.println(" -> " + logsId + " -> "
+                + tracker.getGatingSequence() + "/" + tracker.getMaxOffset()
+                + " -> " + Arrays.toString(localStorage.getLogsDir(logsId).list()));
+            }
+            System.out.println("remote storage");
+            for (final String logsId: remoteLogsTracker.getLogsIds()) {
+              final LogsFileTracker tracker = remoteLogsTracker.get(logsId);
+              tracker.cleanupAllFiles(Duration.ofSeconds(1), tracker.getGatingSequence());
+              System.out.println(" -> " + logsId + " -> "
+                + tracker.getGatingSequence() + "/" + tracker.getMaxOffset()
+                + " -> " + Arrays.toString(remoteStorage.getLogsDir(logsId).list()));
+            }
+          }
+
+
           if (false && (i + 1) % 1000 == 0) {
             for (int c = 0; c < 1; ++c) {
               localStorageTracker.get(logId).cleanupFiles(Duration.ofSeconds(5));
@@ -102,7 +128,7 @@ public class DemoLogSync {
 
       ThreadUtil.sleep(10, TimeUnit.SECONDS);
 
-      checksumDirs(localStorage, remoteStorage);
+      //checksumDirs(localStorage, remoteStorage);
 
       service.waitStopSignal();
       client.disconnect();

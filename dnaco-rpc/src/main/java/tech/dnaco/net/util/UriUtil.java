@@ -84,6 +84,43 @@ public final class UriUtil {
     return new File(uri).toString();
   }
 
+  private static final Pattern PATH_PATTERN = Pattern.compile("^(/[-\\w:@&?=+,.!/~*'%$_;]*)?$");
+  private static boolean isValidPath(final String path) {
+    if (path == null) {
+      return false;
+    }
+
+    if (!PATH_PATTERN.matcher(path).matches()) {
+      return false;
+    }
+
+    final int slash2Count = countToken("//", path);
+    if (slash2Count > 0) {
+      return false;
+    }
+
+    final int slashCount = countToken("/", path);
+    final int dot2Count = countToken("..", path);
+    System.out.println(dot2Count + " -> " + ((slashCount - slash2Count - 1)));
+    if (dot2Count > 0 && (slashCount - slash2Count - 1) <= dot2Count){
+      return false;
+    }
+    return true;
+  }
+
+  private static int countToken(final String token, final String target) {
+    int tokenIndex = 0;
+    int count = 0;
+    while (tokenIndex >= 0) {
+      if ((tokenIndex = target.indexOf(token, tokenIndex)) < 0) {
+        break;
+      }
+      tokenIndex++;
+      count++;
+    }
+    return count;
+  }
+
   public static String extractUriParam(final String url, final String paramName) {
     return extractUriParam(url, 0, paramName);
   }

@@ -338,6 +338,31 @@ public final class StringUtil {
   }
 
   // ================================================================================
+  //  Text Lines - TODO: IMPROVE-ME
+  // ================================================================================
+  public static void foreachLine(final String text, final LineConsumer consumer) {
+    int offset = 0;
+    int lineNumber = 1;
+    while (offset < text.length()) {
+      final int newOffset = text.indexOf('\n', offset);
+      if (newOffset < 0) break;
+
+      consumer.consume(text, lineNumber, offset, newOffset - offset);
+      offset = newOffset + 1;
+      lineNumber++;
+    }
+
+    if (offset < text.length()) {
+      consumer.consume(text, lineNumber, offset, text.length() - offset);
+    }
+  }
+
+  @FunctionalInterface
+  public interface LineConsumer {
+    void consume(String text, int lineNumber, int offset, int length);
+  }
+
+  // ================================================================================
   //  Pad helpers
   // ================================================================================
   public static String fill(final char ch, final int length) {
@@ -415,7 +440,7 @@ public final class StringUtil {
 
   public static Pattern likePattern(final String patternString) {
     final char escapeChar = '\\';
-    
+
     final StringBuilder regex = new StringBuilder(patternString.length() * 2);
     regex.append('^');
     boolean escaped = false;
@@ -474,15 +499,20 @@ public final class StringUtil {
   }
 
   @SuppressWarnings("StringEquality")
-  public static int compareTo(final String a, final String b) {
+  public static int compare(final String a, final String b) {
     if (a == b) return 0;
     if (a == null) return -1;
     if (b == null) return 1;
     return a.compareTo(b);
   }
 
+  @Deprecated
+  public static int compareTo(final String a, final String b) {
+    return compare(a, b);
+  }
+
   @SuppressWarnings("StringEquality")
-  public static int compareToIgnoreCase(final String a, final String b) {
+  public static int compareIgnoreCase(final String a, final String b) {
     if (a == b) return 0;
     if (a == null) return -1;
     if (b == null) return 1;
@@ -501,5 +531,5 @@ public final class StringUtil {
     return true;
   }
 
-  public static final Comparator<String> STRING_REVERSE_COMPARATOR = (a, b) -> StringUtil.compareTo(b, a);
+  public static final Comparator<String> STRING_REVERSE_COMPARATOR = (a, b) -> StringUtil.compare(b, a);
 }

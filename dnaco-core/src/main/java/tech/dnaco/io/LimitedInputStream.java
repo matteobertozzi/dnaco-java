@@ -27,11 +27,11 @@ public class LimitedInputStream extends FilterInputStream {
     return c;
   }
 
-  public int read(final byte b[]) throws IOException {
+  public int read(final byte[] b) throws IOException {
     return this.read(b, 0, b.length);
   }
 
-  public int read(final byte b[], final int off, final int len) throws IOException {
+  public int read(final byte[] b, final int off, final int len) throws IOException {
     if (consumed == maxReadable) return -1;
 
     final long avail = maxReadable - consumed;

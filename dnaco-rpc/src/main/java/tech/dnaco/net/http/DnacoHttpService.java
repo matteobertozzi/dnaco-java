@@ -164,8 +164,7 @@ public class DnacoHttpService extends AbstractService {
           return;
         }
 
-        if (result instanceof HttpResponse) {
-          final HttpResponse response = (HttpResponse) result;
+        if (result instanceof final HttpResponse response) {
           // TODO: headers
           writeResponse(ctx, request, keepAlive, response.getStatus(), null, response.getBody());
           return;

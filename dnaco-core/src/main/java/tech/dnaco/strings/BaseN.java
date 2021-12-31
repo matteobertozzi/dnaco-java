@@ -433,9 +433,4 @@ public final class BaseN {
       return length;
     }
   }
-
-  public static void main(final String[] args) {
-    final byte[] b = Base32.decode("fn9dm7txjwk17w5ar5gzaqtqd5dp3y9yf7gbphg3hjr7c51gio7o");
-    System.out.println(BytesUtil.toHexString(b));
-  }
 }

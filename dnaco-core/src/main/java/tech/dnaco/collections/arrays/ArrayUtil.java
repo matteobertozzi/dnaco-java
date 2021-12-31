@@ -419,7 +419,7 @@ public final class ArrayUtil {
     return newArray;
   }
 
-  public static float[] sortedInsert(final int[] source, final int insertionIndex, final float value) {
+  public static float[] sortedInsert(final float[] source, final int insertionIndex, final float value) {
     final float[] newArray = new float[source.length + 1];
     System.arraycopy(source, 0, newArray, 0, insertionIndex);
     newArray[insertionIndex] = value;
@@ -440,6 +440,38 @@ public final class ArrayUtil {
     System.arraycopy(source, 0, newArray, 0, insertionIndex);
     newArray[insertionIndex] = value;
     System.arraycopy(source, insertionIndex, newArray, insertionIndex + 1, source.length - insertionIndex);
+    return newArray;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> T[] sortedInsert(final T[] source, final int insertionIndex, final T value, final Class<T> classOfT) {
+    final T[] newArray = (T[]) Array.newInstance(classOfT, source.length + 1);
+    System.arraycopy(source, 0, newArray, 0, insertionIndex);
+    newArray[insertionIndex] = value;
+    System.arraycopy(source, insertionIndex, newArray, insertionIndex + 1, source.length - insertionIndex);
+    return newArray;
+  }
+
+  public static int[] sortedRemove(final int[] source, final int deletionIndex) {
+    if (deletionIndex == (source.length - 1)) {
+      return Arrays.copyOf(source, source.length - 1);
+    }
+
+    final int[] newArray = new int[source.length - 1];
+    System.arraycopy(source, 0, newArray, 0, deletionIndex);
+    System.arraycopy(source, deletionIndex + 1, newArray, deletionIndex, newArray.length - deletionIndex);
+    return newArray;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> T[] sortedRemove(final T[] source, final int deletionIndex, final Class<T> classOfT) {
+    if (deletionIndex == (source.length - 1)) {
+      return Arrays.copyOf(source, source.length - 1);
+    }
+
+    final T[] newArray = (T[]) Array.newInstance(classOfT, source.length - 1);
+    System.arraycopy(source, 0, newArray, 0, deletionIndex);
+    System.arraycopy(source, deletionIndex + 1, newArray, deletionIndex, newArray.length - deletionIndex);
     return newArray;
   }
 
@@ -646,6 +678,14 @@ public final class ArrayUtil {
       sum += buf[off + i];
     }
     return sum;
+  }
+
+  public static int max(final int[] buf, final int off, final int len) {
+    int maxValue = buf[off];
+    for (int i = 1; i < len; ++i) {
+      maxValue = Math.max(maxValue, buf[off + i]);
+    }
+    return maxValue;
   }
 
   // ================================================================================

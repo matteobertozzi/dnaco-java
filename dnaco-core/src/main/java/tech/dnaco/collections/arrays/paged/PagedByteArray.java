@@ -20,6 +20,7 @@ package tech.dnaco.collections.arrays.paged;
 import java.io.IOException;
 import java.util.Arrays;
 
+import tech.dnaco.bytes.encoding.VarInt;
 import tech.dnaco.collections.arrays.ByteArray;
 import tech.dnaco.util.BitUtil;
 
@@ -177,6 +178,15 @@ public class PagedByteArray {
 
   public void addBlob8(final byte[] value) {
     add(value.length & 0xff);
+    add(value);
+  }
+
+  public void addBlob(final String value) {
+    addBlob(value.getBytes());
+  }
+
+  public void addBlob(final byte[] value) {
+    VarInt.write(this, value.length);
     add(value);
   }
 

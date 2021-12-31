@@ -25,6 +25,8 @@ import tech.dnaco.tracing.Span;
 import tech.dnaco.tracing.Tracer;
 
 public final class ShutdownUtil {
+  private static final NamedThreadFactory threadFactory = new NamedThreadFactory("ShutdownHook");
+
   private ShutdownUtil() {
     // no-op
   }
@@ -46,22 +48,19 @@ public final class ShutdownUtil {
   }
 
   public static void addShutdownHook(final String name, final Thread mainThread, final AtomicBoolean running, final StopSignal... services) {
-    Runtime.getRuntime().addShutdownHook(new Thread(name + "ShutdownHook") {
-      @Override
-      public void run() {
-        try (Span task = Tracer.newTask()) {
-          final long startTime = System.nanoTime();
-          Logger.info("{} shutdown hook!", name);
-          for (int i = 0; i < services.length; ++i) {
-            Logger.debug("sending stop signal to: {}", services[i]);
-            services[i].sendStopSignal();
-          }
-          running.set(false);
-          Logger.debug("waiting for {} to finish", mainThread);
-          ThreadUtil.shutdown(mainThread);
-          Logger.info("shutdown took: {}", HumansUtil.humanTimeSince(startTime));
+    Runtime.getRuntime().addShutdownHook(threadFactory.newThread(() -> {
+      try (Span task = Tracer.newTask()) {
+        final long startTime = System.nanoTime();
+        Logger.info("{} shutdown hook!", name);
+        for (int i = 0; i < services.length; ++i) {
+          Logger.debug("sending stop signal to: {}", services[i]);
+          services[i].sendStopSignal();
         }
+        running.set(false);
+        Logger.debug("waiting for {} to finish", mainThread);
+        ThreadUtil.shutdown(mainThread);
+        Logger.info("shutdown took: {}", HumansUtil.humanTimeSince(startTime));
       }
-    });
+    }));
   }
 }

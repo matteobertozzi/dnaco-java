@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 
 import tech.dnaco.bytes.ByteArrayReader;
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.bytes.encoding.IntEncoder;
 import tech.dnaco.bytes.encoding.IntUtil;
@@ -43,6 +44,7 @@ import tech.dnaco.journal.JournalWriter;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.measure.TelemetryMeasureBuffer;
 
 public final class LogFileUtil {
   private LogFileUtil() {
@@ -136,7 +138,7 @@ public final class LogFileUtil {
   }
 
   public static class LogWriter implements JournalWriter<LogSyncMessage> {
-    private static final long ROLL_SIZE = 32 << 20;
+    private static final long ROLL_SIZE = 32 << 10;
 
     private final LogsTrackerSupplier logsTrackerSupplier;
 
@@ -268,7 +270,7 @@ public final class LogFileUtil {
             final int length = IntDecoder.readUnsignedVarInt(blockReader);
             final ByteArraySlice data = new ByteArraySlice(block, blockReader.readOffset(), length);
             processor.process(data);
-            blockReader.skip(length);
+            blockReader.skipNBytes(length);
           }
         }
 
@@ -562,7 +564,7 @@ public final class LogFileUtil {
       return fileNames;
     }
 
-    private synchronized long getGatingSequence() {
+    public synchronized long getGatingSequence() {
       long minSeq = maxOffset;
       for (final LogsConsumer consumer: this.consumers) {
         minSeq = Math.min(minSeq, consumer.getOffset());
@@ -609,14 +611,22 @@ public final class LogFileUtil {
       }
 
       if (gatingSequence < maxOffset) {
-        Logger.info("{} still in use {gatingSeq}/{maxOffset}: {} files active",
+        Logger.trace("{} still in use {gatingSeq}/{maxOffset}: {} files active",
           getLogsId(), gatingSequence, fileNames.size());
         return false;
       }
 
-      final String fileName = fileNames.remove(0);
+      final String fileName = fileNames.get(0);
+      final File lastFile = new File(logsDir, fileName);
+      if ((System.currentTimeMillis() - lastFile.lastModified()) < retainTime.toMillis()) {
+        Logger.trace("{} last file was last modified {}",
+          getLogsId(), HumansUtil.humanTimeMillis(System.currentTimeMillis() - lastFile.lastModified()));
+        return false;
+      }
+
       Logger.info("{} {gatingSeq}/{maxOffset} removing {}", getLogsId(), gatingSequence, maxOffset, fileName);
-      new File(logsDir, fileName).delete();
+      fileNames.remove(0);
+      lastFile.delete();
 
       Logger.info("{} removing empty dir", getLogsId(), logsDir);
       return logsDir.delete();
@@ -637,14 +647,14 @@ public final class LogFileUtil {
         if (gatingSequence < logOffset) break;
 
         final String fileName = fileNames.get(0);
-        Logger.info("{} log file {} is candidate for removal {gatingSeq}", getLogsId(), fileName, gatingSequence);
+        Logger.trace("{} log file {} is candidate for removal {gatingSeq}", getLogsId(), fileName, gatingSequence);
         final long delta = now - timestampFromFileName(fileName);
         if (delta < retainMs) {
-          Logger.debug("{} log file {} is in the retain period {}: {}",
+          Logger.trace("{} log file {} is in the retain period {}: {}",
             getLogsId(), fileName, HumansUtil.humanTimeMillis(retainMs), HumansUtil.humanTimeMillis(delta));
           break;
         }
-        Logger.info("{} {gatingSeq} removing {} created {}",
+        Logger.trace("{} {gatingSeq} removing {} created {}",
           getLogsId(), gatingSequence, fileName, HumansUtil.humanTimeMillis(delta));
         new File(logsDir, fileName).delete();
         fileNames.remove(0);
@@ -754,6 +764,22 @@ public final class LogFileUtil {
 
   public static void main(final String[] args) throws Exception {
     final LogsStorage storage = new LogsStorage(new File("logs.sync"));
+
+    if (true) {
+      final LogsFileTracker tracker = new LogsFileTracker(storage.getLogsDir("bang"));
+      tracker.loadFiles();
+
+      final LogsConsumer consumer = tracker.newConsumer("foo", 0);
+      consumer.setOffset(0);
+
+      final long consumed = SimpleLogEntryReader.read(consumer, Duration.ofMinutes(1).toNanos(), data -> {
+        System.out.println(BytesUtil.toHexString(data.buffer()));
+        TelemetryMeasureBuffer.read(data, (tenantId, measure) -> {
+          Logger.debug("processing {tenantId} {measure}", tenantId, measure);
+        });
+      });
+      return;
+    }
 
     if (false) {
       new LogSyncMessageWriter();

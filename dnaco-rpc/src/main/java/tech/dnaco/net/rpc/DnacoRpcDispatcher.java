@@ -219,8 +219,7 @@ public class DnacoRpcDispatcher {
         return;
       }
 
-      if (result instanceof DnacoRpcResponse) {
-        final DnacoRpcResponse response = (DnacoRpcResponse)result;
+      if (result instanceof final DnacoRpcResponse response) {
         // TODO: adjust traceId, packetId, queueTime, execTime, ...
         ctx.write(response);
         return;

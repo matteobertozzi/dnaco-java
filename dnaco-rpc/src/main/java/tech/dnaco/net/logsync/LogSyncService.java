@@ -109,7 +109,7 @@ public class LogSyncService extends AbstractService {
         ByteBufIntUtil.writeFixed(result, topicLen, topicLenBytes);
         result.writeBytes(rawLogsId.slice());
         ByteBufIntUtil.writeVarLong(result, e.getOffset());
-        Logger.debug("{} send NAK/RESET {offset} {resetOffset}", logsId, offset, e.getOffset());
+        Logger.warn("{} send NAK/RESET {offset} {resetOffset}", logsId, offset, e.getOffset());
       } catch (final Throwable e) {
         // PUBNAK Failure
         // +------------+-----------------+-------+
@@ -121,7 +121,7 @@ public class LogSyncService extends AbstractService {
         result.writeByte((1 << 5) | (1 << 3) | (topicLenBytes - 1));
         ByteBufIntUtil.writeFixed(result, topicLen, topicLenBytes);
         result.writeBytes(rawLogsId.slice());
-        Logger.debug(e, "{} send NAK. unable to publish {offset}", logsId, offset);
+        Logger.warn(e, "{} send NAK. unable to publish {offset}", logsId, offset);
       } finally {
         ctx.writeAndFlush(DnacoFrame.alloc(0, result));
       }
@@ -156,7 +156,7 @@ public class LogSyncService extends AbstractService {
   }
 
   public static class LogSyncServiceStoreHandler implements LogSyncServiceListener {
-    private static final long ROLL_SIZE = 32 << 20;
+    private static final long ROLL_SIZE = 32 << 10;
 
     private final LogSyncServiceStats stats = new TelemetryCollector.Builder()
       .setName("log_sync_service")

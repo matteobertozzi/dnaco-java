@@ -204,6 +204,35 @@ public final class BytesUtil {
     return Arrays.compareUnsigned(a, aOff, aOff + aLen, b, bOff, bOff + bLen);
   }
 
+  // ================================================================================
+  //  Prefix Util
+  // ================================================================================
+  public static byte[] increaseOne(final byte[] bytes) throws Exception {
+    final byte BYTE_MAX_VALUE = (byte) 0xff;
+    assert bytes.length > 0;
+    final byte last = bytes[bytes.length - 1];
+    if (last != BYTE_MAX_VALUE) {
+      bytes[bytes.length - 1] += 0x01;
+    } else {
+      // Process overflow (like [1, 255] => [2, 0])
+      int i = bytes.length - 1;
+      for (; i > 0 && bytes[i] == BYTE_MAX_VALUE; --i) {
+        bytes[i] += 0x01;
+      }
+      if (bytes[i] == BYTE_MAX_VALUE) {
+        assert i == 0;
+        throw new Exception("Unable to increase bytes: " + BytesUtil.toHexString(bytes));
+      }
+      bytes[i] += 0x01;
+    }
+    return bytes;
+  }
+
+  public static byte[] prefixEndKey(final byte[] prefix) throws Exception {
+    final byte[] endKey = Arrays.copyOf(prefix, prefix.length);
+    return increaseOne(endKey);
+  }
+
   public static int prefix(final byte[] a, final int aOff, final int aLen,
       final byte[] b, final int bOff, final int bLen) {
     final int len = Math.min(aLen, bLen);

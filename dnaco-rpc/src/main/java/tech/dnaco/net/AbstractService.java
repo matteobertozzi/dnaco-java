@@ -41,10 +41,7 @@ import io.netty.channel.unix.UnixChannel;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.EventExecutor;
 import tech.dnaco.logging.Logger;
-import tech.dnaco.logging.LoggerSession;
-import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.threading.ShutdownUtil;
-import tech.dnaco.threading.ThreadUtil;
 import tech.dnaco.tracing.Span;
 import tech.dnaco.tracing.TraceAttributes;
 import tech.dnaco.tracing.Tracer;
@@ -136,19 +133,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
   }
 
   public void addShutdownHook() {
-    final Thread mainThread = Thread.currentThread();
-    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-      try (Span span = Tracer.newTask("shutdown hook")) {
-        span.setTenantId(LoggerSession.SYSTEM_PROJECT_ID);
-        span.setModule("service");
-        //Logger.setSession(LoggerSession.newSession(LogLevel.TRACE));
-
-        sendStopSignal();
-
-        ThreadUtil.shutdown(mainThread);
-        Logger.info("shutdown took: {}", HumansUtil.humanTimeSince(span.getElapsedNs(System.nanoTime())));
-      }
-    }));
+    ShutdownUtil.addShutdownHook(toString(), this);
   }
 
   public static abstract class AbstractServiceSession {

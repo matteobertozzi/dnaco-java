@@ -68,7 +68,7 @@ public class IntArray {
     return result;
   }
 
-  public long get(final int index) {
+  public int get(final int index) {
     return items[index];
   }
 
@@ -103,6 +103,10 @@ public class IntArray {
       count++;
     }
     items[index] = value;
+  }
+
+  public void swap(final int aIndex, final int bIndex) {
+    ArrayUtil.swap(items, aIndex, bIndex);
   }
 
   public void fill(final int value) {

@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil;
@@ -136,6 +137,25 @@ public class LruCache<TKey, TValue> {
       node.set(value, expirationNs);
       moveToLruFront(node);
       return oldValue;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public TValue computeIfAbsent(final TKey key, final Function<? super TKey, ? extends TValue> mappingFunction) {
+    final int keyHash = hashCode(key);
+    lock.lock();
+    try {
+      final CacheItemNode node = findOrEvict(key, keyHash);
+      if (node != null) {
+        moveToLruFront(node);
+        return node.getValue();
+      }
+
+      final long expirationNs = expirationIntervalNs < 0 ? Long.MAX_VALUE : (System.nanoTime() + expirationIntervalNs);
+      final TValue value = mappingFunction.apply(key);
+      insertNewEntry(keyHash, key, value, expirationNs);
+      return value;
     } finally {
       lock.unlock();
     }

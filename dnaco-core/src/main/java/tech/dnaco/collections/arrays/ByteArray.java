@@ -19,6 +19,7 @@ package tech.dnaco.collections.arrays;
 
 import java.util.Arrays;
 
+import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
 
 public class ByteArray {
@@ -68,6 +69,10 @@ public class ByteArray {
     }
     this.count = 0;
     return result;
+  }
+
+  public ByteArraySlice slice() {
+    return new ByteArraySlice(blob, 0, count);
   }
 
   public long get(final int index) {
@@ -129,9 +134,8 @@ public class ByteArray {
   @Override
   public boolean equals(final Object obj) {
     if (this == obj) return true;
-    if (!(obj instanceof ByteArray)) return false;
+    if (!(obj instanceof final ByteArray other)) return false;
 
-    final ByteArray other = (ByteArray) obj;
     if (count != other.count) return false;
 
     return Arrays.equals(blob, 0, count, other.blob, 0, count);

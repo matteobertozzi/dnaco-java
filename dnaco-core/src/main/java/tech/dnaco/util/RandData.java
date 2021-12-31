@@ -30,6 +30,10 @@ public final class RandData {
     // no-op
   }
 
+  public static long generateLong() {
+    return Holder.secureRand.nextLong();
+  }
+
   // ================================================================================
   //  Random Bytes
   // ================================================================================

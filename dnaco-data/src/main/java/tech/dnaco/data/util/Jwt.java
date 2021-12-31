@@ -245,11 +245,8 @@ public class Jwt {
     byte[] sign(String kid, String alg, TKey key, byte[] jwtToSign) throws JwtException;
   }
 
-  public static final JwtVerifier<Void> JWT_NOOP_VERIFIER = new JwtVerifier<>() {
-    @Override
-    public void verifySignature(final JwtHeader jwtHead, final Jwt jwtBody, final Void key, final byte[] jwtSigned, final byte[] jwtSignature) {
-      // no-op
-    }
+  public static final JwtVerifier<Void> JWT_NOOP_VERIFIER = (jwtHead, jwtBody, key, jwtSigned, jwtSignature) -> {
+    // no-op
   };
 
   // ------------------------------------------------------------------------------------------
@@ -393,24 +390,10 @@ public class Jwt {
     jwt.addClaim("mapStrSet", Map.of("bbb", Set.of("zz", "ww", "ll"), "aaa", Set.of("bbb", "ccc", "aaa")));
     jwt.addClaim("mapIntSet", Map.of("bbb", Set.of(1, 2, 3), "aaa", Set.of(6, 5, 4)));
     jwt.addClaim("mapStr", Map.of("bbb", "b", "aaa", "a"));
-    final String jwtEnc = jwt.sign("k123", "EC123", null, new JwtSigner<Void>(){
-      @Override
-      public byte[] sign(final String kid, final String alg, final Void key, final byte[] jwtToSign) {
-        return new byte[] { 1, 2, 3 };
-      }
-    });
-    final String gzJwtEnc = jwt.gzSign("k123", "EC123", null, new JwtSigner<Void>(){
-      @Override
-      public byte[] sign(final String kid, final String alg, final Void key, final byte[] jwtToSign) {
-        return new byte[] { 1, 2, 3 };
-      }
-    });
-    Jwt.verify(jwtEnc, null, new JwtVerifier<String>(){
-      @Override
-      public void verifySignature(final JwtHeader jwtHead, final Jwt jwtBody, final String key, final byte[] jwtSigned, final byte[] jwtSignature)
-          throws JwtException {
-        //System.out.println("VERIFY " + Arrays.toString(jwtSigned) + " -> " + Arrays.toString(jwtSignature));
-      }
+    final String jwtEnc = jwt.sign("k123", "EC123", null, (JwtSigner<Void>) (kid, alg, key, jwtToSign) -> new byte[] { 1, 2, 3 });
+    final String gzJwtEnc = jwt.gzSign("k123", "EC123", null, (JwtSigner<Void>) (kid, alg, key, jwtToSign) -> new byte[] { 1, 2, 3 });
+    Jwt.verify(jwtEnc, null, (JwtVerifier<String>) (jwtHead, jwtBody, key, jwtSigned, jwtSignature) -> {
+      //System.out.println("VERIFY " + Arrays.toString(jwtSigned) + " -> " + Arrays.toString(jwtSignature));
     });
     System.out.println(jwtEnc.length() + " -> " + jwtEnc);
     System.out.println(gzJwtEnc.length() + " -> " + gzJwtEnc);

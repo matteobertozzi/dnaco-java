@@ -12,8 +12,9 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <jackson.version>2.13.0</jackson.version>
-    <zstd.version>1.5.0-4</zstd.version>
+    <jackson.version>2.13.1</jackson.version>
+    <zstd.version>1.5.0-5</zstd.version>
+    <tika.version>2.2.0</tika.version>
 
     <junit.version>5.8.2</junit.version>
 
@@ -25,6 +26,21 @@
       <groupId>tech.dnaco</groupId>
       <artifactId>dnaco-core</artifactId>
       <version>${project.version}</version>
+    </dependency>
+
+    <!-- Compression -->
+    <!-- https://mvnrepository.com/artifact/com.github.luben/zstd-jni -->
+    <dependency>
+      <groupId>com.github.luben</groupId>
+      <artifactId>zstd-jni</artifactId>
+      <version>${zstd.version}</version>
+    </dependency>
+
+    <!-- [ tika (used for blobs, file type discovery) ] -->
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-core</artifactId>
+      <version>${tika.version}</version>
     </dependency>
 
     <!-- Encoding -->
@@ -48,13 +64,10 @@
       <artifactId>jackson-dataformat-cbor</artifactId>
       <version>${jackson.version}</version>
     </dependency>
-
-    <!-- Compression -->
-    <!-- https://mvnrepository.com/artifact/com.github.luben/zstd-jni -->
     <dependency>
-      <groupId>com.github.luben</groupId>
-      <artifactId>zstd-jni</artifactId>
-      <version>${zstd.version}</version>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-xml</artifactId>
+      <version>${jackson.version}</version>
     </dependency>
 
     <!-- Unit Tests Related -->

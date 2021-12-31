@@ -19,6 +19,7 @@ package tech.dnaco.bytes;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import tech.dnaco.collections.arrays.ArrayUtil.ByteArrayConsumer;
@@ -105,7 +106,7 @@ public class ByteArraySlice implements BytesSlice {
 
   @Override
   public String toString() {
-    return "BytesSlice [off=" + off + ", len=" + len + ", buf=" + new String(buf, off, len) + "]";
+    return "BytesSlice [off=" + off + ", len=" + len + ", buf=" + BytesUtil.toHexString(buf, off, len) + "]";
   }
 
   @Override
@@ -147,5 +148,9 @@ public class ByteArraySlice implements BytesSlice {
       if (cmp != 0) return cmp;
     }
     return a.length() - b.length();
+  }
+
+  public static String newString(final ByteArraySlice slice, final int offset, final int length, final Charset charset) {
+    return new String(slice.rawBuffer(), slice.offset() + offset, length, charset);
   }
 }

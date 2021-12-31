@@ -20,6 +20,7 @@ package tech.dnaco.bytes.encoding;
 import java.io.IOException;
 import java.io.InputStream;
 
+import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.io.IOUtil;
 
 public abstract class IntDecoder {
@@ -39,6 +40,7 @@ public abstract class IntDecoder {
   public long readFixed64(final byte[] buf, final int off) { return readFixed(buf, off, 8); }
 
   public abstract long readFixed(final byte[] buf, int off, final int bytesWidth);
+  public abstract long readFixed(final ByteArraySlice buf, int off, final int bytesWidth);
 
   // ================================================================================
   //  Fixed Size Stream methods
@@ -113,6 +115,11 @@ public abstract class IntDecoder {
     }
 
     @Override
+    public long readFixed(final ByteArraySlice buf, final int off, final int bytesWidth) {
+      return readFixed(buf.rawBuffer(), buf.offset() + off, bytesWidth);
+    }
+
+    @Override
     public long readFixed(final InputStream stream, final int bytesWidth) throws IOException {
       final byte[] buf = IOUtil.readNBytes(stream, bytesWidth);
       return readFixed(buf, 0, bytesWidth);
@@ -134,6 +141,11 @@ public abstract class IntDecoder {
         result += (((long)buf[off + i] & 0xff) << (i << 3));
       }
       return result;
+    }
+
+    @Override
+    public long readFixed(final ByteArraySlice buf, final int off, final int bytesWidth) {
+      return readFixed(buf.rawBuffer(), buf.offset() + off, bytesWidth);
     }
 
     @Override
