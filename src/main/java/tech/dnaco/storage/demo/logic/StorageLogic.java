@@ -48,6 +48,9 @@ import tech.dnaco.storage.demo.driver.AbstractKvStore.KeyValConsumer;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.RowPredicate;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.telemetry.ConcurrentHistogram;
+import tech.dnaco.telemetry.Histogram;
+import tech.dnaco.telemetry.TelemetryCollector;
 
 public final class StorageLogic {
   private final ConcurrentHashMap<String, Transaction> transactions = new ConcurrentHashMap<>();
@@ -126,8 +129,9 @@ public final class StorageLogic {
   }
 
   private boolean insertRow(final Transaction txn, final EntityDataRow row) throws Exception {
+    final byte[] key = row.buildRowKey();
     // if the row is in the transaction...
-    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
+    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()), key);
     if (oldTxnRow != null) {
       // ...if it is marked as deleted, we can insert it
       if (oldTxnRow.getOperation() == Operation.DELETE) {
@@ -142,7 +146,7 @@ public final class StorageLogic {
     }
 
     // since the row is not in the transaction... check the master table
-    final EntityDataRow oldRow = storage.getRow(row.buildRowKey());
+    final EntityDataRow oldRow = storage.getRow(key);
     if (isRowActive(oldRow)) {
       Logger.warn("{}: key already present: {}", txn, row);
       addErrorRow(txn, ErrorStatus.DUPLICATE_KEY, row);
@@ -161,7 +165,8 @@ public final class StorageLogic {
     }
 
     // if the row is in the transaction...
-    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
+    final byte[] key = row.buildRowKey();
+    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()), key);
     if (oldTxnRow != null) {
       // ...if it is marked as deleted, we can replace it
       if (oldTxnRow.getOperation() == Operation.DELETE) {
@@ -176,15 +181,17 @@ public final class StorageLogic {
     }
 
     // since the row is not in the transaction... check the master table and merge the row
-    final EntityDataRow masterRow = storage.getRow(row.buildRowKey());
+    final EntityDataRow masterRow = storage.getRow(key);
     if (isRowActive(masterRow)) row.mergeValues(masterRow);
     storage.put(row, txn.getTxnId());
     return true;
   }
 
   private boolean updateRow(final Transaction txn, final EntityDataRow row) throws Exception {
+    final byte[] key = row.buildRowKey();
+
     // if the row is in the transaction...
-    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
+    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()), key);
     if (oldTxnRow != null) {
       // ...if it is marked as deleted, well... the row is not present
       if (oldTxnRow.getOperation() == Operation.DELETE) {
@@ -199,7 +206,7 @@ public final class StorageLogic {
     }
 
     // since the row is not in the transaction... check the master table
-    final EntityDataRow oldRow = storage.getRow(row.buildRowKey());
+    final EntityDataRow oldRow = storage.getRow(key);
     if (isRowDeleted(oldRow)) {
       Logger.warn("{}: key does not exists in the master: {}", txn, row);
       addErrorRow(txn, ErrorStatus.KEY_NOT_FOUND, row);
@@ -212,8 +219,10 @@ public final class StorageLogic {
   }
 
   private boolean deleteRow(final Transaction txn, final EntityDataRow row) throws Exception {
+    final byte[] key = row.buildRowKey();
+
     // if the row is in the transaction...
-    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
+    final EntityDataRow oldTxnRow = storage.getRow(row.buildRowKey(txn.getTxnId()), key);
     if (oldTxnRow != null) {
       if (oldTxnRow.getOperation() != Operation.DELETE) {
         storage.delete(row, txn.getTxnId());
@@ -222,7 +231,7 @@ public final class StorageLogic {
     }
 
     // since the row is not in the transaction...
-    final EntityDataRow oldRow = storage.getRow(row.buildRowKey());
+    final EntityDataRow oldRow = storage.getRow(key);
     if (isRowDeleted(oldRow)) {
       Logger.trace("{}: key does not exists in the master: {}", txn, row);
       //addErrorRow(txn, ErrorStatus.KEY_NOT_FOUND, row);
@@ -253,6 +262,12 @@ public final class StorageLogic {
   // ================================================================================
   //  Commit/Rollback related
   // ================================================================================
+  private final ConcurrentHistogram commitTime = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_TIME_NANOS)
+    .setName("storage_commit_time")
+    .setLabel("Commit Time")
+    .register(new ConcurrentHistogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
+
   private final ReentrantLock commitLock = new ReentrantLock();
   public boolean commit(final Transaction txn) throws Exception {
     final ByteArraySlice txnKeyPrefix = EntityDataRows.buildTxnRowPrefix(txn.getTxnId());
@@ -307,6 +322,7 @@ public final class StorageLogic {
       return true;
     } finally {
       commitLock.unlock();
+      commitTime.add(System.nanoTime() - startTime);
     }
   }
 
@@ -404,7 +420,7 @@ public final class StorageLogic {
         toDelete.add(row.buildRowKey());
       }
       //System.out.println(" ---> " + row);
-      if (!consumer.test(row)) {
+    if (!consumer.test(row)) {
         break;
       }
     }
@@ -449,12 +465,13 @@ public final class StorageLogic {
   }
 
   public EntityDataRow getRow(final Transaction txn, final EntityDataRow row) throws Exception {
+    final byte[] key = row.buildRowKey();
     if (txn != null) {
-      final EntityDataRow txnRow = storage.getRow(row.buildRowKey(txn.getTxnId()));
+      final EntityDataRow txnRow = storage.getRow(row.buildRowKey(txn.getTxnId()), key);
       if (txnRow != null) return (txnRow.getOperation() == Operation.DELETE) ? null : txnRow;
     }
 
-    final EntityDataRow masterRow = storage.getRow(row.buildRowKey());
+    final EntityDataRow masterRow = storage.getRow(key);
 	  return isRowActive(masterRow) ? masterRow : null;
   }
 

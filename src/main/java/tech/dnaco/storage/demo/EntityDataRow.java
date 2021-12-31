@@ -129,7 +129,7 @@ public class EntityDataRow {
     final EntitySchema schema = getSchema();
     final StringBuilder builder = new StringBuilder();
     builder.append(getSchema().getEntityName());
-    builder.append("{");
+    builder.append(" {");
     for (int fieldIndex = 0; fieldIndex < schema.fieldsCount(); ++fieldIndex) {
       if (fieldIndex > 0) builder.append(", ");
       final String field = schema.getFieldNames().get(fieldIndex);

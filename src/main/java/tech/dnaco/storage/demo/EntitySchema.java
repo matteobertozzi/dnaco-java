@@ -273,12 +273,16 @@ public class EntitySchema {
     final EntityDataType currentType = this.types.get(index);
     if (getTypeCompatibility(type, currentType) < 0) {
       Logger.error("type mismatch for entity {} field {}. expected {} got {}",
-        name, fieldName, this.types.get(index), type);
+        name, fieldName, currentType, type);
       return false;
     }
 
     if (type != EntityDataType.NULL) {
-      this.types.set(index, type);
+      if (currentType == EntityDataType.FLOAT && type == EntityDataType.INT) {
+        // skip assignment. float is bigger
+      } else {
+        this.types.set(index, type);
+      }
     }
     return true;
   }
@@ -301,7 +305,8 @@ public class EntitySchema {
         return type != EntityDataType.BOOL ? -1 : 0;
       case INT:
         // only a float is a super-type
-        return type == EntityDataType.INT ? 0 : (type == EntityDataType.FLOAT ? 1 : -1);
+        return type != EntityDataType.INT ? -1 : 0;
+        //return type == EntityDataType.INT ? 0 : (type == EntityDataType.FLOAT ? 1 : -1);
       case FLOAT:
         // consider int and float as same type
         return (type == EntityDataType.FLOAT || type == EntityDataType.INT) ? 0 : -1;

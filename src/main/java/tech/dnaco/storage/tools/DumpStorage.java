@@ -3,10 +3,12 @@ package tech.dnaco.storage.tools;
 import java.io.File;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Objects;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntitySchema;
+import tech.dnaco.storage.demo.EntitySchema.Operation;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.demo.logic.Storage;
@@ -16,10 +18,11 @@ import tech.dnaco.storage.net.CachedScannerResults;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.telemetry.CounterMap;
+import tech.dnaco.telemetry.Histogram;
 
 public class DumpStorage {
   public static void main(final String[] args) throws Exception {
-    final String tenantId = "cc-ai-logistics.dev";
+    final String tenantId = "road_safety.dev";
     final String[] groups = new String[] { "__ALL__" };
 
     RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
@@ -30,25 +33,30 @@ public class DumpStorage {
     }
     //if (true) return;
 
+    final long scanTime = System.nanoTime();
+    final Histogram histo = new Histogram(Histogram.DEFAULT_DURATION_BOUNDS_NS);
     System.out.println("===================== SCAN ALL ===============");
     final HashSet<String> streetCodes = new HashSet<>();
     try {
-      final Iterator<EntityDataRow> it = storage.getKvStore().scanRow(new ByteArraySlice());
-      while (it.hasNext()) {
+      final Iterator<EntityDataRow> it = storage.getKvStore().scanRow(new ByteArraySlice("__ALL__".getBytes()));
+      for (int i = 0; it.hasNext(); ++i) {
         final EntityDataRow entity = it.next();
-        //if (!entity.getSchema().getEntityName().equals("RS_CIPPUS")) continue;
-        //System.out.println(entity.getSchema().getEntityName()
-          //+ " -> " + entity.getOperation() + " -> " + new String(entity.buildRowKey())
-          //+ " -> " + entity.getObject("streetCode"));
-        streetCodes.add(entity.getObject("streetCode").toString());
+        if (entity.getOperation() == Operation.DELETE) continue;
+
+        final long st = System.nanoTime();
+        final EntityDataRow row = storage.getRow(null, entity);
+        if (!StringUtil.equals(Objects.toString(row), entity.toString())) {
+          System.out.println("ROW-A: " + row);
+          System.out.println("ROW-B: " + entity);
+          throw new Exception("mismatch " + i);
+        }
+        histo.add(System.nanoTime() - st);
+        //if ((System.nanoTime() - scanTime) > TimeUnit.SECONDS.toNanos(5)) break;
       }
     } catch (final Throwable e) {
       e.printStackTrace();
     }
-    //System.out.println(streetCodes);
-    for (final String v: streetCodes) {
-      System.out.println(" -> " + v + " -> " + v.contains("SPXI") + " -> " + StringUtil.like(v, "%SPXI%") + " -> " + StringUtil.like(v, "%BSSPXI%"));
-    }
+    System.out.println(histo.getSnapshot().toHumanReport(new StringBuilder(), HumansUtil.HUMAN_TIME_NANOS));
     if (true) return;
 
 

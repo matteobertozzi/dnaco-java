@@ -106,6 +106,7 @@ public class RocksDbKvStore extends AbstractKvStore {
         opts.setAllowWriteStall(true);
         db.flush(opts);
       }
+      Logger.debug("flushing {} store", getProjectId());
     } catch (final Exception e) {
       Logger.error(e, "failed to flush db {}", getProjectId());
     }
@@ -118,13 +119,16 @@ public class RocksDbKvStore extends AbstractKvStore {
   // ================================================================================
 	@Override
 	public void put(final ByteArraySlice key, final byte[] value) throws Exception {
-    db.put(key.buffer(), value);
+    try (WriteOptions writeOpts = new WriteOptions()) {
+      writeOpts.setDisableWAL(false);
+      db.put(writeOpts, key.buffer(), value);
+    }
   }
 
   @Override
   public void put(final EntityDataRow row, final String txnId) throws Exception {
     try (WriteOptions writeOpts = new WriteOptions()) {
-      writeOpts.setDisableWAL(true);
+      writeOpts.setDisableWAL(false);
       try (WriteBatch batch = new WriteBatch()) {
         preparePutEntries(row, txnId, (k, v) -> batch.put(k.buffer(), v));
         db.write(writeOpts, batch);
@@ -135,7 +139,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   @Override
   public void put(final EntityDataRows rows, final String txnId) throws Exception {
     try (WriteOptions writeOpts = new WriteOptions()) {
-      writeOpts.setDisableWAL(true);
+      writeOpts.setDisableWAL(false);
       try (WriteBatch batch = new WriteBatch()) {
         preparePutEntries(rows, txnId, (k, v) -> batch.put(k.buffer(), v));
         db.write(writeOpts, batch);
@@ -151,7 +155,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   @Override
   public void deletePrefix(final ByteArraySlice keyPrefix) throws Exception {
     final byte[] prefix = keyPrefix.buffer();
-    db.deleteRange(prefix, prefixEndKey(prefix));
+    db.deleteRange(prefix, BytesUtil.prefixEndKey(prefix));
   }
 
   private long lastFlush = System.nanoTime();
@@ -195,6 +199,7 @@ public class RocksDbKvStore extends AbstractKvStore {
 
     private Map.Entry<ByteArraySlice, byte[]> nextItem;
     private boolean hasItem;
+    private long scannedRows = 0;
 
     private RocksPrefixIterator(final RocksDB db, final byte[] prefix) {
       this.opts = new ReadOptions();
@@ -228,8 +233,7 @@ public class RocksDbKvStore extends AbstractKvStore {
     private void computeNext() {
       while (iter.isValid()) {
         final byte[] key = iter.key();
-        final byte[] value = iter.value();
-        iter.next();
+        scannedRows++;
 
         if (SKIP_SYS_ROWS) {
           if (BytesUtil.hasPrefix(key, 0, key.length, AbstractKvStore.SYS_COUNTERS, 0, AbstractKvStore.SYS_COUNTERS.length)) {
@@ -245,14 +249,18 @@ public class RocksDbKvStore extends AbstractKvStore {
           }
         }
 
-        //Logger.debug("KEY: {} PREFIX: {}", new String(key), new String(prefix));
         if (BytesUtil.prefix(key, 0, key.length, prefix, 0, prefix.length) == prefix.length) {
+          final byte[] value = iter.value();
+          iter.next();
           this.hasItem = true;
           this.nextItem = Map.entry(new ByteArraySlice(key), value);
           return;
+        } else {
+          break;
         }
       }
 
+      //System.out.println("SCANNED ROWS " + scannedRows);
       this.hasItem = false;
       this.nextItem = null;
       IOUtil.closeQuietly(this.iter);

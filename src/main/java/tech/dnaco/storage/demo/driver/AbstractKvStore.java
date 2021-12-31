@@ -218,22 +218,18 @@ public abstract class AbstractKvStore {
     final EntitySchema schema = row.getSchema();
     final byte[] rowKey = row.buildRowKey(txnId);
 
-    if (schema.getSync()) {
-      final List<String> fields = schema.getNonKeyFields();
-      for (int i = fields.size() - 1; i >= 0; --i) {
-        final String field = fields.get(i);
-        final ByteArraySlice key = new RowKeyBuilder(rowKey).add(field).slice();
-        if (schema.isSysField(field)) {
-          final byte[] val = row.get(field);
-          //System.out.println("DEL-PUT " + key);
-          this.put(key, val);
-        } else {
-          //System.out.println("DELETE " + key);
-          this.delete(key);
-        }
+    final List<String> fields = schema.getNonKeyFields();
+    for (int i = fields.size() - 1; i >= 0; --i) {
+      final String field = fields.get(i);
+      final ByteArraySlice key = new RowKeyBuilder(rowKey).add(field).slice();
+      if (schema.isSysField(field)) {
+        final byte[] val = row.get(field);
+        //System.out.println("DEL-PUT " + key);
+        this.put(key, val);
+      } else {
+        //System.out.println("DELETE " + key);
+        this.delete(key);
       }
-    } else {
-      this.deletePrefix(new ByteArraySlice(rowKey));
     }
   }
 
@@ -259,17 +255,22 @@ public abstract class AbstractKvStore {
   //  Scan Related
   // ================================================================================
   public EntityDataRow getRow(final byte[] key) throws Exception {
-    return getRow(new ByteArraySlice(key));
+    return getRow(key, key);
   }
 
-  public EntityDataRow getRow(final ByteArraySlice key) throws Exception {
+  public EntityDataRow getRow(final byte[] txnKey, final byte[] key) throws Exception {
     final AtomicReference<EntityDataRow> rowRef = new AtomicReference<>();
-    scanRow(key, (row) -> {
-      rowRef.set(row);
-      return false;
+    scanRow(new ByteArraySlice(txnKey), row -> {
+      if (BytesUtil.equals(row.buildRowKey(), key)) {
+        rowRef.set(row);
+        return false;
+      }
+      return true;
     });
     return rowRef.get();
   }
+
+  // //private EntityDataRow getRow(final ByteArraySlice key) throws Exception {
 
   public Iterator<EntityDataRow> scanRow(final ByteArraySlice prefix) throws Exception {
     return new RowIterator(scanPrefix(prefix));

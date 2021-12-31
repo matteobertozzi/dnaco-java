@@ -64,6 +64,37 @@ public class Filter {
     }
   }
 
+  public String toQueryString() {
+    return toQueryString(new StringBuilder()).toString();
+  }
+
+  private StringBuilder toQueryString(final StringBuilder builder) {
+    if (filters != null) {
+      final Filter[] sfilter = Arrays.copyOf(filters, filters.length);
+      Arrays.sort(sfilter, Filter::compare);
+      builder.append("(");
+      for (int i = 0; i < sfilter.length; ++i) {
+        if (i > 0) builder.append(" ").append(type).append(" ");
+        sfilter[i].toQueryString(builder);
+      }
+      builder.append(")");
+    } else if (values != null) {
+      builder.append(field).append(" ").append(type).append(" ?");
+    } else {
+      builder.append(field).append(" ").append(type).append(" ?");
+    }
+    return builder;
+  }
+
+  private static int compare(final Filter a, final Filter b) {
+    if (a.filters != null || b.filters != null) {
+      if (a.filters == null) return -1;
+      if (b.filters == null) return 1;
+      return Integer.compare(a.filters.length, b.filters.length);
+    }
+    return a.field.compareTo(b.field);
+  }
+
   public static Builder newAndFilterBuilder() {
     return new Builder(FilterType.AND);
   }

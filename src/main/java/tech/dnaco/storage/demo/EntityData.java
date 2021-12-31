@@ -124,6 +124,8 @@ public final class EntityData {
       return IntDecoder.BIG_ENDIAN.readFixed64(rawValue.rawBuffer(), rawValue.offset() + 1);
     } else if (rawValue.get(0) == EntityDataType.NULL.ordinal()) {
       return null;
+    } else if (rawValue.get(0) == EntityDataType.FLOAT.ordinal()) {
+      return decodeFloat(rawValue);
     }
     throw new IllegalArgumentException("expected NULL or INT, got " + rawValue.get(0) + ": " + rawValue);
   }

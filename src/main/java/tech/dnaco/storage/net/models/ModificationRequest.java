@@ -62,5 +62,17 @@ public class ModificationRequest {
     this.rows = rows;
   }
 
+  public int rowGroups() {
+    return ArrayUtil.length(rows);
+  }
 
+  public int rowCount() {
+    if (rows == null) return 0;
+
+    int count = 0;
+    for (final JsonEntityDataRows dataRows: rows) {
+      count += dataRows.rowCount();
+    }
+    return count;
+  }
 }

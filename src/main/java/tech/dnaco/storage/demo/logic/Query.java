@@ -27,7 +27,7 @@ public final class Query {
       case UTC_TIMESTAMP:
         return Long.compare(((Number)a).longValue(), ((Number)b).longValue());
       case FLOAT: return Double.compare(((Number)a).doubleValue(), ((Number)b).doubleValue());
-      case STRING: return StringUtil.compareTo((String)a, (String)b);
+      case STRING: return StringUtil.compare((String)a, (String)b);
       case BYTES: return BytesUtil.compare((byte[])a, (byte[])b);
       default:
         throw new UnsupportedOperationException();

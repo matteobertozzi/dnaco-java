@@ -44,6 +44,10 @@ public class JsonEntityDataRows {
     }
   }
 
+  public boolean hasAllFields(final EntitySchema schema) {
+    return schema.userFieldsCount() == fieldNames.size();
+  }
+
   public boolean forEachEntityRow(final EntitySchema schema, final String[] groups,
       final RowPredicate consumer) throws Exception {
     final int fieldCount = fieldNames.size();

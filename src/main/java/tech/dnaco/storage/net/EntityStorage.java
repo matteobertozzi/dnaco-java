@@ -3,8 +3,11 @@ package tech.dnaco.storage.net;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -46,9 +49,11 @@ import tech.dnaco.storage.net.models.TransactionCommitRequest;
 import tech.dnaco.storage.net.models.TransactionStatusResponse;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.telemetry.ConcurrentHistogram;
 import tech.dnaco.telemetry.ConcurrentMaxAndAvgTimeRangeGauge;
 import tech.dnaco.telemetry.ConcurrentTopK;
 import tech.dnaco.telemetry.CounterMap;
+import tech.dnaco.telemetry.Histogram;
 import tech.dnaco.telemetry.TelemetryCollector;
 import tech.dnaco.telemetry.TopK.TopType;
 import tech.dnaco.tracing.Tracer;
@@ -73,6 +78,12 @@ public final class EntityStorage {
     .setName("entity_storage_modify_top_row_count")
     .setLabel("Entity Storage Modify Top Row Count")
     .register(new ConcurrentTopK(TopType.MIN_MAX, 32));
+
+  private final ConcurrentHistogram modifyTime = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_TIME_NANOS)
+    .setName("entity_storage_modify_time")
+    .setLabel("Entity Storage Modify Time")
+    .register(new ConcurrentHistogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
 
   public void createEntitySchema(final ClientSchema request) throws Exception {
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
@@ -172,6 +183,12 @@ public final class EntityStorage {
     return modify(request, Operation.UPDATE);
   }
 
+  private final CounterMap filterCount = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_COUNT)
+    .setName("entity_storage_filters_count")
+    .setLabel("Entity Storage Filters Count")
+    .register(new CounterMap());
+
   public TransactionStatusResponse updateEntityWithFilter(final ModificationWithFilterRequest request) throws Exception {
     Tracer.getCurrentTask().setTenantId(request.getTenantId());
     verifyGroups(request.getGroups());
@@ -184,6 +201,10 @@ public final class EntityStorage {
     final EntitySchema schema = updateSchema(storage, request.getEntity(), null, new JsonEntityDataRows[] { request.getFieldsToUpdate() });
     if (schema == null) {
       return new TransactionStatusResponse(Transaction.State.FAILED);
+    }
+
+    if (!request.hasNoFilter()) {
+      filterCount.inc(request.getTenantId() + " " + request.getEntity() + " " + request.getFilter().toQueryString());
     }
 
     // add to TXN log
@@ -303,6 +324,8 @@ public final class EntityStorage {
   }
 
   private TransactionStatusResponse modify(final ModificationRequest request, final Operation operation) throws Exception {
+    final long OPERATION_TIMEOUT = TimeUnit.SECONDS.toNanos(65);
+
     final long startTime = System.nanoTime();
     verifyGroups(request.getGroups());
     opsCount.inc(request.getTenantId());
@@ -318,8 +341,26 @@ public final class EntityStorage {
     final LongValue rowCount = new LongValue();
     final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
+    Logger.debug("trying to {} {} - {} groups, total rows {}",
+      operation, request.getEntity(), request.rowGroups(), request.rowCount());
     for (final JsonEntityDataRows jsonRows: request.getRows()) {
       if (txn.getState() != Transaction.State.PENDING) break;
+
+      Logger.debug("trying to {} {} - group rows {} - processing for {}",
+        operation, request.getEntity(), jsonRows.rowCount(), HumansUtil.humanTimeSince(startTime));
+      if (!jsonRows.hasAllFields(schema)) {
+        final HashSet<String> missingFields = new HashSet<>(schema.getFieldNames());
+        missingFields.removeAll(Set.of(jsonRows.getFieldNames()));
+        missingFields.remove(EntitySchema.SYS_FIELD_OPERATION);
+        missingFields.remove(EntitySchema.SYS_FIELD_TIMESTAMP);
+        missingFields.remove(EntitySchema.SYS_FIELD_GROUP);
+        missingFields.remove(EntitySchema.SYS_FIELD_SEQID);
+
+        Logger.debug("trying to {} {} without all fields. missing: {}",
+          operation, request.getEntity(), missingFields);
+        Logger.trace("schema fields: {}", schema.getFieldNames());
+        Logger.trace("row fields: {}", Arrays.toString(jsonRows.getFieldNames()));
+      }
 
       jsonRows.forEachEntityRow(schema, request.getGroups(), (row) -> {
         row.setOperation(operation);
@@ -328,10 +369,21 @@ public final class EntityStorage {
           txn.setState(Transaction.State.FAILED);
           return false;
         }
-        rowCount.incrementAndGet();
+        if (rowCount.incrementAndGet() % 10 == 0) {
+          if ((System.nanoTime() - startTime) > OPERATION_TIMEOUT) {
+            Logger.warn("abort operation {} {} taking too long", operation, request.getEntity());
+            txn.setState(Transaction.State.FAILED);
+            return false;
+          }
+        }
         return true;
       });
     }
+
+    modifyTime.add(System.nanoTime() - startTime);
+    Logger.debug("{} prepare {} {} took {} for {} rows",
+      operation, request.getTenantId(), schema.getEntityName(),
+      HumansUtil.humanTimeSince(startTime), rowCount.get());
 
     commitIfLocalTxn(storage, txn);
 
