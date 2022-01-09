@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.collections.LongValue;
 import tech.dnaco.collections.arrays.ByteArray;
 
 public final class RowKeyUtil {
@@ -107,6 +108,10 @@ public final class RowKeyUtil {
     return new RowKeyBuilder(key);
   }
 
+  public static RowKeyDecoder newKeyDecoder(final byte[] key) {
+    return new RowKeyDecoder(key);
+  }
+
   public static final class RowKeyBuilder {
     private final ByteArray key = new ByteArray(32);
 
@@ -160,6 +165,12 @@ public final class RowKeyUtil {
       final byte[] buf = new byte[bytesWidth];
       IntEncoder.BIG_ENDIAN.writeFixed(buf, 0, value, bytesWidth);
       return add(buf, 0, bytesWidth);
+    }
+
+    public RowKeyBuilder addInt(final long value) {
+      final byte[] buf = new byte[9];
+      final int n = VarInt.write(buf, value);
+      return add(buf, 0, n);
     }
 
     public RowKeyBuilder add(final String value) {
@@ -247,6 +258,13 @@ public final class RowKeyUtil {
       final long value = IntDecoder.BIG_ENDIAN.readFixed(key, offset, bytesWidth);
       this.offset = nextKeyComponent(key, offset);
       return value;
+    }
+
+    public long getInt() {
+      final LongValue result = new LongValue();
+      final int n = VarInt.read(key, offset, key.length - offset, result);
+      this.offset = nextKeyComponent(key, offset + n);
+      return result.get();
     }
 
     public String getString() {

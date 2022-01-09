@@ -1,12 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package tech.dnaco.data;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
-import tech.dnaco.data.json.JsonArray;
-import tech.dnaco.data.json.JsonElement;
-import tech.dnaco.data.json.JsonObject;
-
-public class XmlFormat extends DataFormat {
+public final class XmlFormat extends DataFormat {
   public static final XmlFormat INSTANCE = new XmlFormat();
 
   private static final ThreadLocal<XmlFormatMapper> mapper = ThreadLocal.withInitial(XmlFormatMapper::new);
@@ -24,16 +37,5 @@ public class XmlFormat extends DataFormat {
     private XmlFormatMapper() {
       super(new XmlMapper());
     }
-  }
-
-  public static void main(final String[] args) {
-    final JsonObject json = new JsonObject();
-    json.add("a", 10);
-    json.add("b", "foo");
-    json.add("c", new JsonArray().add(1).add(2));
-    json.add("d", new JsonObject().add("d1", 1).add("d2", 2));
-    final String xml = XmlFormat.INSTANCE.asString(json);
-    System.out.println(xml);
-    System.out.println(XmlFormat.INSTANCE.fromString(xml, JsonElement.class));
   }
 }

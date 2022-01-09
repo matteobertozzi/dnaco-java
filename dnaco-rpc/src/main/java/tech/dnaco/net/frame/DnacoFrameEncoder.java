@@ -28,6 +28,10 @@ import io.netty.handler.codec.MessageToByteEncoder;
 public class DnacoFrameEncoder extends MessageToByteEncoder<DnacoFrame> {
   public static final DnacoFrameEncoder INSTANCE = new DnacoFrameEncoder();
 
+  private DnacoFrameEncoder() {
+    // no-op
+  }
+
   @Override
   protected void encode(final ChannelHandlerContext ctx, final DnacoFrame frame, final ByteBuf out) {
     //System.out.println("SEND FRAME: " + frame + " -> " + ByteBufUtil.hexDump(frame.getData()));

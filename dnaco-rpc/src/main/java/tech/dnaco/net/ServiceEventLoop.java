@@ -19,6 +19,8 @@
 
 package tech.dnaco.net;
 
+import java.util.HashMap;
+
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
@@ -41,12 +43,19 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import tech.dnaco.logging.Logger;
 
 public class ServiceEventLoop implements AutoCloseable {
+  public record EventLoopConfig (String name, int nThreads) {}
+
+  private enum EventLoopType { EPOLL, KQUEUE, NIO }
+
   private final Class<? extends ServerChannel> serverUnixChannelClass;
   private final Class<? extends Channel> clientUnixChannelClass;
   private final Class<? extends ServerChannel> serverChannelClass;
   private final Class<? extends Channel> clientChannelClass;
+
+  private final HashMap<String, EventLoopGroup> workerGroups = new HashMap<>();
   private final EventLoopGroup workerGroup;
   private final EventLoopGroup bossGroup;
+  private final EventLoopType eloopType;
 
   public ServiceEventLoop(final Class<? extends ServerChannel> serverUnixChannelClass,
       final Class<? extends Channel> clientUnixChannelClass,
@@ -60,6 +69,7 @@ public class ServiceEventLoop implements AutoCloseable {
     this.clientChannelClass = clientChannelClass;
     this.workerGroup = workerGroup;
     this.bossGroup = bossGroup;
+    this.eloopType = null;
   }
 
   public ServiceEventLoop(final int bossGroups, final int workerGroups) {
@@ -68,24 +78,27 @@ public class ServiceEventLoop implements AutoCloseable {
 
   public ServiceEventLoop(final boolean useNative, final int bossGroups, final int workerGroups) {
     if (useNative && Epoll.isAvailable()) {
-      bossGroup = new EpollEventLoopGroup(bossGroups, new DefaultThreadFactory("epollServerBossGroup"));
-      workerGroup = new EpollEventLoopGroup(workerGroups, new DefaultThreadFactory("epollServerWorkerGroup"));
+      eloopType = EventLoopType.EPOLL;
+      bossGroup = newEventLoop(EventLoopType.EPOLL, "bossGroup", bossGroups);
+      workerGroup = newEventLoop(EventLoopType.EPOLL, "workerGroup", workerGroups);
       serverUnixChannelClass = EpollServerDomainSocketChannel.class;
       clientUnixChannelClass = EpollDomainSocketChannel.class;
       serverChannelClass = EpollServerSocketChannel.class;
       clientChannelClass = EpollSocketChannel.class;
       Logger.info("Using epoll event loop - bossGroup={} workerGroup={}", bossGroups, workerGroups);
     } else if (useNative && KQueue.isAvailable()) {
-      bossGroup = new KQueueEventLoopGroup(bossGroups, new DefaultThreadFactory("kqueueServerBossGroup"));
-      workerGroup = new KQueueEventLoopGroup(workerGroups, new DefaultThreadFactory("kqueueServerWorkerGroup"));
+      eloopType = EventLoopType.KQUEUE;
+      bossGroup = newEventLoop(EventLoopType.KQUEUE, "bossGroup", bossGroups);
+      workerGroup = newEventLoop(EventLoopType.KQUEUE, "workerGroup", workerGroups);
       serverUnixChannelClass = KQueueServerDomainSocketChannel.class;
       clientUnixChannelClass = KQueueDomainSocketChannel.class;
       serverChannelClass = KQueueServerSocketChannel.class;
       clientChannelClass = KQueueSocketChannel.class;
       Logger.info("Using kqueue event loop - bossGroup={} workerGroup={}", bossGroups, workerGroups);
     } else {
-      bossGroup = new NioEventLoopGroup(bossGroups, new DefaultThreadFactory("nioServerBossGroup"));
-      workerGroup = new NioEventLoopGroup(workerGroups, new DefaultThreadFactory("nioServerWorkerGroup"));
+      eloopType = EventLoopType.NIO;
+      bossGroup = newEventLoop(EventLoopType.NIO, "bossGroup", bossGroups);
+      workerGroup = newEventLoop(EventLoopType.NIO, "workerGroup", workerGroups);
       serverUnixChannelClass = null;
       clientUnixChannelClass = null;
       serverChannelClass = NioServerSocketChannel.class;
@@ -96,6 +109,24 @@ public class ServiceEventLoop implements AutoCloseable {
         Logger.warn(KQueue.unavailabilityCause(), "kqueue unavailability cause: {}");
       }
     }
+  }
+
+  public EventLoopGroup addWorkerGroup(final String name, final int nThreads) {
+    if (workerGroups.containsKey(name)) {
+      throw new IllegalArgumentException("a worker group named " + name + " already exists");
+    }
+    final EventLoopGroup group = newEventLoop(eloopType, name, nThreads);
+    workerGroups.put(name, group);
+    return group;
+  }
+
+  private static EventLoopGroup newEventLoop(final EventLoopType type, final String name, final int nThreads) {
+    return switch (type) {
+      case EPOLL -> new EpollEventLoopGroup(nThreads, new DefaultThreadFactory("epoll-" + name));
+      case KQUEUE -> new KQueueEventLoopGroup(nThreads, new DefaultThreadFactory("kqueue-" + name));
+      case NIO -> new NioEventLoopGroup(nThreads, new DefaultThreadFactory("nio-" + name));
+      default -> throw new IllegalArgumentException("Unexpected value: " + type);
+    };
   }
 
   public Class<? extends ServerChannel> getServerUnixChannelClass() {
@@ -122,6 +153,10 @@ public class ServiceEventLoop implements AutoCloseable {
     return workerGroup;
   }
 
+  public EventLoopGroup getWorkerGroup(final String name) {
+    return workerGroups.get(name);
+  }
+
   public EventLoopGroup getBossGroup() {
     return bossGroup;
   }
@@ -134,9 +169,16 @@ public class ServiceEventLoop implements AutoCloseable {
   private void shutdownGracefully() throws InterruptedException {
     if (bossGroup != null) bossGroup.shutdownGracefully();
     if (workerGroup != null) workerGroup.shutdownGracefully();
+    for (final EventLoopGroup worker: workerGroups.values()) {
+      worker.shutdownGracefully();
+    }
 
     // Wait until all threads are terminated.
     if (bossGroup != null) bossGroup.terminationFuture().sync();
     if (workerGroup != null) workerGroup.terminationFuture().sync();
+    for (final EventLoopGroup worker: workerGroups.values()) {
+      worker.terminationFuture().sync();
+    }
+    workerGroups.clear();
   }
 }

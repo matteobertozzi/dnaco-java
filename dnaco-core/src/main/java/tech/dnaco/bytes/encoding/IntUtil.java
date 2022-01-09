@@ -17,6 +17,8 @@
 
 package tech.dnaco.bytes.encoding;
 
+import java.math.BigInteger;
+
 public final class IntUtil {
   private IntUtil() {
     // no-op
@@ -61,5 +63,14 @@ public final class IntUtil {
 
   public static long zigZagDecode(final long n) {
     return (n >> 1) ^ -(n & 1);
+  }
+
+  public static BigInteger toUnsignedBigInteger(final long v) {
+    if (v >= 0L) return BigInteger.valueOf(v);
+
+    // return (upper << 32) + lower
+    final long upper = (v >>> 32) & 0xffffffffL;
+    final long lower = v & 0xffffffffL;
+    return (BigInteger.valueOf(upper)).shiftLeft(32).add(BigInteger.valueOf(lower));
   }
 }

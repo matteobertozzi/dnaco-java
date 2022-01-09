@@ -47,4 +47,8 @@ public final class BitUtil {
   public static long nextPow2(final long value) {
     return 1L << (Long.SIZE - Long.numberOfLeadingZeros(value - 1));
   }
+
+  public static long mask(final int bits) {
+    return (bits == 64) ? 0xffffffffffffffffL : ((1L << bits) - 1);
+  }
 }

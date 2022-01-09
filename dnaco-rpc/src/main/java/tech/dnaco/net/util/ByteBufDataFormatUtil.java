@@ -20,8 +20,6 @@
 package tech.dnaco.net.util;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -44,18 +42,19 @@ public final class ByteBufDataFormatUtil {
   }
 
   public static <T> T fromBytes(final DataFormat format, final ByteBuf data, final Class<T> valueType) throws IOException {
-    final InputStream stream = new ByteBufInputStream(data);
-    try {
-      return format.fromStream(stream, valueType);
-    } finally {
-      stream.reset();
+    try (ByteBufInputStream stream = new ByteBufInputStream(data)) {
+      try {
+        return format.fromStream(stream, valueType);
+      } finally {
+        stream.reset();
+      }
     }
   }
 
   public static void addToBytes(final DataFormat format, final ByteBuf buffer, final Object obj) throws IOException {
-    final OutputStream stream = new ByteBufOutputStream(buffer);
-    format.addToStream(stream, obj);
-    stream.flush();
+    try (ByteBufOutputStream stream = new ByteBufOutputStream(buffer)) {
+      format.addToStream(stream, obj);
+    }
   }
 
   private static final SimpleModule BYTE_BUF_MODULE = new SimpleModule();
@@ -66,10 +65,10 @@ public final class ByteBufDataFormatUtil {
     DataMapperModules.INSTANCE.registerModule(BYTE_BUF_MODULE);
   }
 
-  public static final class ByteBufJsonSerializer extends StdSerializer<ByteBuf> {
-	  private static final long serialVersionUID = -2793630286053545729L;
+  private static final class ByteBufJsonSerializer extends StdSerializer<ByteBuf> {
+    private static final long serialVersionUID = -2793630286053545729L;
 
-	  public ByteBufJsonSerializer() {
+    private ByteBufJsonSerializer() {
       super(ByteBuf.class);
     }
 
@@ -84,14 +83,14 @@ public final class ByteBufDataFormatUtil {
     }
   }
 
-  public static final class ByteBufJsonDeserializer extends StdDeserializer<ByteBuf> {
-	  private static final long serialVersionUID = 1283404414554988558L;
+  private static final class ByteBufJsonDeserializer extends StdDeserializer<ByteBuf> {
+    private static final long serialVersionUID = 1283404414554988558L;
 
-    public ByteBufJsonDeserializer() {
+    private ByteBufJsonDeserializer() {
       super(ByteBuf.class);
     }
 
-	  @Override
+    @Override
     public ByteBuf deserialize(final JsonParser parser, final DeserializationContext ctx) throws IOException {
       return Unpooled.wrappedBuffer(parser.getBinaryValue());
     }

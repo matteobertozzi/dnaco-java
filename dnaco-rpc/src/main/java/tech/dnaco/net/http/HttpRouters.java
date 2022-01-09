@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package tech.dnaco.net.http;
 
+import java.io.File;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,16 +34,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tech.dnaco.logging.Logger;
-import tech.dnaco.net.http.DnacoHttpHandler.NoHttpTraceDump;
-import tech.dnaco.net.http.DnacoHttpHandler.UriMapping;
-import tech.dnaco.net.http.DnacoHttpHandler.UriPatternMapping;
-import tech.dnaco.net.http.DnacoHttpHandler.UriPrefix;
-import tech.dnaco.net.http.DnacoHttpHandler.UriVariableMapping;
+import tech.dnaco.net.http.HttpHandler.HttpMethod;
+import tech.dnaco.net.http.HttpHandler.NoHttpTraceDump;
+import tech.dnaco.net.http.HttpHandler.UriMapping;
+import tech.dnaco.net.http.HttpHandler.UriPatternMapping;
+import tech.dnaco.net.http.HttpHandler.UriPrefix;
+import tech.dnaco.net.http.HttpHandler.UriVariableMapping;
 import tech.dnaco.net.util.UriUtil;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.BitUtil;
 
-public final class HttpRouters {
+public class HttpRouters {
   private HttpRouters() {
     // no-op
   }
@@ -53,17 +54,26 @@ public final class HttpRouters {
     return (h = uri.hashCode()) ^ (h >>> 16);
   }
 
+  public static int httpMethodMask(final String method) {
+    return httpMethodMask(HttpMethod.valueOf(method));
+  }
+
+  public static int httpMethodMask(final HttpMethod method) {
+    return 1 << method.ordinal();
+  }
+
   // =====================================================================================
   //  URI Router Builder
   // =====================================================================================
   public static final class UriRoutesBuilder {
-    private final HashSet<DnacoHttpHandler> handlers = new HashSet<>();
+    private final HashSet<HttpHandler> handlers = new HashSet<>();
     private final ArrayList<UriRoute> variableUri = new ArrayList<>();
     private final ArrayList<UriRoute> patternUri = new ArrayList<>();
     private final ArrayList<UriRoute> staticUri = new ArrayList<>();
     private final HashMap<String, String> aliases = new HashMap<>();
+    private final ArrayList<StaticFileUriRoute> staticFilesUri = new ArrayList<>();
 
-    public void addHandler(final DnacoHttpHandler handler) {
+    public void addHandler(final HttpHandler handler) {
       final Method[] methods = handler.getClass().getMethods();
       for (int i = 0, n = methods.length; i < n; ++i) {
         final Method m = methods[i];
@@ -78,10 +88,10 @@ public final class HttpRouters {
       handlers.add(handler);
     }
 
-    public void addStaticMapping(final DnacoHttpHandler handler, final Method method) {
+    public void addStaticMapping(final HttpHandler handler, final Method method) {
       final boolean noHttpTraceDump = method.isAnnotationPresent(NoHttpTraceDump.class);
       final UriMapping uriMapping = method.getAnnotation(UriMapping.class);
-      final String[] httpMethods = uriMapping.method();
+      final HttpMethod[] httpMethods = uriMapping.method();
 
       final String uri = getAbsoluteUri(handler, uriMapping.uri());
       this.staticUri.add(new UriRoute(httpMethods, uri, handler, method));
@@ -93,10 +103,10 @@ public final class HttpRouters {
       }
     }
 
-    public void addVariableMapping(final DnacoHttpHandler handler, final Method method) {
+    public void addVariableMapping(final HttpHandler handler, final Method method) {
       final boolean noHttpTraceDump = method.isAnnotationPresent(NoHttpTraceDump.class);
       final UriVariableMapping uriMapping = method.getAnnotation(UriVariableMapping.class);
-      final String[] httpMethods = uriMapping.method();
+      final HttpMethod[] httpMethods = uriMapping.method();
 
       final String uri = getAbsoluteUri(handler, uriMapping.uri());
       this.variableUri.add(new UriRoute(httpMethods, uri, handler, method));
@@ -108,10 +118,10 @@ public final class HttpRouters {
       }
     }
 
-    public void addPatternMapping(final DnacoHttpHandler handler, final Method method) {
+    public void addPatternMapping(final HttpHandler handler, final Method method) {
       final boolean noHttpTraceDump = method.isAnnotationPresent(NoHttpTraceDump.class);
       final UriPatternMapping uriMapping = method.getAnnotation(UriPatternMapping.class);
-      final String[] httpMethods = uriMapping.method();
+      final HttpMethod[] httpMethods = uriMapping.method();
 
       final String uri = getAbsoluteUri(handler, uriMapping.uri());
       this.patternUri.add(new UriRoute(httpMethods, uri, handler, method));
@@ -123,11 +133,24 @@ public final class HttpRouters {
       }
     }
 
+    public void addStaticFileHandler(final String uriPrefix, final File staticFileDir) {
+      addStaticFileHandler(uriPrefix, staticFileDir, HttpMethod.GET);
+    }
+
+    public void addStaticFileHandler(final String uriPrefix, final File staticFileDir, final HttpMethod... httpMethods) {
+      if (httpMethods.length == 0) {
+        throw new IllegalArgumentException("expected at least one http method");
+      }
+
+      final String uri = uriPrefix + (uriPrefix.endsWith("/") ? "(.*)" : "/(.*)");
+      this.staticFilesUri.add(new StaticFileUriRoute(httpMethods, uri, staticFileDir));
+    }
+
     public void addAlias(final String alias, final String uriPrefix) {
       this.aliases.put(alias, uriPrefix);
     }
 
-    private String getAbsoluteUri(final DnacoHttpHandler handler, final String path) {
+    private String getAbsoluteUri(final HttpHandler handler, final String path) {
       final UriPrefix handlerPrefixAnnotation = handler.getClass().getAnnotation(UriPrefix.class);
       final String handlerPrefix = (handlerPrefixAnnotation != null) ? handlerPrefixAnnotation.value() : null;
       return UriUtil.join(handlerPrefix, path);
@@ -145,7 +168,11 @@ public final class HttpRouters {
       return getUrisAndApplyAliases(staticUri);
     }
 
-    public Set<DnacoHttpHandler> getHandlers() {
+    public ArrayList<StaticFileUriRoute> getStaticFilesUri() {
+      return staticFilesUri;
+    }
+
+    public Set<HttpHandler> getHandlers() {
       return handlers;
     }
 
@@ -174,25 +201,25 @@ public final class HttpRouters {
     }
   }
 
-  public static final class UriRoute implements Comparable<UriRoute> {
+  private static abstract class AbstractUriRoute implements Comparable<AbstractUriRoute> {
     private final int httpMethods;
     private final String uri;
-    private final DnacoHttpHandler handler;
-    private final Method method;
 
-    public UriRoute(final String[] methods, final String uri, final DnacoHttpHandler handler, final Method method) {
-      this(HttpMethod.getMask(methods), uri, handler, method);
+    protected AbstractUriRoute(final HttpMethod[] methods, final String uri) {
+      this(getMask(methods), uri);
     }
 
-    private UriRoute(final int httpMethods, final String uri, final DnacoHttpHandler handler, final Method method) {
+    private AbstractUriRoute(final int httpMethods, final String uri) {
       this.httpMethods = httpMethods;
       this.uri = uri;
-      this.handler = handler;
-      this.method = method;
     }
 
-    private UriRoute newWithAlias(final String alias) {
-      return new UriRoute(httpMethods, alias, handler, method);
+    protected static int getMask(final HttpMethod[] methods) {
+      int mask = 0;
+      for (int i = 0, n = methods.length; i < n; ++i) {
+        mask |= 1 << methods[i].ordinal();
+      }
+      return mask;
     }
 
     public int getHttpMethods() {
@@ -203,7 +230,33 @@ public final class HttpRouters {
       return uri;
     }
 
-    public DnacoHttpHandler getHandler() {
+    @Override
+    public int compareTo(final AbstractUriRoute other) {
+      return uri.compareTo(other.uri);
+    }
+  }
+
+  public static final class UriRoute extends AbstractUriRoute {
+    private final HttpHandler handler;
+    private final Method method;
+
+    public UriRoute(final HttpMethod[] methods, final String uri, final HttpHandler handler, final Method method) {
+      super(methods, uri);
+      this.handler = handler;
+      this.method = method;
+    }
+
+    private UriRoute(final int httpMethods, final String uri, final HttpHandler handler, final Method method) {
+      super(httpMethods, uri);
+      this.handler = handler;
+      this.method = method;
+    }
+
+    private UriRoute newWithAlias(final String alias) {
+      return new UriRoute(getHttpMethods(), alias, handler, method);
+    }
+
+    public HttpHandler getHandler() {
       return handler;
     }
 
@@ -212,8 +265,26 @@ public final class HttpRouters {
     }
 
     @Override
-    public int compareTo(final UriRoute other) {
-      return uri.compareTo(other.uri);
+    public String toString() {
+      return "UriRoute [httpMethods=" + getHttpMethods() + ", uri=" + getUri() + ", handler=" + handler + ", method=" + method + "]";
+    }
+  }
+
+  public static final class StaticFileUriRoute extends AbstractUriRoute {
+    private final File staticFileDir;
+
+    protected StaticFileUriRoute(final HttpMethod[] methods, final String uri, final File staticFileDir) {
+      super(methods, uri);
+      this.staticFileDir = staticFileDir;
+    }
+
+    public File getStaticFileDir() {
+      return staticFileDir;
+    }
+
+    @Override
+    public String toString() {
+      return "StaticFileUriRoute [httpMethods=" + getHttpMethods() + ", uri=" + getUri() + ", staticFileDir=" + staticFileDir + "]";
     }
   }
 
@@ -370,14 +441,14 @@ public final class HttpRouters {
     private final Pattern[] uris;
     private final Object[] handlers;
 
-    public UriPatternRouter(final ArrayList<UriRoute> routes, final Function<UriRoute, T> builder) {
+    public <TRoute extends AbstractUriRoute> UriPatternRouter(final ArrayList<TRoute> routes, final Function<TRoute, T> builder) {
       this.methods = new int[routes.size()];
       this.uris = new Pattern[routes.size()];
       this.handlers = new Object[routes.size()];
 
       for (int i = 0, n = routes.size(); i < n; ++i) {
         // TODO: optimize me. sort and lookup on prefix
-        final UriRoute route = routes.get(i);
+        final TRoute route = routes.get(i);
         methods[i] = route.getHttpMethods();
         uris[i] = compile(route.getUri());
         handlers[i] = builder.apply(route);
@@ -402,6 +473,10 @@ public final class HttpRouters {
       }
 
       return Pattern.compile(uriPattern.toString());
+    }
+
+    public UriPatternHandler<T> get(final String method, final String uri) {
+      return get(httpMethodMask(method), uri);
     }
 
     public UriPatternHandler<T> get(final int methodMask, final String uri) {

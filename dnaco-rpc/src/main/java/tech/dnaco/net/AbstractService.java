@@ -33,6 +33,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.unix.DomainSocketAddress;
@@ -73,31 +74,43 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     });
   }
 
-  protected static ServerBootstrap newTcpServerBootstrap(final ServiceEventLoop eventLoop) {
+  protected static ServerBootstrap newTcpServerBootstrap(final ServiceEventLoop eventLoop, final EventLoopGroup workerGroup) {
     return new ServerBootstrap()
       .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
       .option(ChannelOption.SO_BACKLOG, 1024)
       .option(ChannelOption.SO_REUSEADDR, true)
       .childOption(ChannelOption.TCP_NODELAY, true)
-      .group(eventLoop.getBossGroup(), eventLoop.getWorkerGroup())
+      .group(eventLoop.getBossGroup(), workerGroup)
       .channel(eventLoop.getServerChannelClass());
   }
 
-  protected static ServerBootstrap newUnixServerBootstrap(final ServiceEventLoop eventLoop) {
+  protected static ServerBootstrap newUnixServerBootstrap(final ServiceEventLoop eventLoop, final EventLoopGroup workerGroup) {
     return new ServerBootstrap()
       .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
       .option(ChannelOption.SO_BACKLOG, 1024)
       .option(ChannelOption.SO_REUSEADDR, true)
-      .group(eventLoop.getBossGroup(), eventLoop.getWorkerGroup())
+      .group(eventLoop.getBossGroup(), workerGroup)
       .channel(eventLoop.getServerUnixChannelClass());
   }
 
+  // ================================================================================
+  //  Bind TCP Service
+  // ================================================================================
   public void bindTcpService(final ServiceEventLoop eventLoop, final int port) throws InterruptedException {
-    bindTcpService(eventLoop, new InetSocketAddress(port));
+    bindTcpService(eventLoop, eventLoop.getWorkerGroup(), port);
+  }
+
+  public void bindTcpService(final ServiceEventLoop eventLoop, final EventLoopGroup workerGroup, final int port) throws InterruptedException {
+    bindTcpService(eventLoop, workerGroup, new InetSocketAddress(port));
   }
 
   public void bindTcpService(final ServiceEventLoop eventLoop, final InetSocketAddress address) throws InterruptedException {
-    final ServerBootstrap bootstrap = newTcpServerBootstrap(eventLoop);
+    bindTcpService(eventLoop, eventLoop.getWorkerGroup(), address);
+  }
+
+  public void bindTcpService(final ServiceEventLoop eventLoop, final EventLoopGroup workerGroup,
+      final InetSocketAddress address) throws InterruptedException {
+    final ServerBootstrap bootstrap = newTcpServerBootstrap(eventLoop, workerGroup);
     setupTcpServerBootstrap(bootstrap);
 
     final Channel channel = bootstrap.bind(address).sync().channel();
@@ -105,12 +118,24 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     this.channels.add(channel);
   }
 
+  // ================================================================================
+  //  Bind Unix Service
+  // ================================================================================
   public void bindUnixService(final ServiceEventLoop eventLoop, final File sock) throws InterruptedException {
-    bindUnixService(eventLoop, new DomainSocketAddress(sock));
+    bindUnixService(eventLoop, eventLoop.getWorkerGroup(), sock);
+  }
+
+  public void bindUnixService(final ServiceEventLoop eventLoop, final EventLoopGroup workerGroup, final File sock) throws InterruptedException {
+    bindUnixService(eventLoop, workerGroup, new DomainSocketAddress(sock));
   }
 
   public void bindUnixService(final ServiceEventLoop eventLoop, final DomainSocketAddress address) throws InterruptedException {
-    final ServerBootstrap bootstrap = newUnixServerBootstrap(eventLoop);
+    bindUnixService(eventLoop, eventLoop.getWorkerGroup(), address);
+  }
+
+  public void bindUnixService(final ServiceEventLoop eventLoop, final EventLoopGroup workerGroup,
+      final DomainSocketAddress address) throws InterruptedException {
+    final ServerBootstrap bootstrap = newUnixServerBootstrap(eventLoop, workerGroup);
     setupUnixServerBootstrap(bootstrap);
 
     final Channel channel = bootstrap.bind(address).sync().channel();
@@ -118,6 +143,9 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     this.channels.add(channel);
   }
 
+  // ================================================================================
+  //  Shutdown helpers
+  // ================================================================================
   @Override
   public boolean sendStopSignal() {
     for (final Channel channel: this.channels) {
@@ -136,6 +164,9 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     ShutdownUtil.addShutdownHook(toString(), this);
   }
 
+  // ================================================================================
+  //  Client connection related
+  // ================================================================================
   public static abstract class AbstractServiceSession {
     private final ChannelHandlerContext ctx;
 

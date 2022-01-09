@@ -22,6 +22,10 @@ import java.math.BigInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.bytes.encoding.IntUtil;
+import tech.dnaco.util.RandData;
+
 public class TestBaseN {
   @Test
   public void testLongBaseN() {
@@ -29,6 +33,32 @@ public class TestBaseN {
     Assertions.assertEquals(123456789, BaseN.decodeBase58("bUKpk"));
 
     Assertions.assertEquals("JPwcyDCgEup", BaseN.encodeBase58(-1L));
+    Assertions.assertEquals(-1L, BaseN.decodeBase58("JPwcyDCgEup"));
+
+    Assertions.assertEquals("JPwcyDCgEup", BaseN.encodeBase58(IntUtil.toUnsignedBigInteger(-1L)));
     Assertions.assertEquals(BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE), BaseN.decodeBigBase58("JPwcyDCgEup"));
+  }
+
+  @Test
+  public void testFoo() {
+    final byte[] data = new byte[] { (byte)0x8f };
+    final String base62 = BaseN.encodeBase62(data);
+    final BigInteger decoded = BaseN.decodeBigBase62(base62);
+    System.out.println(new BigInteger(data));
+    System.out.println(decoded);
+    System.out.println(BytesUtil.toHexString(data));
+    System.out.println(BytesUtil.toHexString(decoded.negate().toByteArray()));
+  }
+
+  @Test
+  public void testRandomBytes() {
+    for (int i = 0; i < 10; ++i) {
+      final byte[] data = RandData.generateBytes((int) Math.round(Math.random() * 512));
+      System.out.println(i + " -> " + BytesUtil.toHexString(data));
+      final String base62 = BaseN.encodeBase62(data);
+      final BigInteger v = BaseN.decodeBigBase62(base62);
+      Assertions.assertEquals(BytesUtil.toHexString(data), BytesUtil.toHexString(v.toByteArray()));
+      Assertions.assertArrayEquals(data, v.toByteArray());
+    }
   }
 }

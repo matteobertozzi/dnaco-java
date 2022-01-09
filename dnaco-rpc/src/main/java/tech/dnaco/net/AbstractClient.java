@@ -306,6 +306,8 @@ public abstract class AbstractClient implements StopSignal {
   }
 
   protected static final class InProgressClientPromise<T> implements ClientPromise<T> {
+    private final long timestamp;
+
     private ArrayList<BiConsumer<? super T, ? super Throwable>> actions;
     private Throwable cause;
     private T result;
@@ -313,6 +315,11 @@ public abstract class AbstractClient implements StopSignal {
 
     public InProgressClientPromise() {
       this.completed = false;
+      this.timestamp = System.nanoTime();
+    }
+
+    public long timestamp() {
+      return timestamp;
     }
 
     public synchronized InProgressClientPromise<T> setSuccess(final T result) {

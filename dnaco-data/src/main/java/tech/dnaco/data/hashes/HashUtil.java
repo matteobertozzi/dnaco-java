@@ -70,10 +70,14 @@ public final class HashUtil {
   }
 
   public static byte[] hash(final String algo, final byte[] buf, final int off, final int len) {
+    final MessageDigest digest = digest(algo);
+    digest.update(buf, off, len);
+    return digest.digest();
+  }
+
+  public static MessageDigest digest(final String algo) {
     try {
-      final MessageDigest digest = MessageDigest.getInstance(algo);
-      digest.update(buf, off, len);
-      return digest.digest();
+      return MessageDigest.getInstance(algo);
     } catch (final NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }

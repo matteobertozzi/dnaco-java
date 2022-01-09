@@ -26,6 +26,9 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
+import tech.dnaco.data.CborFormat;
+import tech.dnaco.data.DataFormat;
+import tech.dnaco.data.JsonFormat;
 import tech.dnaco.data.compression.GzipUtil;
 import tech.dnaco.data.json.JsonArray;
 import tech.dnaco.data.json.JsonElement;
@@ -182,7 +185,27 @@ public class Jwt {
     final byte[] jwtBody = GzipUtil.compress(dat.toString());
     final String jwtToSign = b64.encodeToString(jwtHeader.getBytes()) + "." + b64.encodeToString(jwtBody);
     final byte[] signature = signer.sign(kid, alg, key, jwtToSign.getBytes());
-    return "GZ" + "." + jwtToSign + "." + b64.encodeToString(signature);
+    return "GZ." + jwtToSign + "." + b64.encodeToString(signature);
+  }
+
+  public <TKey> String cborSign(final String kid, final String alg, final TKey key, final JwtSigner<TKey> signer)
+      throws JwtException {
+    try {
+      final Base64.Encoder b64 = Base64.getUrlEncoder().withoutPadding();
+
+      final byte[] jwtBody = CborFormat.INSTANCE.asBytes(dat);
+      final byte[] gzJwtBody = GzipUtil.compress(jwtBody);
+      final boolean compress = (jwtBody.length > gzJwtBody.length);
+      final String typ = compress ? "GZCBR" : "CBR";
+      final byte[] body = compress ? gzJwtBody : jwtBody;
+
+      final byte[] jwtHeader = CborFormat.INSTANCE.asBytes(new JwtHeader(typ, kid, alg));
+      final String jwtToSign = b64.encodeToString(jwtHeader) + "." + b64.encodeToString(body);
+      final byte[] signature = signer.sign(kid, alg, key, jwtToSign.getBytes());
+      return "0." + jwtToSign + "." + b64.encodeToString(signature);
+    } catch (final Exception e) {
+      throw new JwtException(e);
+    }
   }
 
   // ------------------------------------------------------------------------------------------
@@ -193,9 +216,15 @@ public class Jwt {
 
     // check GZ header
     final int offset;
-    if (jwt.charAt(2) == '.' && jwt.charAt(0) == 'G' && jwt.charAt(1) == 'Z') {
+    final DataFormat dataFormat;
+    if (jwt.charAt(1) == '.') {
+      dataFormat = CborFormat.INSTANCE;
+      offset = 2;
+    } else if (jwt.charAt(2) == '.' && jwt.charAt(0) == 'G' && jwt.charAt(1) == 'Z') {
+      dataFormat = JsonFormat.INSTANCE;
       offset = 3;
     } else {
+      dataFormat = JsonFormat.INSTANCE;
       offset = 0;
     }
 
@@ -203,14 +232,14 @@ public class Jwt {
     final int headEof = jwt.indexOf('.', offset);
     if (headEof < 0) throw new JwtException("invalid jwt: " + jwt);
     final byte[] rawJwtHead = b64.decode(jwt.substring(offset, headEof));
-    final JwtHeader jwtHeader = JsonUtil.fromJson(rawJwtHead, JwtHeader.class);
+    final JwtHeader jwtHeader = dataFormat.fromBytes(rawJwtHead, JwtHeader.class);
 
     // parse body
     final int bodyEof = jwt.indexOf('.', headEof + 1);
     if (bodyEof < 0) throw new JwtException("invalid jwt: " + jwt);
     byte[] rawJwtBody = b64.decode(jwt.substring(headEof + 1, bodyEof));
-    if (offset == 3) rawJwtBody = GzipUtil.uncompress(rawJwtBody);
-    final JsonObject jwtBody = JsonUtil.fromJson(rawJwtBody, JsonObject.class);
+    if (offset == 3 || jwtHeader.typ().startsWith("GZ")) rawJwtBody = GzipUtil.uncompress(rawJwtBody);
+    final JsonObject jwtBody = dataFormat.fromBytes(rawJwtBody, JsonObject.class);
 
     // parse signature
     final byte[] jwtSignature = b64.decode(jwt.substring(bodyEof + 1));
@@ -252,56 +281,13 @@ public class Jwt {
   // ------------------------------------------------------------------------------------------
   //  JWT related classes
   // ------------------------------------------------------------------------------------------
-  public static final class JwtHeader {
-    private String typ;
-    private String kid;
-    private String alg;
-
-    public JwtHeader() {
-      // no-op (deserializer)
-    }
-
+  public record JwtHeader (String typ, String kid, String alg) {
     public JwtHeader(final String kid, final String alg) {
       this("JWT", kid, alg);
     }
 
-    public JwtHeader(final String typ, final String kid, final String alg) {
-      this.typ = typ;
-      this.kid = kid;
-      this.alg = alg;
-    }
-
     public boolean isJwt() {
       return StringUtil.equals(typ, "JWT");
-    }
-
-    public String getKid() {
-      return kid;
-    }
-
-    public void setKid(final String kid) {
-      this.kid = kid;
-    }
-
-    public String getTyp() {
-      return typ;
-    }
-
-    public void setTyp(final String typ) {
-      this.typ = typ;
-    }
-
-    public String getAlg() {
-      return alg;
-    }
-
-    public void setAlg(final String alg) {
-      this.alg = alg;
-    }
-
-    @Override
-    public String toString() {
-      return "JwtHeader [alg=" + alg + ", kid=" + kid + ", typ=" + typ + "]";
     }
   }
 
@@ -327,11 +313,11 @@ public class Jwt {
     }
 
     public String getKeyId() {
-      return header.getKid();
+      return header.kid();
     }
 
     public String getAlgorithm() {
-      return header.getAlg();
+      return header.alg();
     }
 
     public String getIssuer() {
@@ -392,12 +378,17 @@ public class Jwt {
     jwt.addClaim("mapStr", Map.of("bbb", "b", "aaa", "a"));
     final String jwtEnc = jwt.sign("k123", "EC123", null, (JwtSigner<Void>) (kid, alg, key, jwtToSign) -> new byte[] { 1, 2, 3 });
     final String gzJwtEnc = jwt.gzSign("k123", "EC123", null, (JwtSigner<Void>) (kid, alg, key, jwtToSign) -> new byte[] { 1, 2, 3 });
+    final String cwtEnc = jwt.cborSign("k123", "EC123", null, (JwtSigner<Void>) (kid, alg, key, jwtToSign) -> new byte[] { 1, 2, 3 });
     Jwt.verify(jwtEnc, null, (JwtVerifier<String>) (jwtHead, jwtBody, key, jwtSigned, jwtSignature) -> {
       //System.out.println("VERIFY " + Arrays.toString(jwtSigned) + " -> " + Arrays.toString(jwtSignature));
     });
-    System.out.println(jwtEnc.length() + " -> " + jwtEnc);
-    System.out.println(gzJwtEnc.length() + " -> " + gzJwtEnc);
+    System.out.println();
+    System.out.println("JWT:  " + jwtEnc.length() + " -> " + jwtEnc);
+    System.out.println("JWTZ: " + gzJwtEnc.length() + " -> " + gzJwtEnc);
+    System.out.println("CWT:  " + cwtEnc.length() + " -> " + cwtEnc);
+    System.out.println();
     System.out.println(Jwt.decode(jwtEnc));
     System.out.println(Jwt.decode(gzJwtEnc));
+    System.out.println(Jwt.decode(cwtEnc));
   }
 }

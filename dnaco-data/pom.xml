@@ -13,8 +13,8 @@
 
   <properties>
     <jackson.version>2.13.1</jackson.version>
-    <zstd.version>1.5.0-5</zstd.version>
-    <tika.version>2.2.0</tika.version>
+    <zstd.version>1.5.1-1</zstd.version>
+    <tika.version>2.2.1</tika.version>
 
     <junit.version>5.8.2</junit.version>
 

@@ -20,20 +20,36 @@
 package tech.dnaco.strings;
 
 import java.math.BigInteger;
-import java.util.HashMap;
+import java.security.MessageDigest;
 
 import tech.dnaco.bytes.BytesUtil;
 
 public final class BaseN {
-  public static final char[] BASE_35_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRTUVWXYZ".toCharArray();
-  public static final char[] BASE_36_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
-  public static final char[] BASE_52_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
-  public static final char[] BASE_58_ALPHABET = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".toCharArray();
-  public static final char[] BASE_62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
-  public static final char[] BASE_90_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&()*+,-./:;<=>?@[]^_{|}~".toCharArray();
+  private static final BaseNTable BASE_35 = new BaseNTable("0123456789ABCDEFGHIJKLMNOPQRTUVWXYZ");
+  private static final BaseNTable BASE_36 = new BaseNTable("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+  private static final BaseNTable BASE_52 = new BaseNTable("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
+  private static final BaseNTable BASE_58 = new BaseNTable("123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ");
+  private static final BaseNTable BASE_62 = new BaseNTable("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+  private static final BaseNTable BASE_90 = new BaseNTable("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&()*+,-./:;<=>?@[]^_{|}~");
 
   private BaseN() {
     // no-op
+  }
+
+  public static void main(final String[] args) throws Exception {
+    final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
+    final byte[] hash = digest.digest(new byte[] { -1, 2 });
+
+    final BaseNTable[] tables = new BaseNTable[] { BASE_36, BASE_52, BASE_58, BASE_62 };
+    for (int i = 0; i < tables.length; ++i) {
+      final String a = encodeBaseN(tables[i], new BigInteger(hash));
+      final String b = encodeBaseN(tables[i], new BigInteger(1, hash));
+      final String c = BytesUtil.toHexString(hash);
+      System.out.println("16 -> " + c.length() + " -> " + c);
+      System.out.println(tables[i].alphabet.length + " -> " + a.length() + " -> " + a);
+      System.out.println(tables[i].alphabet.length + " -> " + b.length() + " -> " + b);
+      System.out.println();
+    }
   }
 
   // --------------------------------------------------------------------------------
@@ -63,7 +79,7 @@ public final class BaseN {
   //  Base36 encoder/decoder
   // ================================================================================
   public static String encodeBase36(final long value) {
-    return encodeBaseN(value, BASE_36_ALPHABET);
+    return encodeBaseN(BASE_36, value);
   }
 
   public static String encodeBase36(final byte[] value) {
@@ -71,22 +87,22 @@ public final class BaseN {
   }
 
   public static String encodeBase36(final BigInteger value) {
-    return encodeBaseN(value, BASE_36_ALPHABET);
+    return encodeBaseN(BASE_36, value);
   }
 
   public static long decodeBase36(final String value) {
-    return decodeBigBase36(value).longValueExact();
+    return decodeSmallBaseN(BASE_36, value);
   }
 
   public static BigInteger decodeBigBase36(final String value) {
-    return decodeBaseN(value, BASE_36_ALPHABET);
+    return decodeBaseN(BASE_36, value);
   }
 
   // ================================================================================
   //  Base52 encoder/decoder
   // ================================================================================
   public static String encodeBase52(final long value) {
-    return encodeBaseN(value, BASE_52_ALPHABET);
+    return encodeBaseN(BASE_52, value);
   }
 
   public static String encodeBase52(final byte[] value) {
@@ -94,44 +110,26 @@ public final class BaseN {
   }
 
   public static String encodeBase52(final BigInteger value) {
-    return encodeBaseN(value, BASE_52_ALPHABET);
+    return encodeBaseN(BASE_52, value);
   }
 
   public static long decodeBase52(final String value) {
-    return decodeBigBase52(value).longValueExact();
+    return decodeSmallBaseN(BASE_52, value);
   }
 
   public static BigInteger decodeBigBase52(final String value) {
-    return decodeBaseN(value, BASE_52_ALPHABET);
+    return decodeBaseN(BASE_52, value);
   }
 
   // ================================================================================
   //  Base58 encoder/decoder
   // ================================================================================
-  private static final long[] BASE_58_POW = new long[] {
-    1, 58, 3364, 195112, 11316496, 656356768, 38068692544L, 2207984167552L,
-    128063081718016L, 7427658739644928L, 430804206899405824L
-  };
-  private static final int[] BASE_58_DECODER = new int[128];
-  static {
-    for (int i = 0; i < BASE_58_ALPHABET.length; ++i) {
-      BASE_58_DECODER[BASE_58_ALPHABET[i]] = i;
-    }
-  }
-
   public static String encodeBase58(final long value) {
-    final StringBuilder builder = new StringBuilder();
-    encodeBase58(builder, value);
-    return builder.reverse().toString();
+    return encodeBaseN(BASE_58, value);
   }
 
-  public static void encodeBase58(final StringBuilder builder, final long value) {
-    long remaining = value;
-    do {
-      final int d = (int) Long.remainderUnsigned(remaining, BASE_58_ALPHABET.length);
-      remaining = Long.divideUnsigned(remaining, BASE_58_ALPHABET.length);
-      builder.append(BASE_58_ALPHABET[d]);
-    } while (remaining != 0);
+  public static void encodeBase58(final StringBuilder result, final long value) {
+    encodeBaseN(result, value, BASE_58.alphabet);
   }
 
   public static String encodeBase58(final byte[] value) {
@@ -139,7 +137,7 @@ public final class BaseN {
   }
 
   public static String encodeBase58(final BigInteger value) {
-    return encodeBaseN(value, BASE_58_ALPHABET);
+    return encodeBaseN(BASE_58, value);
   }
 
   public static long decodeBase58(final String value) {
@@ -147,55 +145,62 @@ public final class BaseN {
   }
 
   public static long decodeBase58(final String data, final int offset, final int length) {
-    long v = 0;
-    for (int i = 0; i < length; ++i) {
-      v += BASE_58_POW[i] * BASE_58_DECODER[data.charAt(offset + (length - 1) - i)];
-    }
-    return v;
+    return decodeSmallBaseN(BASE_58, data, offset, length);
   }
 
   public static BigInteger decodeBigBase58(final String value) {
-    return decodeBaseN(value, BASE_58_ALPHABET);
+    return decodeBaseN(BASE_58, value);
   }
 
   // ================================================================================
   //  Base62 encoder/decoder
   // ================================================================================
   public static String encodeBase62(final long value) {
-    return encodeBaseN(value, BASE_62_ALPHABET);
+    return encodeBaseN(BASE_62, value);
   }
 
   public static String encodeBase62(final byte[] value) {
-    return encodeBase62(new BigInteger(value));
+    return encodeBase62(new BigInteger(1, value));
   }
 
   public static String encodeBase62(final BigInteger value) {
-    return encodeBaseN(value, BASE_62_ALPHABET);
+    return encodeBaseN(BASE_62, value);
   }
 
   public static long decodeBase62(final String value) {
-    return decodeBigBase62(value).longValueExact();
+    return decodeSmallBaseN(BASE_62, value);
   }
 
   public static BigInteger decodeBigBase62(final String value) {
-    return decodeBaseN(value, BASE_62_ALPHABET);
+    return decodeBaseN(BASE_62, value);
   }
 
   // ================================================================================
   //  BaseN encoder/decoder
   // ================================================================================
+  public static String encodeBaseN(final BaseNTable table, final long value) {
+    return encodeBaseN(value, table.alphabet);
+  }
+
   public static String encodeBaseN(final long value, final char[] dictionary) {
+    final StringBuilder result = new StringBuilder();
+    encodeBaseN(result, value, dictionary);
+    return result.reverse().toString();
+  }
+
+  public static void encodeBaseN(final StringBuilder result, final long value, final char[] dictionary) {
     final int base = dictionary.length;
     long remaining = value;
-
-    final StringBuilder result = new StringBuilder();
     do {
       final int d = (int) Long.remainderUnsigned(remaining, base);
       remaining = Long.divideUnsigned(remaining, base);
 
       result.append(dictionary[d]);
     } while (remaining != 0);
-    return result.reverse().toString();
+  }
+
+  public static String encodeBaseN(final BaseNTable table, final BigInteger value) {
+    return encodeBaseN(value, table.alphabet);
   }
 
   public static String encodeBaseN(final BigInteger value, final char[] dictionary) {
@@ -216,26 +221,93 @@ public final class BaseN {
     return result.reverse().toString();
   }
 
+  public static long decodeSmallBaseN(final BaseNTable table, final String data) {
+    return decodeSmallBaseN(table, data, 0, data.length());
+  }
+
+  public static long decodeSmallBaseN(final BaseNTable table, final String data, final int offset, final int length) {
+    final long[] decoder = table.decodeMap;
+    final long[] pows = table.pows;
+    long v = 0;
+    for (int i = 0; i < length; ++i) {
+      v += pows[i] * decoder[data.charAt(offset + (length - 1) - i)];
+    }
+    return v;
+  }
+
   public static BigInteger decodeBaseN(final String str, final char[] dictionary) {
-    final char[] chars = new char[str.length()];
-    for (int i = 0; i < chars.length; ++i) {
-      chars[chars.length - 1 - i] = str.charAt(i);
-    }
-
-    // TODO: move out/cache for dict
-    final HashMap<Character, BigInteger> dictMap = new HashMap<>(dictionary.length);
+    final BigInteger[] dictMap = new BigInteger[128];
     for (int i = 0; i < dictionary.length; ++i) {
-      dictMap.put(dictionary[i], BigInteger.valueOf(i));
+      dictMap[dictionary[i]] = BigInteger.valueOf(i);
     }
+    return decodeBaseN(str, dictionary, dictMap);
+  }
 
+  public static BigInteger decodeBaseN(final BaseNTable table, final String str) {
+    return decodeBaseN(str, table.alphabet, table.bigDecodeMap);
+  }
+
+  public static BigInteger decodeBaseN(final String str, final char[] dictionary, final BigInteger[] dictMap) {
+    final int lastIndex = str.length() - 1;
     BigInteger bi = BigInteger.ZERO;
     final BigInteger base = BigInteger.valueOf(dictionary.length);
-    for (int i = 0, exp = 0; i < chars.length; ++exp, ++i) {
-      final BigInteger a = dictMap.get(chars[i]);
+    for (int i = 0, exp = 0; i <= lastIndex; ++exp, ++i) {
+      final BigInteger a = dictMap[str.charAt(lastIndex - i)];
       final BigInteger b = base.pow(exp).multiply(a);
       bi = bi.add(b);
     }
     return bi;
+  }
+
+  // ================================================================================
+  //  BaseN precomputed
+  // ================================================================================
+  private static final class BaseNTable {
+    private final BigInteger[] bigDecodeMap;
+    private final long[] decodeMap;
+    private final long[] pows;
+    private final char[] alphabet;
+
+    private BaseNTable(final String alphabet) {
+      this(alphabet.toCharArray());
+    }
+
+    private BaseNTable(final char[] alphabet) {
+      this.alphabet = alphabet;
+
+      this.pows = computePows(alphabet);
+      this.bigDecodeMap = new BigInteger[128];
+      this.decodeMap = new long[128];
+      for (int i = 0; i < alphabet.length; ++i) {
+        this.bigDecodeMap[alphabet[i]] = BigInteger.valueOf(i);
+        this.decodeMap[alphabet[i]] = i;
+      }
+    }
+
+    private static long[] computePows(final char[] alphabet) {
+      final long base = alphabet.length;
+      long remaining = Long.MAX_VALUE;
+      int count = 0;
+      do {
+        remaining = Long.divideUnsigned(remaining, base);
+        count++;
+      } while (remaining != 0);
+
+      final long[] pows = new long[count];
+      for (int i = 0, exp = 0; i < pows.length; ++exp, ++i) {
+        pows[i] = pow(base, exp);
+      }
+      return pows;
+    }
+
+    private static long pow(final long base, long exp) {
+      if (exp == 0) return 1;
+      long result = base;
+      while (exp --> 1) {
+        result *= base;
+      }
+      return result;
+    }
   }
 
   private static final class Base32 {

@@ -94,6 +94,15 @@ public abstract class DataFormat {
     }
   }
 
+  public <T> T fromBytes(final byte[] data, final int off, final int len, final Class<T> valueType) {
+    if (len == 0) return null;
+    try {
+      return getObjectMapper().readValue(data, off, len, valueType);
+    } catch (final Exception e) {
+      throw new DataFormatException(e);
+    }
+  }
+
   public <T> T fromBytes(final ByteArraySlice data, final Class<T> valueType) {
     if (data.isEmpty()) return null;
     try (ByteArrayReader reader = new ByteArrayReader(data)) {
