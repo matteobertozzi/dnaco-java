@@ -198,29 +198,39 @@ public final class EntityStorage {
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
 
-    final EntitySchema schema = updateSchema(storage, request.getEntity(), null, new JsonEntityDataRows[] { request.getFieldsToUpdate() });
-    if (schema == null) {
-      return new TransactionStatusResponse(Transaction.State.FAILED);
+    final EntitySchema schema;
+    try {
+      schema = updateSchema(storage, request.getEntity(), null, new JsonEntityDataRows[] { request.getFieldsToUpdate() });
+      if (schema == null) {
+        return new TransactionStatusResponse(Transaction.State.FAILED, "schema type mismatch");
+      }
+    } catch (final IllegalArgumentException e) {
+      return new TransactionStatusResponse(Transaction.State.FAILED, e.getMessage());
     }
 
     if (!request.hasNoFilter()) {
-      filterCount.inc(request.getTenantId() + " " + request.getEntity() + " " + request.getFilter().toQueryString());
+      filterCount.inc(request.getTenantId() + " " + request.getEntity() + " UPDATE " + request.getFilter().toQueryString());
     }
 
     // add to TXN log
     final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
 
+    final LongValue updatedRows = new LongValue();
+    final LongValue totalRows = new LongValue();
     final QueryCache queryCache = new QueryCache();
     for (final String groupId: request.getGroups()) {
       storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
         if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
-          final EntityDataRows updatedRow = new EntityDataRows(schema, row.hasAllFields()).newRow();
+          final EntityDataRows updatedRow = new EntityDataRows(schema, true).newRow();
           updatedRow.copyFrom(row);
           updatedRow.setTimestamp(0, timestamp);
           updatedRow.setOperation(0, Operation.UPDATE);
+          request.getFieldsToUpdate().updateEntityRow(updatedRow, 0);
           storage.addRow(txn, new EntityDataRow(updatedRow, 0));
+          updatedRows.incrementAndGet();
         }
+        totalRows.incrementAndGet();
         return true;
       });
     }
@@ -228,10 +238,12 @@ public final class EntityStorage {
     commitIfLocalTxn(storage, txn);
 
     final long elapsed = System.nanoTime() - startTime;
-    Logger.debug("update {} {} filtered took {}",
-      request.getTenantId(), schema.getEntityName(), HumansUtil.humanTimeNanos(elapsed));
+    Logger.debug("update {} {} filtered took {}. {}/{} rows updated",
+      request.getTenantId(), schema.getEntityName(),
+      updatedRows.get(), totalRows.get(),
+      HumansUtil.humanTimeNanos(elapsed));
 
-    return new TransactionStatusResponse(txn.getState());
+    return new TransactionStatusResponse(txn.getState(), txn.getMessage());
   }
 
   public TransactionStatusResponse truncateEntity(final ModificationRequest request) throws Exception {
@@ -240,7 +252,7 @@ public final class EntityStorage {
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
     storage.truncateEntity(request.getEntity());
-    return new TransactionStatusResponse(State.COMMITTED);
+    return new TransactionStatusResponse(State.COMMITTED, null);
   }
 
   public TransactionStatusResponse deleteEntity(final ModificationRequest request) throws Exception {
@@ -262,6 +274,10 @@ public final class EntityStorage {
     final long timestamp = DateUtil.toHumanTs(ZonedDateTime.now());
     final Transaction txn = storage.getOrCreateTransaction(request.getTxnId());
 
+    if (!request.hasNoFilter()) {
+      filterCount.inc(request.getTenantId() + " " + request.getEntity() + " DELETE " + request.getFilter().toQueryString());
+    }
+
     final QueryCache queryCache = new QueryCache();
     for (final String groupId: request.getGroups()) {
       storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
@@ -282,7 +298,7 @@ public final class EntityStorage {
     Logger.debug("delete {} {} filtered took {}",
       request.getTenantId(), schema.getEntityName(), HumansUtil.humanTimeNanos(elapsed));
 
-    return new TransactionStatusResponse(txn.getState());
+    return new TransactionStatusResponse(txn.getState(), txn.getMessage());
   }
 
   public TransactionStatusResponse commit(final TransactionCommitRequest request) throws Exception {
@@ -299,7 +315,7 @@ public final class EntityStorage {
     } else {
       storage.commit(txn);
     }
-    return new TransactionStatusResponse(txn.getState());
+    return new TransactionStatusResponse(txn.getState(), txn.getMessage());
   }
 
   private EntitySchema updateSchema(final StorageLogic storage, final String entity,
@@ -332,9 +348,14 @@ public final class EntityStorage {
 
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
 
-    final EntitySchema schema = updateSchema(storage, request.getEntity(), request.getKeys(), request.getRows());
-    if (schema == null) {
-      return new TransactionStatusResponse(Transaction.State.FAILED);
+    final EntitySchema schema;
+    try {
+      schema = updateSchema(storage, request.getEntity(), request.getKeys(), request.getRows());
+      if (schema == null) {
+        return new TransactionStatusResponse(Transaction.State.FAILED, "schema type mismatch");
+      }
+    } catch (final IllegalArgumentException e) {
+      return new TransactionStatusResponse(Transaction.State.FAILED, e.getMessage());
     }
 
     // add to TXN log
@@ -366,13 +387,13 @@ public final class EntityStorage {
         row.setOperation(operation);
         row.setTimestamp(timestamp);
         if (!storage.addRow(txn, row)) {
-          txn.setState(Transaction.State.FAILED);
+          //txn.setState(Transaction.State.FAILED);
           return false;
         }
         if (rowCount.incrementAndGet() % 10 == 0) {
           if ((System.nanoTime() - startTime) > OPERATION_TIMEOUT) {
             Logger.warn("abort operation {} {} taking too long", operation, request.getEntity());
-            txn.setState(Transaction.State.FAILED);
+            txn.setFailed("abort operation {} {} taking too long", operation, request.getEntity());
             return false;
           }
         }
@@ -394,7 +415,7 @@ public final class EntityStorage {
     modifyRows.update(rowCount.get());
     modifyTopRows.add(request.getTenantId() + " " + operation + " " + schema.getEntityName(), rowCount.get());
 
-    return new TransactionStatusResponse(txn.getState());
+    return new TransactionStatusResponse(txn.getState(), txn.getMessage());
   }
 
   private void commitIfLocalTxn(final StorageLogic storage, final Transaction txn) throws Exception {
@@ -427,6 +448,10 @@ public final class EntityStorage {
 
     final EntitySchema schema = storage.getEntitySchema(request.getEntity());
     if (schema == null) return Scanner.EMPTY;
+
+    if (!request.hasNoFilter()) {
+      filterCount.inc(request.getTenantId() + " " + request.getEntity() + " SCAN " + request.getFilter().toQueryString());
+    }
 
     final Transaction txn = storage.getTransaction(request.getTxnId());
     return buildScanner(request.getTenantId(), request.getEntity(), startTime, (results) -> {
@@ -468,6 +493,10 @@ public final class EntityStorage {
     final boolean syncOnly = request.isSyncOnly();
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
     final Transaction txn = storage.getTransaction(request.getTxnId());
+
+    if (!request.hasNoFilter()) {
+      filterCount.inc(request.getTenantId() + " " + request.getEntity() + " SCAN-ALL " + request.getFilter().toQueryString());
+    }
 
     final QueryCache queryCache = new QueryCache();
     return buildScanner(request.getTenantId(), null, startTime, (results) -> {

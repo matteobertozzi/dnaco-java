@@ -69,6 +69,13 @@ public class JsonEntityDataRows {
     return true;
   }
 
+  public void updateEntityRow(final EntityDataRows rows, final int rowIndex) {
+    final int fieldCount = fieldNames.size();
+    for (int fieldIndex = 0; fieldIndex < fieldCount; ++fieldIndex) {
+      rows.addObject(fieldNames.get(fieldIndex), values[fieldIndex]);
+    }
+  }
+
   public int rowCount() {
     return values.length / fieldNames.size();
   }

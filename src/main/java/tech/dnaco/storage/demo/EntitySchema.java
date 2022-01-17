@@ -32,6 +32,7 @@ import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.net.EntityStorageScheduled.TableStats;
 import tech.dnaco.storage.net.models.ClientSchema;
 import tech.dnaco.storage.net.models.ClientSchema.EntityField;
+import tech.dnaco.strings.StringFormat;
 import tech.dnaco.strings.StringUtil;
 
 public class EntitySchema {
@@ -274,7 +275,8 @@ public class EntitySchema {
     if (getTypeCompatibility(type, currentType) < 0) {
       Logger.error("type mismatch for entity {} field {}. expected {} got {}",
         name, fieldName, currentType, type);
-      return false;
+      throw new IllegalArgumentException(StringFormat.format("type mismatch for entity {} field {}. expected {} got {}",
+        name, fieldName, currentType, type));
     }
 
     if (type != EntityDataType.NULL) {

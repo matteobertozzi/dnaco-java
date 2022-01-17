@@ -21,6 +21,9 @@ package tech.dnaco.storage.demo.logic;
 
 import java.util.UUID;
 
+import tech.dnaco.logging.Logger;
+import tech.dnaco.strings.StringFormat;
+
 public class Transaction {
   public enum State { FAILED, PENDING, PREPARED, COMMITTED, ROLLEDBACK }
 
@@ -29,6 +32,7 @@ public class Transaction {
   private final boolean local;
 
   private State state = State.PENDING;
+  private String message;
 
   public Transaction(final String txnId, final long maxSeqId) {
     this(txnId, maxSeqId, false);
@@ -48,13 +52,28 @@ public class Transaction {
     return local;
   }
 
-  public Transaction setState(final State state) {
-    this.state = state;
+  public Transaction setState(final State newState) {
+    if (newState == State.ROLLEDBACK && this.state == State.FAILED) {
+      Logger.trace("keep message {state} {newState}: {}", state, newState, message);
+    } else {
+      this.message = null;
+    }
+    this.state = newState;
+    return this;
+  }
+
+  public Transaction setFailed(final String format, final Object... args) {
+    this.state = State.FAILED;
+    this.message = StringFormat.format(format, args);
     return this;
   }
 
   public State getState() {
     return state;
+  }
+
+  public String getMessage() {
+    return message;
   }
 
   public String getTxnId() {

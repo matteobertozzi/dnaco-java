@@ -141,6 +141,7 @@ public final class StorageLogic {
 
       // ...if it is not deleted, well... already have it
       Logger.warn("{}: key already in transaction: {}", txn, row);
+      txn.setFailed("{}: key already in transaction: {}", txn, row);
       addErrorRow(txn, ErrorStatus.DUPLICATE_KEY, row);
       return false;
     }
@@ -149,6 +150,7 @@ public final class StorageLogic {
     final EntityDataRow oldRow = storage.getRow(key);
     if (isRowActive(oldRow)) {
       Logger.warn("{}: key already present: {}", txn, row);
+      txn.setFailed("{}: key already present: {}", txn, row);
       addErrorRow(txn, ErrorStatus.DUPLICATE_KEY, row);
       return false;
     }
@@ -196,6 +198,7 @@ public final class StorageLogic {
       // ...if it is marked as deleted, well... the row is not present
       if (oldTxnRow.getOperation() == Operation.DELETE) {
         Logger.warn("{}: key was deleted in this transaction: {}", txn, row);
+        txn.setFailed("{}: key was deleted in this transaction: {}", txn, row);
         addErrorRow(txn, ErrorStatus.KEY_NOT_FOUND, row);
         return false;
       }
@@ -209,6 +212,7 @@ public final class StorageLogic {
     final EntityDataRow oldRow = storage.getRow(key);
     if (isRowDeleted(oldRow)) {
       Logger.warn("{}: key does not exists in the master: {}", txn, row);
+      txn.setFailed("{}: key does not exists in the master: {}", txn, row);
       addErrorRow(txn, ErrorStatus.KEY_NOT_FOUND, row);
       return false;
     }
@@ -291,7 +295,7 @@ public final class StorageLogic {
           if (oldRow != null && oldRow.getSeqId() > txn.getMaxSeqId()) {
             Logger.error("concurrent modification oldRow {} txn {}", oldRow.getSeqId(), txn.getMaxSeqId());
             addErrorRow(txn, ErrorStatus.CONCURRENT_MODIFICATION, txnRow);
-            txn.setState(Transaction.State.FAILED);
+            txn.setFailed("concurrent modification oldRow {} txn {}", oldRow.getSeqId(), txn.getMaxSeqId());
             return false;
           }
           return true;

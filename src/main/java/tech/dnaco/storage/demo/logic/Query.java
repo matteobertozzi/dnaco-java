@@ -1,13 +1,13 @@
 package tech.dnaco.storage.demo.logic;
 
 import java.util.HashMap;
-import java.util.regex.Pattern;
 
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataType;
 import tech.dnaco.storage.demo.Filter;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.strings.StringUtil.LikePattern;
 
 public final class Query {
   private Query() {
@@ -42,8 +42,8 @@ public final class Query {
       return true;
     }
 
-    final Pattern pattern = cache.likePattern(exp);
-    return pattern.matcher(sValue).matches();
+    final LikePattern pattern = cache.likePattern(exp);
+    return pattern.matches(sValue);
   }
 
   private static boolean isEmpty(final Object value) {
@@ -108,9 +108,9 @@ public final class Query {
   }
 
   public static class QueryCache {
-    private final HashMap<String, Pattern> likeCache = new HashMap<>();
+    private final HashMap<String, LikePattern> likeCache = new HashMap<>();
 
-    private Pattern likePattern(final String expr) {
+    private LikePattern likePattern(final String expr) {
       return likeCache.computeIfAbsent(expr, (k) -> StringUtil.likePattern(k));
     }
   }
