@@ -148,4 +148,9 @@ public interface HttpHandler {
   @Target(METHOD)
   @interface NoHttpTraceDump {
   }
+
+  @Retention(RUNTIME)
+  @Target(METHOD)
+  @interface Task {
+  }
 }

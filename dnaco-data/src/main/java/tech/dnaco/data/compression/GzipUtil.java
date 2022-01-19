@@ -68,5 +68,10 @@ public class GzipUtil {
       super(out);
       def.setLevel(level);
     }
+
+    private GzipOutputStreamWithLevel(final OutputStream out, int blockSize, final int level) throws IOException {
+      super(out, blockSize, false);
+      def.setLevel(level);
+    }
   }
 }

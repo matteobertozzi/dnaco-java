@@ -1,6 +1,11 @@
 package tech.dnaco.net.util;
 
+import java.util.zip.GZIPOutputStream;
+
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.PooledByteBufAllocator;
+import tech.dnaco.strings.HumansUtil;
 
 public final class ByteBufIntUtil {
   private ByteBufIntUtil() {

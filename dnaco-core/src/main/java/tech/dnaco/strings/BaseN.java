@@ -21,6 +21,7 @@ package tech.dnaco.strings;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
+import java.util.Arrays;
 
 import tech.dnaco.bytes.BytesUtil;
 
@@ -40,16 +41,8 @@ public final class BaseN {
     final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
     final byte[] hash = digest.digest(new byte[] { -1, 2 });
 
-    final BaseNTable[] tables = new BaseNTable[] { BASE_36, BASE_52, BASE_58, BASE_62 };
-    for (int i = 0; i < tables.length; ++i) {
-      final String a = encodeBaseN(tables[i], new BigInteger(hash));
-      final String b = encodeBaseN(tables[i], new BigInteger(1, hash));
-      final String c = BytesUtil.toHexString(hash);
-      System.out.println("16 -> " + c.length() + " -> " + c);
-      System.out.println(tables[i].alphabet.length + " -> " + a.length() + " -> " + a);
-      System.out.println(tables[i].alphabet.length + " -> " + b.length() + " -> " + b);
-      System.out.println();
-    }
+    System.out.println(BaseN.encodeBase58(123));
+    System.out.println(BaseN.decodeBase58("38"));
   }
 
   // --------------------------------------------------------------------------------
@@ -226,11 +219,19 @@ public final class BaseN {
   }
 
   public static long decodeSmallBaseN(final BaseNTable table, final String data, final int offset, final int length) {
-    final long[] decoder = table.decodeMap;
+    final int[] decoder = table.decodeMap;
     final long[] pows = table.pows;
+
+    if (length > pows.length) {
+      throw new IllegalArgumentException("too large to fit. length:" + length + " max:" + pows.length);
+    }
+
     long v = 0;
     for (int i = 0; i < length; ++i) {
-      v += pows[i] * decoder[data.charAt(offset + (length - 1) - i)];
+      final char c = data.charAt(offset + (length - 1) - i);
+      final long x = decoder[c];
+      if (x < 0) throw new IllegalArgumentException("invalid char " + c + " at position " + i);
+      v += pows[i] * x;
     }
     return v;
   }
@@ -264,7 +265,7 @@ public final class BaseN {
   // ================================================================================
   private static final class BaseNTable {
     private final BigInteger[] bigDecodeMap;
-    private final long[] decodeMap;
+    private final int[] decodeMap;
     private final long[] pows;
     private final char[] alphabet;
 
@@ -277,7 +278,8 @@ public final class BaseN {
 
       this.pows = computePows(alphabet);
       this.bigDecodeMap = new BigInteger[128];
-      this.decodeMap = new long[128];
+      this.decodeMap = new int[128];
+      Arrays.fill(decodeMap, -1);
       for (int i = 0; i < alphabet.length; ++i) {
         this.bigDecodeMap[alphabet[i]] = BigInteger.valueOf(i);
         this.decodeMap[alphabet[i]] = i;

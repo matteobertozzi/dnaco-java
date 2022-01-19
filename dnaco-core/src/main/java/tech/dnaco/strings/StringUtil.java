@@ -435,43 +435,51 @@ public final class StringUtil {
       return true;
     }
 
-    return likePattern(exp).matcher(source).matches();
+    return likePattern(exp).matches(source);
   }
 
-  public static Pattern likePattern(final String patternString) {
-    final char escapeChar = '\\';
+  public static LikePattern likePattern(final String patternString) {
+    if (patternString == null) return LikeWithNoMatch.INSTANCE;
+    if (patternString.isEmpty()) return new LikeWithStringEquals("");
+
+    final char ESCAPE_CHAR = '\\';
+    int anythingWildcards = 0;
+    int singleWildcards = 0;
 
     final StringBuilder regex = new StringBuilder(patternString.length() * 2);
     regex.append('^');
     boolean escaped = false;
-    for (final char currentChar : patternString.toCharArray()) {
-      if (!(!escaped || currentChar == '%' || currentChar == '_' || currentChar == escapeChar)) {
+    for (int i = 0, n = patternString.length(); i < n; ++i) {
+      final char currentChar = patternString.charAt(i);
+      if (!(!escaped || currentChar == '%' || currentChar == '_' || currentChar == ESCAPE_CHAR)) {
         throw new IllegalArgumentException("Escape character must be followed by '%%', '_' or the escape character itself");
       }
       //if (shouldEscape && !escaped && (currentChar == escapeChar)) {
-      if (!escaped && (currentChar == escapeChar)) {
+      if (!escaped && (currentChar == ESCAPE_CHAR)) {
         escaped = true;
       } else {
         switch (currentChar) {
           case '%':
             regex.append(escaped ? "%" : ".*");
             escaped = false;
+            anythingWildcards++;
             break;
           case '_':
-            regex.append(escaped ? "_" : ".");
+            regex.append(escaped ? '_' : '.');
             escaped = false;
+            singleWildcards++;
             break;
           default:
             // escape special regex characters
             switch (currentChar) {
-                case '\\':
-                case '^':
-                case '$':
-                case '.':
-                case '*':
-                  regex.append('\\');
+              case '\\':
+              case '^':
+              case '$':
+              case '.':
+              case '*':
+                regex.append('\\');
+                break;
             }
-
             regex.append(currentChar);
             escaped = false;
             break;
@@ -482,7 +490,71 @@ public final class StringUtil {
       throw new IllegalArgumentException("Escape character must be followed by '%%', '_' or the escape character itself");
     }
     regex.append('$');
-    return Pattern.compile(regex.toString());
+
+    if (anythingWildcards == patternString.length()) {
+      return LikeMatchingEverything.INSTANCE;
+    } else if (anythingWildcards > 0 || singleWildcards > 0) {
+      // if (singleWildcards == patternString.length()) return new LikeWithStringLengthEquals(singleWildCards);
+      final char firstChar = patternString.charAt(0);
+      final boolean prefixMatch = (firstChar != '%' && firstChar != '_');
+      return new RegexLikePattern(Pattern.compile(regex.toString()), prefixMatch);
+    }
+    return new LikeWithStringEquals(patternString);
+  }
+
+  public static interface LikePattern {
+    enum MatchType { NOTHING, EVERYTHING, PREFIX, FULL, RANDOM }
+    boolean matches(final String input);
+    MatchType matchType();
+  }
+
+  private static final class LikeMatchingEverything implements LikePattern {
+    private static final LikeMatchingEverything INSTANCE = new LikeMatchingEverything();
+    @Override public boolean matches(final String input) { return true; }
+    @Override public MatchType matchType() { return MatchType.EVERYTHING; }
+  }
+
+  private static final class LikeWithNoMatch implements LikePattern {
+    private static final LikeWithNoMatch INSTANCE = new LikeWithNoMatch();
+    @Override public boolean matches(final String input) { return false; }
+    @Override public MatchType matchType() { return MatchType.NOTHING; }
+  }
+
+  private static final class LikeWithStringEquals implements LikePattern {
+    private final String expr;
+
+    private LikeWithStringEquals(final String expr) {
+      this.expr = expr;
+    }
+
+    @Override
+    public MatchType matchType() {
+      return MatchType.FULL;
+    }
+
+    @Override
+    public boolean matches(final String input) {
+      return StringUtil.equals(input, expr);
+    }
+  }
+
+  private static final class RegexLikePattern implements LikePattern {
+    private final Pattern pattern;
+    private final MatchType matchType;
+
+    private RegexLikePattern(final Pattern pattern, final boolean prefixMatch) {
+      this.pattern = pattern;
+      this.matchType = prefixMatch ? MatchType.PREFIX : MatchType.RANDOM;
+    }
+
+    @Override public MatchType matchType() {
+      return matchType;
+    }
+
+    @Override
+    public boolean matches(final String input) {
+      return pattern.matcher(input).matches();
+    }
   }
 
   // ================================================================================

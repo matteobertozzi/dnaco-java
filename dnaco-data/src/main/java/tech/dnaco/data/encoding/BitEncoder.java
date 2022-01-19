@@ -52,17 +52,22 @@ public class BitEncoder {
 
   public void addSigned(final long value, final int bits) {
     if (value >= 0) {
+      verify(value, bits - 1);
       add(value, bits);
     } else {
-      final long signedValue = ((-value) & BitUtil.mask(bits - 1)) | (1 << (bits - 1));
+      final long signedValue = ((-value) & BitUtil.mask(bits - 1)) | (1L << (bits - 1));
       add(signedValue, bits);
     }
   }
 
-  public void add(final long value, final int bits) {
+  private static void verify(final long value, final int bits) {
     if (value != (value & BitUtil.mask(bits))) {
       throw new IllegalArgumentException("value " + value + " does not fit " + bits + "bits");
     }
+  }
+
+  public void add(final long value, final int bits) {
+    verify(value, bits);
 
     if (bits <= vBitsAvail) {
       vBitsAvail -= bits;

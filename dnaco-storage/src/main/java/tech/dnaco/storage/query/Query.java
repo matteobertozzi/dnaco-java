@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesSlice;
@@ -35,10 +34,13 @@ import tech.dnaco.data.json.JsonArray;
 import tech.dnaco.data.json.JsonObject;
 import tech.dnaco.storage.DataTypes.DataType;
 import tech.dnaco.storage.EntityRow;
+import tech.dnaco.storage.RowKey;
+import tech.dnaco.storage.RowKey.RowKeyBuilder;
 import tech.dnaco.storage.Schema;
 import tech.dnaco.storage.format.FieldFormatReader;
 import tech.dnaco.storage.query.Filter.FilterType;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.strings.StringUtil.LikePattern;
 
 public final class Query {
   private static final QueryCache QUERY_CACHE = new QueryCache();
@@ -97,6 +99,30 @@ public final class Query {
       return;
     }
 
+    final RowKeyBuilder rowKey = RowKey.newKeyBuilder();
+    for (int i = 0; i < keys.size(); ++i) {
+      final OptimizerFieldChecker checker = keys.get(i).checker();
+      switch (checker.matchType()) {
+        case FULL:
+          switch (schema.getFieldType(checker.getFieldIndex())) {
+            //case STRING: rowKey.add(checker.value());
+            //case INT: rowKey.add(checker.value())
+          }
+          break;
+        case PREFIX:
+        case RANGE:
+          for (int j = keys.size() - 1; j > i; --j) {
+            keys.remove(i);
+          }
+          break;
+        case RANDOM:
+          for (int j = keys.size() - 1; j >= i; --j) {
+            keys.remove(i);
+          }
+          break;
+      }
+    }
+
     System.out.println(" -> " + keys);
   }
 
@@ -117,12 +143,22 @@ public final class Query {
     } else {
       final int fieldIndex = schema.fieldByName(filter.getField());
       optimizedFilter = switch (filter.getType()) {
+        case AND, OR -> throw new IllegalArgumentException("Unexpected value: " + filter.getType());
         case EMPTY, NEMPTY -> new OptimizerEmpty(filter.getType(), fieldIndex);
         case EQ, NE, GE, GT, LE, LT -> new OptimizerComparator(filter.getType(), fieldIndex, filter.getValue());
-        case LIKE, NLIKE -> new OptimizerLike(filter.getType(), fieldIndex, (String) filter.getValue());
-        case IN, NIN -> new OptimizerIn(filter.getType(), fieldIndex, filter.getValues());
         case BW -> new OptimizerBetween(fieldIndex, filter.getValues());
-        case AND, OR -> throw new IllegalArgumentException("Unexpected value: " + filter.getType());
+        case LIKE, NLIKE -> {
+          // TODO: we can remove this query branch if match is nothing and remove the filter if it is everything
+          final LikePattern like = QUERY_CACHE.likePattern((String) filter.getValue());
+          yield new OptimizerLike(filter.getType(), fieldIndex, like);
+        }
+        case IN, NIN -> {
+          final Object[] inValues = filter.getValues();
+          if (inValues.length == 1) {
+            yield new OptimizerComparator(FilterType.EQ, fieldIndex, inValues[0]);
+          }
+          yield new OptimizerIn(filter.getType(), fieldIndex, inValues);
+        }
       };
     }
     uniqFilters.put(filter, optimizedFilter);
@@ -167,7 +203,10 @@ public final class Query {
   }
 
   private static abstract class OptimizerFieldChecker extends OptimizerFilter {
+    enum MatchType { FULL, PREFIX, RANGE, RANDOM }
+
     protected abstract int getFieldIndex();
+    protected abstract MatchType matchType();
   }
 
   private static class OptimizerConjunction extends OptimizerFilter {
@@ -223,6 +262,11 @@ public final class Query {
     }
 
     @Override
+    protected MatchType matchType() {
+      return MatchType.FULL;
+    }
+
+    @Override
     protected boolean compute(final EntityRow row) {
       final Object value = row.get(fieldIndex);
       if (value == null) return empty;
@@ -256,6 +300,15 @@ public final class Query {
     @Override
     protected int getFieldIndex() {
       return fieldIndex;
+    }
+
+    @Override
+    protected MatchType matchType() {
+      return switch (type) {
+        case EQ, NE -> MatchType.FULL;
+        case GE, GT, LE, LT -> MatchType.RANGE;
+        default -> throw new IllegalArgumentException("Unexpected value: " + type);
+      };
     }
 
     @Override
@@ -303,10 +356,10 @@ public final class Query {
 
   private static class OptimizerLike extends OptimizerFieldChecker {
     private final int fieldIndex;
+    private final LikePattern expr;
     private final boolean match;
-    private final String expr;
 
-    private OptimizerLike(final FilterType filterType, final int fieldIndex, final String expr) {
+    private OptimizerLike(final FilterType filterType, final int fieldIndex, final LikePattern expr) {
       this.fieldIndex = fieldIndex;
       this.match = (filterType == FilterType.LIKE);
       this.expr = expr;
@@ -318,17 +371,21 @@ public final class Query {
     }
 
     @Override
+    protected MatchType matchType() {
+      return switch (expr.matchType()) {
+        case NOTHING, EVERYTHING, FULL -> MatchType.FULL;
+        case PREFIX -> MatchType.FULL;
+        case RANDOM -> MatchType.RANDOM;
+      };
+    }
+
+    @Override
     protected boolean compute(final EntityRow row) {
       final Object value = row.get(fieldIndex);
       if (value == null || expr == null) return !match;
 
       final String sValue = String.valueOf(value);
-      if (sValue.isEmpty() && expr.isEmpty()) {
-        return match;
-      }
-
-      final Pattern pattern = QUERY_CACHE.likePattern(expr);
-      return pattern.matcher(sValue).matches() == match;
+      return expr.matches(sValue) == match;
     }
 
     @Override
@@ -364,6 +421,11 @@ public final class Query {
     public String toString() {
       return "Filter-" + (match ? "IN" : "NOT-IN") + " [field=" + fieldIndex + ", values=" + values + "]";
     }
+
+    @Override
+    protected MatchType matchType() {
+      return match ? MatchType.FULL : MatchType.RANDOM;
+    }
   }
 
   private static class OptimizerBetween extends OptimizerFieldChecker {
@@ -381,6 +443,11 @@ public final class Query {
     }
 
     @Override
+    protected MatchType matchType() {
+      return MatchType.RANDOM;
+    }
+
+    @Override
     protected boolean compute(final EntityRow row) {
       final DataType type = row.getFieldType(fieldIndex);
       final Object value = row.get(fieldIndex);
@@ -394,9 +461,9 @@ public final class Query {
   }
 
   public static class QueryCache {
-    private final LruCache<String, Pattern> likeCache = new LruCache<>(128, 512, Duration.ofMinutes(5));
+    private final LruCache<String, LikePattern> likeCache = new LruCache<>(128, 512, Duration.ofMinutes(5));
 
-    public Pattern likePattern(final String expr) {
+    public LikePattern likePattern(final String expr) {
       return likeCache.computeIfAbsent(expr, StringUtil::likePattern);
     }
   }

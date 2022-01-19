@@ -3,6 +3,8 @@ package tech.dnaco.strings;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import tech.dnaco.strings.StringUtil.LikePattern.MatchType;
+
 public class TestStringUtil {
   // ================================================================================
   //  String length related
@@ -177,6 +179,20 @@ public class TestStringUtil {
     Assertions.assertTrue(StringUtil.like(source2, "%abc%"));
     Assertions.assertTrue(StringUtil.like(source2, "%abcdef%"));
     Assertions.assertFalse(StringUtil.like(source2, "%abcdefg%"));
+  }
+
+  @Test
+  public void testLikeType() {
+    Assertions.assertEquals(MatchType.FULL, StringUtil.likePattern("foo").matchType());
+    Assertions.assertEquals(MatchType.RANDOM, StringUtil.likePattern("_oo").matchType());
+    Assertions.assertEquals(MatchType.RANDOM, StringUtil.likePattern("%o").matchType());
+    Assertions.assertEquals(MatchType.PREFIX, StringUtil.likePattern("f_o").matchType());
+    Assertions.assertEquals(MatchType.PREFIX, StringUtil.likePattern("f%").matchType());
+    Assertions.assertEquals(MatchType.EVERYTHING, StringUtil.likePattern("%").matchType());
+    Assertions.assertEquals(MatchType.EVERYTHING, StringUtil.likePattern("%%").matchType());
+    Assertions.assertEquals(MatchType.RANDOM, StringUtil.likePattern("__").matchType());
+    Assertions.assertEquals(MatchType.NOTHING, StringUtil.likePattern(null).matchType());
+    Assertions.assertEquals(MatchType.FULL, StringUtil.likePattern("").matchType());
   }
 
   // ================================================================================

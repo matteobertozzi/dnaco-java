@@ -18,30 +18,51 @@
 package tech.dnaco.data.encoding;
 
 import java.util.Random;
+import java.util.function.IntToLongFunction;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import tech.dnaco.collections.arrays.LongArray;
+import tech.dnaco.util.BitUtil;
 
 public class TestBitCoding {
   @Test
   public void testRandWriteRead() {
     final int N = 500_000;
+    final Random rand = new Random();
+    testRandWriteRead(N, false, bits -> {
+      if (bits == 64) {
+        return Long.MAX_VALUE + rand.nextInt(0xff);
+      }
+      return rand.nextLong((1L << bits) - 1);
+    });
+  }
 
+  @Test
+  public void testSignedRandWriteRead() {
+    final int N = 500_000;
+    final Random rand = new Random();
+    testRandWriteRead(N, true, bits -> {
+      System.out.println(bits + " -> " + BitUtil.mask(bits));
+      return rand.nextLong(BitUtil.mask(Math.max(1, bits - 1)));
+    });
+  }
+
+  private void testRandWriteRead(final int N, final boolean signedValues, final IntToLongFunction randValue) {
     final Random rand = new Random();
     final LongArray values = new LongArray(N);
 
     final BitEncoder encoder = new BitEncoder(1 << 20);
     for (int i = 0; i < (N / 2); ++i) {
       final int bits = 1 + rand.nextInt(64);
-      final long value;
-      if (bits == 64) {
-        value = Long.MAX_VALUE + rand.nextInt(0xff);
+      final long value = randValue.applyAsLong(bits);
+
+      if (signedValues) {
+        encoder.addSigned(value, bits);
       } else {
-        value = rand.nextLong((1L << bits) - 1);
+        encoder.add(value, bits);
       }
-      encoder.add(value, bits);
 
       values.add(bits);
       values.add(value);
@@ -52,6 +73,12 @@ public class TestBitCoding {
     for (int i = 0; i < values.size(); i += 2) {
       final int bits = Math.toIntExact(values.get(i));
       final long expectedValue = values.get(i + 1);
+      if (signedValues) {
+        final long value = decoder.readSigned(bits);
+        Assertions.assertEquals(expectedValue, value);
+        return;
+      }
+
       final long value = decoder.read(bits);
       if (bits == 64) {
         Assertions.assertEquals(0, Long.compareUnsigned(expectedValue, value));

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
+import tech.dnaco.data.json.JsonUtil;
 import tech.dnaco.tracing.SpanId;
 import tech.dnaco.tracing.TraceId;
 
@@ -62,5 +63,11 @@ public final class TraceIdsModule {
     public void serialize(final SpanId value, final JsonGenerator gen, final SerializerProvider provider) throws IOException {
       gen.writeString(value.toString());
     }
+  }
+
+  public static void main(final String[] args) {
+    final String x = JsonUtil.toJson(TraceId.newRandomId());
+    final TraceId y = JsonUtil.fromJson(x, TraceId.class);
+    System.out.println(x + " " + y);
   }
 }

@@ -3,23 +3,42 @@ package tech.dnaco.data.encoding;
 import java.util.function.LongConsumer;
 
 import tech.dnaco.bytes.encoding.IntUtil;
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.util.BitUtil;
 
 public final class IntSeqCoding {
-  public static final SliceType[] SLICE_TYPES = SliceType.values();
+  public static final IntSeqSliceType[] SLICE_TYPES = IntSeqSliceType.values();
 
-  public enum SliceType { RLE, LIN, MIN, EOF }
+  public enum IntSeqSliceType { RLE, LIN, MIN, EOF }
 
   private IntSeqCoding() {
     // no-op
   }
 
-  interface IntSeqEncoder {
-    void add(SliceType type, int start, int end, long value, long delta);
+  public static IntSeqEncoder newByteArrayEncoder(final PagedByteArray buffer) {
+    return new Encoder(buffer);
+  }
 
+  public interface IntSeqEncoder {
+    void flush();
+    void add(IntSeqSliceType type, long[] seq, int start, int end, long value, long delta);
+
+    int maxSliceLength();
     int rleBits(int length, long value);
     int linBits(int length, long value, long delta);
     int minBits(int length, long minValue, long delta);
+
+    default int sliceBits(final int length, final long value, final long delta) {
+      if (length == 0) {
+        return 0;
+      } else if (length == 1) {
+        return rleBits(length, value);
+      } else if (length == 2) {
+        return linBits(length, value, delta);
+      } else /* if (length > 2) */ {
+        return minBits(length, value, delta);
+      }
+    }
   }
 
   public static void decode(final byte[] buffer, final int off, final LongConsumer consumer) {
@@ -43,20 +62,30 @@ public final class IntSeqCoding {
 
   private static class Encoder implements IntSeqEncoder {
     private final BitEncoder bitEncoder;
-    private final long[] seq;
 
-    private Encoder(final long[] seq) {
-      this.bitEncoder = new BitEncoder(1 << 10);
-      this.seq = seq;
+    private Encoder(final PagedByteArray buffer) {
+      this.bitEncoder = new BitEncoder(buffer);
     }
 
-    public void add(final SliceType type, final int start, final int end, final long value, final long delta) {
+    @Override
+    public void flush() {
+      bitEncoder.add(IntSeqSliceType.EOF.ordinal(), 2);
+      bitEncoder.flush();
+    }
+
+    @Override
+    public void add(final IntSeqSliceType type, final long[] seq, final int start, final int end, final long value, final long delta) {
       switch (type) {
         case RLE -> writeRle(bitEncoder, end - start, value);
         case LIN -> writeLin(bitEncoder, end - start, value, delta);
         case MIN -> writeMin(bitEncoder, seq, start, end, value, delta);
-        case EOF -> bitEncoder.add(SliceType.EOF.ordinal(), 2);
+        case EOF -> bitEncoder.add(IntSeqSliceType.EOF.ordinal(), 2);
       }
+    }
+
+    @Override
+    public int maxSliceLength() {
+      return (1 << 16) - 1;
     }
 
     @Override
@@ -94,7 +123,7 @@ public final class IntSeqCoding {
   public static void writeRle(final BitEncoder bitEncoder, final int length, final long value) {
     final int lengthBits = lengthBits(length);
     final int valueBits = valueBits(value);
-    bitEncoder.add(SliceType.RLE.ordinal(), 2);
+    bitEncoder.add(IntSeqSliceType.RLE.ordinal(), 2);
     bitEncoder.add((lengthBits >> 2) - 1, 2);
     bitEncoder.add(valueBits - 1, 6);
     bitEncoder.add(length, lengthBits);
@@ -133,7 +162,7 @@ public final class IntSeqCoding {
     final int lengthBits = lengthBits(length);
     final int baseBits = valueBits(baseValue);
     final int deltaBits = signedValueBits(delta);
-    bitEncoder.add(SliceType.LIN.ordinal(), 2);
+    bitEncoder.add(IntSeqSliceType.LIN.ordinal(), 2);
     bitEncoder.add((lengthBits >> 2) - 1, 2);
     bitEncoder.add(baseBits - 1, 6);
     bitEncoder.add(deltaBits - 1, 6);
@@ -178,7 +207,7 @@ public final class IntSeqCoding {
     final int lengthBits = lengthBits(length);
     final int minValueBits = valueBits(minValue);
     final int deltaBits = signedValueBits(delta);
-    bitEncoder.add(SliceType.MIN.ordinal(), 2);
+    bitEncoder.add(IntSeqSliceType.MIN.ordinal(), 2);
     bitEncoder.add((lengthBits >> 2) - 1, 2);
     bitEncoder.add(minValueBits - 1, 6);
     bitEncoder.add(deltaBits - 1, 6);
@@ -213,14 +242,14 @@ public final class IntSeqCoding {
     return BitUtil.align(bits, 4);
   }
 
-  private static int valueBits(final long value) {
+  public static int valueBits(final long value) {
     if (value < 0) {
       throw new IllegalArgumentException("expected value >= 0, got " + value);
     }
     return value == 0 ? 1 : (64 - Long.numberOfLeadingZeros(value));
   }
 
-  private static int signedValueBits(final long value) {
+  public static int signedValueBits(final long value) {
     return valueBits(Math.abs(value)) + 1;
   }
 }

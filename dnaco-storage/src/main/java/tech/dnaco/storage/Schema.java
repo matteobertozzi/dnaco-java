@@ -232,6 +232,16 @@ public final class Schema {
     return otherFieldIndexes;
   }
 
+
+// fieldId:3 -> abba: STRING
+// fieldId:4 -> baubau: INT
+// fieldId:1 -> id: INT
+// fieldId:2 -> nammen: STRING
+// -> {'baubau': 10, id: 2, 'abba': 'ciao', culo: ..}
+
+
+// [aaa, ccc]
+// [aaa, bb, ccc, ddd]
   public static SchemaMapping map(final Schema fromSchema, final Schema toSchema) {
     final BitSet typeDifferences = new BitSet(toSchema.fieldsCount());
     final BitSet missingFields = new BitSet(toSchema.fieldsCount());
@@ -293,6 +303,14 @@ public final class Schema {
       this.newFields = newFields.isEmpty() ? null : newFields;
       this.fromSchema = fromSchema;
       this.toSchema = toSchema;
+    }
+
+    public Schema fromSchema() {
+      return fromSchema;
+    }
+
+    public Schema toSchema() {
+      return toSchema;
     }
 
     public int[] fieldIndexMapping() {

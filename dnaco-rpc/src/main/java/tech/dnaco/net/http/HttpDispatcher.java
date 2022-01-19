@@ -72,6 +72,7 @@ import tech.dnaco.net.message.DnacoMessageHttpEncoder;
 import tech.dnaco.net.message.DnacoMessageUtil;
 import tech.dnaco.net.message.DnacoMetadataMap;
 import tech.dnaco.net.util.ByteBufDataFormatUtil;
+import tech.dnaco.net.util.ExecutionId;
 import tech.dnaco.strings.StringUtil;
 
 public class HttpDispatcher {
@@ -147,21 +148,42 @@ public class HttpDispatcher {
     return task != null ? task.setMessage(message) : null;
   }
 
-  private DnacoMessage execute(final HttpTask task) {
-    final long packetId = task.ctx().message.packetId();
+  public static class DispatchLaterException extends Exception {
+    public DispatchLaterException() {
+      super();
+    }
+
+    public DispatchLaterException(final Throwable cause) {
+      super(null, cause);
+    }
+
+    public DispatchLaterException(final Throwable cause, final String message) {
+      super(message, cause);
+    }
+  }
+
+  private DnacoMessage execute(final HttpTask task) throws DispatchLaterException {
+    final long packetId = task.ctx().packetId();
 
     final Object result;
     try {
       result = task.methodInvoker().invoke(task.ctx(), task.ctx().message);
+    } catch (final DispatchLaterException e) {
+      throw e;
     } catch (final DataFormatException e) {
       return buildError(packetId, HttpResponseStatus.BAD_REQUEST);
     } catch (final Throwable e) {
+      if (e instanceof final DispatchLaterException dispatchLaterException) {
+        Logger.error("dispatch later: {}", dispatchLaterException);
+        throw dispatchLaterException;
+      }
+      Logger.error(e, "write internal server error");
       return buildError(packetId, HttpResponseStatus.INTERNAL_SERVER_ERROR);
     }
 
     if (result == null && task.methodInvoker().hasVoidResult()) {
       final DnacoMetadataMap respHeaders = new DnacoMetadataMap();
-      respHeaders.set(DnacoMessageUtil.METADATA_FOR_HTTP_STATUS, HttpResponseStatus.OK.code());
+      respHeaders.set(DnacoMessageUtil.METADATA_FOR_HTTP_STATUS, HttpResponseStatus.NO_CONTENT.code());
       return new DnacoMessage(packetId, respHeaders, Unpooled.EMPTY_BUFFER);
     }
 
@@ -194,6 +216,10 @@ public class HttpDispatcher {
     private final MethodInvoker methodInvoker;
     private final HttpCallContext ctx;
 
+    protected HttpTask (final HttpTask other) {
+      this(other.dispatcher, other.methodInvoker, other.ctx);
+    }
+
     private HttpTask (final HttpDispatcher dispatcher, final MethodInvoker methodInvoker, final HttpCallContext ctx) {
       this.dispatcher = dispatcher;
       this.methodInvoker = methodInvoker;
@@ -217,11 +243,19 @@ public class HttpDispatcher {
       return ctx;
     }
 
+    public ExecutionId executionId() {
+      return ctx.executionId();
+    }
+
+    public long packetId() {
+      return ctx.packetId();
+    }
+
     public boolean hasAnnotation(final Class<? extends Annotation> annotationType) {
       return methodInvoker.hasAnnotation(annotationType);
     }
 
-    public DnacoMessage execute() {
+    public DnacoMessage execute() throws DispatchLaterException {
       return dispatcher.execute(this);
     }
   }
@@ -270,15 +304,27 @@ public class HttpDispatcher {
     private Map<String, String> uriVariables = Collections.emptyMap();
     private Matcher uriMatcher = null;
 
+    private final ExecutionId executionId;
     private final Map<String, List<String>> queryParams;
     private final String method;
     private final String path;
 
     private DnacoMessage message = null;
 
+    protected HttpCallContext(final HttpCallContext other) {
+      this.executionId = other.executionId;
+      this.uriVariables = other.uriVariables;
+      this.uriMatcher = other.uriMatcher;
+      this.queryParams = other.queryParams;
+      this.method = other.method;
+      this.path = other.path;
+      this.message = other.message;
+    }
+
     public HttpCallContext(final String method, final String uri) {
       final QueryStringDecoder queryDecoder = new QueryStringDecoder(uri);
 
+      this.executionId = ExecutionId.randomId();
       this.method = method;
       this.path = queryDecoder.path();
       this.queryParams = queryDecoder.parameters();
@@ -287,6 +333,9 @@ public class HttpDispatcher {
     private void setMessage(final DnacoMessage message) {
       this.message = message;
     }
+
+    public long packetId() { return message.packetId(); }
+    public ExecutionId executionId() { return executionId; }
 
     public String method() { return method; }
     public String path() { return path; }
@@ -359,7 +408,7 @@ public class HttpDispatcher {
   private static final String CONTENT_TYPE_APP_CBOR = "application/cbor";
   private static final String CONTENT_TYPE_APP_JSON = "application/json";
 
-  private static MessageDispatcher newHttpMessageDispatcher() {
+  public static MessageDispatcher newHttpMessageDispatcher() {
     final MessageDispatcher dispatcher = new MessageDispatcher();
     // request parsers
     dispatcher.addParamAnnotationMapper(UriVariable.class, HttpUriVariableParamParser::new);
@@ -371,6 +420,8 @@ public class HttpDispatcher {
     dispatcher.addParamAnnotationMapper(XmlBody.class, XmlFormatParamParser::new);
     dispatcher.addParamAnnotationMapper(FormEncodedBody.class, FormEncodedParamParser::new);
     dispatcher.addParamDefaultMapper(HttpDefaultParamParser::new);
+    // ...
+    dispatcher.addParamTypeMapper(ResultStream.class, ResultStreamParamParser::new);
     return dispatcher;
   }
 
@@ -558,6 +609,17 @@ public class HttpDispatcher {
       }
       // fallback to json
       return ByteBufDataFormatUtil.fromBytes(JsonFormat.INSTANCE, message.data(), valueType());
+    }
+  }
+
+  private static class ResultStreamParamParser implements ParamParser {
+    private ResultStreamParamParser(final Parameter param, final Annotation annotation) {
+      // no-op
+    }
+
+    @Override
+    public Object parse(final CallContext context, final Object message) throws Exception {
+      return new PagedResultStream(((HttpCallContext)context).executionId());
     }
   }
 }

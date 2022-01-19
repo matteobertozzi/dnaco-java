@@ -20,6 +20,7 @@
 package tech.dnaco.net.dispatcher;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
@@ -48,7 +49,7 @@ public class MethodInvoker {
     return returnType == void.class || returnType == Void.class;
   }
 
-  public Object invoke(final CallContext context, final Object message) throws Exception {
+  public Object invoke(final CallContext context, final Object message) throws Throwable {
     // call action-parsers (before param-parse)
     for (int i = 0; i < actionParsers.length; ++i) {
       if (actionParsers[i].beforeParamParse(context, message)) {
@@ -74,7 +75,12 @@ public class MethodInvoker {
     }
 
     // execute
-    final Object result = method.invoke(handler, params);
+    final Object result;
+    try {
+      result = method.invoke(handler, params);
+    } catch (final InvocationTargetException e) {
+      throw e.getCause();
+    }
 
     // call action-parsers (after execute)
     return callActionAfterExecute(context, message, result, actionParsers.length);

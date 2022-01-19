@@ -27,6 +27,33 @@ import tech.dnaco.collections.arrays.LongArray;
 
 public class TestIntSeqCoding {
   @Test
+  public void testMinSeq() {
+    final long[] seq = new long[] {
+      962264894997320L, 25764,
+      6310565, 27729, 15466364862304L, 444585871691175L, 484869823320558L, 67, 30287832, 21449
+    };
+
+    // type:MIN start:0 end:2 value:25764 delta:962264894971556
+    // type:MIN start:2 end:7 value:27729 delta:484869823292829
+    // type:MIN start:7 end:10 value:67 delta:30287765
+
+    final BitEncoder bitEncoder = new BitEncoder(1 << 10);
+    IntSeqCoding.writeMin(bitEncoder, seq, 0,  2, 25764, 962264894971556L);
+    IntSeqCoding.writeMin(bitEncoder, seq, 2,  7, 27729, 484869823292829L);
+    IntSeqCoding.writeMin(bitEncoder, seq, 7, 10, 67, 30287765);
+    bitEncoder.add(IntSeqCoding.IntSeqSliceType.EOF.ordinal(), 2);
+    bitEncoder.flush();
+
+    final LongValue index = new LongValue();
+    IntSeqCoding.decode(bitEncoder.buffer().toByteArray(), 0, value -> {
+      Assertions.assertEquals(value, seq[index.intValue()]);
+      index.incrementAndGet();
+    });
+    Assertions.assertEquals(seq.length, index.intValue());
+  }
+
+
+  @Test
   public void testSeqRandWriteRead() {
     final int N = 100;
 
@@ -65,7 +92,7 @@ public class TestIntSeqCoding {
           break;
       }
     }
-    bitEncoder.add(IntSeqCoding.SliceType.EOF.ordinal(), 2);
+    bitEncoder.add(IntSeqCoding.IntSeqSliceType.EOF.ordinal(), 2);
     bitEncoder.flush();
 
     final LongValue index = new LongValue();
