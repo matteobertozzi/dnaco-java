@@ -208,7 +208,7 @@ public final class IntSeqCoding {
     final int minValueBits = valueBits(minValue);
     final int deltaBits = signedValueBits(delta);
     bitEncoder.add(IntSeqSliceType.MIN.ordinal(), 2);
-    bitEncoder.add((lengthBits >> 2) - 1, 2);
+    bitEncoder.add((lengthBits >>> 2) - 1, 2);
     bitEncoder.add(minValueBits - 1, 6);
     bitEncoder.add(deltaBits - 1, 6);
     bitEncoder.add(length, lengthBits);

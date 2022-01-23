@@ -18,33 +18,41 @@
 package tech.dnaco.data.encoding;
 
 public class IntXorDecoder {
-  private final BitDecoder bitReader;
+  private final BitDecoder bitDecoder;
 
   private int lastLeadingZeros = Integer.MAX_VALUE;
   private int lastTrailingZeros = 0;
   private long lastValue = 0;
 
-  public IntXorDecoder(final BitDecoder bitReader) {
-    this.bitReader = bitReader;
+  public IntXorDecoder(final BitDecoder bitDecoder) {
+    this.bitDecoder = bitDecoder;
+  }
+
+  public double readFirstAsDouble() {
+    return Double.longBitsToDouble(readFirst());
+  }
+
+  public double readNextAsDouble() {
+    return Double.longBitsToDouble(readNext());
   }
 
   public long readFirst() {
-    final long value = bitReader.read(64);
+    final long value = bitDecoder.read(64);
     this.lastValue = value;
     return value;
   }
 
   public long readNext() {
-    switch (bitReader.nextClearBit(2)) {
-      case 3:
+    switch (bitDecoder.nextClearBit(2)) {
+      case 3: // 11
         // New leading and trailing zeros
-        lastLeadingZeros = bitReader.readAsInt(6);
-        final int significantBits = bitReader.readAsInt(6) + 1;
+        lastLeadingZeros = bitDecoder.readAsInt(6);
+        final int significantBits = bitDecoder.readAsInt(6) + 1;
 
         lastTrailingZeros = Long.SIZE - significantBits - lastLeadingZeros;
         // missing break is intentional, we want to overflow to next one
-      case 2:
-        long value = bitReader.read(Long.SIZE - lastLeadingZeros - lastTrailingZeros);
+      case 2: // 10
+        long value = bitDecoder.read(Long.SIZE - lastLeadingZeros - lastTrailingZeros);
         value <<= lastTrailingZeros;
 
         value = lastValue ^ value;

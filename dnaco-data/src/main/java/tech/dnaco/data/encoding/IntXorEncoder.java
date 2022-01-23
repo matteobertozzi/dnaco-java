@@ -18,14 +18,14 @@
 package tech.dnaco.data.encoding;
 
 public class IntXorEncoder {
-  private final BitEncoder bitWriter;
+  private final BitEncoder bitEncoder;
 
   private int lastLeadingZeros = Integer.MAX_VALUE;
   private int lastTrailingZeros = 0;
   private long lastValue = 0;
 
-  public IntXorEncoder(final BitEncoder bitWriter) {
-    this.bitWriter = bitWriter;
+  public IntXorEncoder(final BitEncoder bitEncoder) {
+    this.bitEncoder = bitEncoder;
   }
 
   public void addFirst(final double value) {
@@ -33,7 +33,7 @@ public class IntXorEncoder {
   }
 
   public void addFirst(final long value) {
-    bitWriter.add(value, 64);
+    bitEncoder.add(value, 64);
     this.lastValue = value;
   }
 
@@ -44,7 +44,7 @@ public class IntXorEncoder {
   public void add(final long value) {
     final long xor = lastValue ^ value;
     if (xor == 0) {
-      bitWriter.addZero();
+      bitEncoder.addZero();
     } else {
       int leadingZeros = Long.numberOfLeadingZeros(xor);
       final int trailingZeros = Long.numberOfTrailingZeros(xor);
@@ -55,7 +55,7 @@ public class IntXorEncoder {
       }
 
       // Store bit '1'
-      bitWriter.addOne();
+      bitEncoder.addOne();
 
       if (leadingZeros >= lastLeadingZeros && trailingZeros >= lastTrailingZeros) {
         writeExistingLeading(xor);
@@ -68,22 +68,22 @@ public class IntXorEncoder {
   }
 
   private void writeExistingLeading(final long xor) {
-    bitWriter.addZero();
+    bitEncoder.addZero();
 
     final int significantBits = 64 - lastLeadingZeros - lastTrailingZeros;
-    bitWriter.add(xor >>> lastTrailingZeros, significantBits);
+    bitEncoder.add(xor >>> lastTrailingZeros, significantBits);
   }
 
   private void writeNewLeading(final long xor, final int leadingZeros, final int trailingZeros) {
-    bitWriter.addOne();
+    bitEncoder.addOne();
 
     // Different from version 1.x, use (significantBits - 1) in storage - avoids a branch
     final int significantBits = 64 - leadingZeros - trailingZeros;
 
     // Different from original, bits 5 -> 6, avoids a branch, allows storing small longs
-    bitWriter.add(leadingZeros, 6); // Number of leading zeros in the next 6 bits
-    bitWriter.add(significantBits - 1, 6); // Length of meaningful bits in the next 6 bits
-    bitWriter.add(xor >>> trailingZeros, significantBits); // Store the meaningful bits of XOR
+    bitEncoder.add(leadingZeros, 6); // Number of leading zeros in the next 6 bits
+    bitEncoder.add(significantBits - 1, 6); // Length of meaningful bits in the next 6 bits
+    bitEncoder.add(xor >>> trailingZeros, significantBits); // Store the meaningful bits of XOR
 
     lastLeadingZeros = leadingZeros;
     lastTrailingZeros = trailingZeros;

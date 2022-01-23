@@ -37,7 +37,8 @@ public class BitDecoder {
 
   public long readSigned(final int bits) {
     final long value = read(bits);
-    return ((value & (1L << (bits - 1))) == 0) ? value : -value;
+    final long signMask = (1L << (bits - 1));
+    return ((value & signMask) == 0) ? value : -(value & (signMask - 1));
   }
 
   public long read(int bits) {

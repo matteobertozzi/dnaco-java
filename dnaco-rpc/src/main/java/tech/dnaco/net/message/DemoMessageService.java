@@ -17,14 +17,17 @@
 
 package tech.dnaco.net.message;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import tech.dnaco.net.AbstractClient.ClientPromise;
 import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.message.DnacoMessageService.DnacoMessageServiceProcessor;
+import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.TimeRangeCounter;
+import tech.dnaco.threading.SyncLatch;
 import tech.dnaco.time.RetryUtil;
 
 public final class DemoMessageService {
@@ -34,12 +37,12 @@ public final class DemoMessageService {
       if (false) {
         ctx.writeAndFlush(msg.retain());
       } else {
-        System.out.println(msg.packetId() + " RECEIVED: " + msg.metadataMap() + " -> " + msg.data().toString(StandardCharsets.UTF_8));
+        //System.out.println(msg.packetId() + " RECEIVED: " + msg.metadataMap() + " -> " + msg.data().toString(StandardCharsets.UTF_8));
 
         final DnacoMetadataMap metadata = new DnacoMetadataMap(16);
         metadata.put("foo", "10");
         final DnacoMessage rezp = new DnacoMessage(msg.packetId(), metadata, Unpooled.wrappedBuffer("hello".getBytes()));
-        ctx.writeAndFlush(rezp);
+        ctx.writeAndFlush(rezp, ctx.channel().voidPromise());
       }
     }
   }
@@ -54,10 +57,23 @@ public final class DemoMessageService {
       client.connect("localhost", 8889);
       while (!client.isReady()) Thread.yield();
 
-      for (int i = 0; i < 10; ++i) {
+      final TimeRangeCounter trc = new TimeRangeCounter(60, 1, TimeUnit.SECONDS);
+      final SyncLatch latch = new SyncLatch();
+      final long startTime = System.nanoTime();
+      for (int i = 0; true; ++i) {
+        if ((i & 1048576) == 0) {
+          final long elapsed = System.nanoTime() - startTime;
+          if (elapsed > TimeUnit.SECONDS.toNanos(120)) break;
+        }
         final ClientPromise<DnacoMessage> resp = client.sendMessage(new DnacoMetadataMap(Map.of("a", "10")), Unpooled.wrappedBuffer(("hello" + i).getBytes()));
-        resp.whenComplete((response, exception) -> System.out.println("CLIENT HOOK " + response.metadataMap() + " -> " + response.data().toString(StandardCharsets.UTF_8)));
+        resp.whenComplete((response, exception) -> {
+          trc.inc();
+          //System.out.println("CLIENT HOOK " + response.metadataMap() + " -> " + response.data().toString(StandardCharsets.UTF_8));
+          latch.release();
+        });
+        latch.await();
       }
+      System.out.println(trc.getSnapshot().toHumanReport(new StringBuilder(), HumansUtil.HUMAN_COUNT));
 
       service.waitStopSignal();
     }

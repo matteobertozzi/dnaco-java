@@ -33,7 +33,6 @@ import tech.dnaco.logging.Logger;
 import tech.dnaco.net.AbstractClient;
 import tech.dnaco.net.frame.DnacoFrameDecoder;
 import tech.dnaco.net.frame.DnacoFrameEncoder;
-import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.time.RetryUtil;
 import tech.dnaco.time.RetryUtil.RetryLogic;
 
@@ -114,7 +113,7 @@ public class DnacoMessageClient extends AbstractClient {
       if (future != null) {
         future.setSuccess(msg);
         final long elapsedNs = System.nanoTime() - startNs;
-        Logger.trace("response {} handled in {}", msg, HumansUtil.humanTimeNanos(elapsedNs));
+        //Logger.trace("response {} handled in {}", msg, HumansUtil.humanTimeNanos(elapsedNs));
       } else {
         Logger.warn("no response future waiting for response: {}", msg);
       }

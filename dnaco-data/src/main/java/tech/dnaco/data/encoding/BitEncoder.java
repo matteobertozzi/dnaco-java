@@ -55,7 +55,8 @@ public class BitEncoder {
       verify(value, bits - 1);
       add(value, bits);
     } else {
-      final long signedValue = ((-value) & BitUtil.mask(bits - 1)) | (1L << (bits - 1));
+      final long signMask = (1L << (bits - 1));
+      final long signedValue = ((-value) & (signMask - 1)) | signMask;
       add(signedValue, bits);
     }
   }

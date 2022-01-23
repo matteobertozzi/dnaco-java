@@ -44,18 +44,32 @@ public class TestIntSeqCoding {
     bitEncoder.add(IntSeqCoding.IntSeqSliceType.EOF.ordinal(), 2);
     bitEncoder.flush();
 
-    final LongValue index = new LongValue();
-    IntSeqCoding.decode(bitEncoder.buffer().toByteArray(), 0, value -> {
-      Assertions.assertEquals(value, seq[index.intValue()]);
-      index.incrementAndGet();
-    });
-    Assertions.assertEquals(seq.length, index.intValue());
+    validateSequence(bitEncoder.buffer().toByteArray(), seq);
+  }
+
+  @Test
+  public void testMinSeq2() {
+    final long[] seq = new long[] {
+      0, 418864660022L, 210144, 2919025, 3623, 177557264318604383L, 60, 373970321633699L, 11624291485927L, 368339408090L
+    };
+
+    // type:MIN start:0 end:2 value:0 delta:418864660022
+    // type:MIN start:2 end:3 value:2915402 delta:2915402
+    // type:MIN start:3 end:10 value:60 delta:177557264318604323
+    final BitEncoder bitEncoder = new BitEncoder(1 << 10);
+    IntSeqCoding.writeMin(bitEncoder, seq, 0,  2, 0, 418864660022L);
+    IntSeqCoding.writeMin(bitEncoder, seq, 2,  3, 2915402L, 2915402L);
+    IntSeqCoding.writeMin(bitEncoder, seq, 3, 10, 60, 177557264318604323L);
+    bitEncoder.add(IntSeqCoding.IntSeqSliceType.EOF.ordinal(), 2);
+    bitEncoder.flush();
+
+    validateSequence(bitEncoder.buffer().toByteArray(), seq);
   }
 
 
   @Test
   public void testSeqRandWriteRead() {
-    final int N = 100;
+    final int N = 10000;
 
     final Random rand = new Random();
     final LongArray values = new LongArray(N);
@@ -95,11 +109,21 @@ public class TestIntSeqCoding {
     bitEncoder.add(IntSeqCoding.IntSeqSliceType.EOF.ordinal(), 2);
     bitEncoder.flush();
 
+    validateSequence(bitEncoder.buffer().toByteArray(), values);
+  }
+
+  private static void validateSequence(final byte[] data, final long[] expectedValues) {
+    final LongArray xseq = new LongArray(expectedValues.length);
+    xseq.add(expectedValues);
+    validateSequence(data, xseq);
+  }
+
+  private static void validateSequence(final byte[] data, final LongArray expectedValues) {
     final LongValue index = new LongValue();
-    IntSeqCoding.decode(bitEncoder.buffer().toByteArray(), 0, value -> {
-      Assertions.assertEquals(value, values.get(index.intValue()));
+    IntSeqCoding.decode(data, 0, value -> {
+      Assertions.assertEquals(expectedValues.get(index.intValue()), value);
       index.incrementAndGet();
     });
-    Assertions.assertEquals(values.size(), index.intValue());
+    Assertions.assertEquals(expectedValues.size(), index.intValue());
   }
 }

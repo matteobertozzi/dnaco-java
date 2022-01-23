@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package tech.dnaco.storage;
+package tech.dnaco.bytes.encoding;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -26,8 +26,6 @@ import java.util.function.Consumer;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
-import tech.dnaco.bytes.encoding.IntEncoder;
-import tech.dnaco.bytes.encoding.VarInt;
 import tech.dnaco.collections.LongValue;
 import tech.dnaco.collections.arrays.ByteArray;
 import tech.dnaco.collections.arrays.IntArray;
@@ -43,9 +41,13 @@ public final class RowKey {
   }
 
   public RowKey(final byte[] key, final int numOfKeyParts) {
+    this(key, 0, key.length, numOfKeyParts);
+  }
+
+  public RowKey(final byte[] key, final int off, final int len, final int numOfKeyParts) {
     this.key = key;
     this.index = new IntArray(numOfKeyParts);
-    for (int offset = 0; offset < key.length; ) {
+    for (int offset = off, length = off + len; offset < length; ) {
       final int separator = BytesUtil.indexOf(key, offset, ZERO);
       if (separator < 0) {
         index.add(offset);
@@ -57,6 +59,10 @@ public final class RowKey {
       index.add(separator - offset);
       offset = separator + ZERO.length;
     }
+  }
+
+  public int partsCount() {
+    return index.size() >>> 1;
   }
 
   public ByteArraySlice get(final int partIndex) {

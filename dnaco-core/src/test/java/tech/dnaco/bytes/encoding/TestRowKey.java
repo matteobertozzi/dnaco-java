@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package tech.dnaco.storage;
+package tech.dnaco.bytes.encoding;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Test;
 
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
-import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.collections.LongValue;
 
 public class TestRowKey {
