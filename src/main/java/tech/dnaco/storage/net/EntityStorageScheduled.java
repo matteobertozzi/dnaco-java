@@ -81,12 +81,15 @@ public class EntityStorageScheduled extends ScheduledTask {
       }
     });
 
-    /*
     Logger.debug("cleaning up {}", projectId);
-    for (final EntitySchema schema: Storage.getInstance(projectId).getEntitySchemas()) {
-      final TableStats stats = tables.get(schema.getEntityName());
-      Storage.getInstance(projectId).cleanup(schema, stats.getGroups());
-    }*/
+    if (false) {
+      for (final EntitySchema schema: Storage.getInstance(projectId).getEntitySchemas()) {
+        final TableStats stats = tables.get(schema.getEntityName());
+        if (stats != null) {
+          Storage.getInstance(projectId).cleanup(schema, stats.getGroups());
+        }
+      }
+    }
 
     tableStats.put(projectId, tables);
 

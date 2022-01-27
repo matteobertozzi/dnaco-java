@@ -1,45 +1,22 @@
 package tech.dnaco.storage.net.models;
 
-import java.util.Arrays;
-
-import tech.dnaco.collections.arrays.ArrayUtil;
-import tech.dnaco.storage.demo.EntityDataRow;
-import tech.dnaco.storage.demo.EntitySchema;
-
 public class ScanResult {
   public static final ScanResult EMPTY_RESULT = new ScanResult();
 
-  private final JsonEntityDataRows rows;
+  private JsonEntityDataRows rows;
   private String[] key;
   private String entity;
-  private boolean more = false;
+  private boolean more;
 
   public ScanResult() {
-    this.rows = null;
-    this.more = false;
+    // no-op
   }
 
-  public ScanResult(final EntitySchema schema) {
-    this(schema, null);
-  }
-
-  public ScanResult(final EntitySchema schema, final String[] fields) {
-    final String[] resultFields;
-    if (ArrayUtil.isEmpty(fields)) {
-      // TODO: remove system fields e.g. __group__, __seqid__
-      resultFields = schema.getFieldNames().toArray(new String[0]);
-    } else {
-      resultFields = fields;
-    }
-    Arrays.sort(resultFields);
-
-    this.rows = new JsonEntityDataRows(schema, resultFields);
-    this.key = schema.getKeyFields();
-    this.entity = schema.getEntityName();
-  }
-
-  public void add(final EntityDataRow row) {
-    rows.add(row);
+  public ScanResult(final String entity, final String[] key, final boolean more, final JsonEntityDataRows rows) {
+    this.rows = rows;
+    this.key = key;
+    this.entity = entity;
+    this.more = more;
   }
 
   public JsonEntityDataRows getRows() {

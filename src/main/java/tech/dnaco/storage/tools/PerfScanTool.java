@@ -4,16 +4,17 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 
 import tech.dnaco.bytes.ByteArraySlice;
-import tech.dnaco.bytes.encoding.RowKeyUtil;
+import tech.dnaco.collections.LongValue;
 import tech.dnaco.collections.iterators.PeekIterator;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntitySchema;
+import tech.dnaco.storage.demo.RowKeyUtil;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;
+import tech.dnaco.storage.demo.logic.Transaction;
 import tech.dnaco.strings.HumansUtil;
-import tech.dnaco.telemetry.JvmMetrics;
 import tech.dnaco.threading.ThreadUtil;
 
 public class PerfScanTool {
@@ -24,23 +25,34 @@ public class PerfScanTool {
     RocksDbKvStore.init(new File("STORAGE_DATA"), 64 << 20);
 
     final StorageLogic storage = Storage.getInstance(tenantId);
-    final ByteArraySlice key = RowKeyUtil.newKeyBuilder().add(groups[0]).add("RS_DISTRICTS").slice();
-    ThreadUtil.runInThreads("foo", 32, () -> {
+    final Transaction txn = storage.getOrCreateTransaction("foo");
+    final ByteArraySlice key = RowKeyUtil.newKeyBuilder().add(groups[0]).add("AI_WAY_POI").addKeySeparator().slice();
+    ThreadUtil.runInThreads("foo", 1, () -> {
       final long startTime = System.nanoTime();
-      long x = 0;
+      final LongValue rowCount = new LongValue();
+      final LongValue size = new LongValue();
       try {
-        final PeekIterator<EntityDataRow> it = storage.scanRow(null, key, true);
-        while (it.hasNext()) {
-          final EntityDataRow entity = it.next();
-          x += entity.size();
+        if (false) {
+            final PeekIterator<EntityDataRow> it = storage.scanRow(null, key, true);
+            while (it.hasNext()) {
+              final EntityDataRow entity = it.next();
+              size.add(entity.size());
+              rowCount.incrementAndGet();
+            }
+        } else {
+          storage.scanRow(txn, key, false, row -> {
+            rowCount.incrementAndGet();
+            size.add(row.size());
+            return true;
+          });
         }
       } catch (final Exception e) {
         Logger.error(e, "failed");
       }
       final long elapsed = System.nanoTime() - startTime;
       System.out.println(HumansUtil.humanTimeNanos(elapsed)
-        + " -> " + HumansUtil.humanSize(JvmMetrics.INSTANCE.getUsedMemory())
-        + " -> " + HumansUtil.humanSize(x));
+        + " -> " + rowCount.get()
+        + " -> " + HumansUtil.humanSize(size.get()));
     });
   }
 

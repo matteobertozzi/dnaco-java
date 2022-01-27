@@ -12,12 +12,15 @@ import tech.dnaco.data.CborFormat;
 import tech.dnaco.io.FileUtil;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntitySchema;
+import tech.dnaco.storage.net.models.JsonEntityDataRows;
 import tech.dnaco.storage.net.models.ScanResult;
 
 public class CachedScannerResults {
   private final String scannerId = UUID.randomUUID().toString();
+
+  private JsonEntityDataRows.Builder rows;
   private EntitySchema schema;
-  private ScanResult results;
+
   private ScanResult firstResult;
   private int chunkCount;
   private long chunkSize;
@@ -50,37 +53,36 @@ public class CachedScannerResults {
   }
 
   public void sealResults(final boolean hasMore) throws IOException {
-    if (results == null) return;
+    if (rows == null || rows.isEmpty()) return;
 
-    results.setMore(hasMore);
+    final ScanResult scanResult = new ScanResult(schema.getEntityName(), schema.getKeyFields(), hasMore, rows.build());
     if (chunkCount == 0) {
-      firstResult = results;
+      firstResult = scanResult;
     } else {
-      CachedScanResults.write(scannerId, chunkCount, results);
+      CachedScanResults.write(scannerId, chunkCount, scanResult);
     }
     chunkCount++;
     chunkSize = 0;
-    results = null;
   }
 
   public boolean isSameSchema(final EntitySchema other) {
     return schema != null && this.schema.getEntityName().equals(other.getEntityName());
   }
 
-  public void setSchema(final EntitySchema schema) throws IOException {
+  public void setSchema(final EntitySchema schema, final String[] fieldNames) throws IOException {
     sealResults();
 
     this.schema = schema;
-    this.results = new ScanResult(schema);
+    this.rows = new JsonEntityDataRows.Builder(schema, fieldNames);
   }
 
   private static final int MAX_CHUNK_SIZE = 1 << 20;
   public void add(final EntityDataRow row) throws IOException {
     final int rowSize = row.size();
     if (!isSameSchema(row.getSchema()) || (chunkSize > 0 && (chunkSize + rowSize) > MAX_CHUNK_SIZE)) {
-      setSchema(row.getSchema());
+      setSchema(row.getSchema(), null);
     }
-    results.add(row);
+    rows.add(row);
     chunkSize += rowSize;
     rowsSize += rowSize;
     rowCount++;

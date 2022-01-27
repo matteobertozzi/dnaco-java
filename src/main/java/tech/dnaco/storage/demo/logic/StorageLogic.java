@@ -32,7 +32,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.gullivernet.commons.util.DateUtil;
 
 import tech.dnaco.bytes.ByteArraySlice;
-import tech.dnaco.bytes.encoding.RowKeyUtil;
 import tech.dnaco.collections.iterators.AbstractFilteredIterator;
 import tech.dnaco.collections.iterators.FilteredIterator;
 import tech.dnaco.collections.iterators.MergeIterator;
@@ -43,6 +42,7 @@ import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
 import tech.dnaco.storage.demo.EntitySchema;
 import tech.dnaco.storage.demo.EntitySchema.Operation;
+import tech.dnaco.storage.demo.RowKeyUtil;
 import tech.dnaco.storage.demo.driver.AbstractKvStore;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.KeyValConsumer;
 import tech.dnaco.storage.demo.driver.AbstractKvStore.RowPredicate;
@@ -424,7 +424,7 @@ public final class StorageLogic {
         toDelete.add(row.buildRowKey());
       }
       //System.out.println(" ---> " + row);
-    if (!consumer.test(row)) {
+      if (!consumer.test(row)) {
         break;
       }
     }
@@ -449,13 +449,14 @@ public final class StorageLogic {
   }
 
   public void cleanup(final EntitySchema schema, final Set<String> groups) throws Exception {
+    final long deleteTs = ZonedDateTime.now().minusDays(5).toInstant().toEpochMilli();
     for (final String groupId: groups) {
       final ArrayList<byte[]> toDelete = new ArrayList<>();
       final ByteArraySlice key = RowKeyUtil.newKeyBuilder().add(groupId).add(schema.getEntityName()).addKeySeparator().slice();
       Logger.debug("loookup rows for {scheam} {group}", schema.getEntityName(), groupId);
       storage.scanRow(key, row -> {
-        if (row.getOperation() == Operation.DELETE) {
-          toDelete.add(row.buildRowKey());
+        if (row.getOperation() == Operation.DELETE && row.getTimestamp() < deleteTs) {
+          toDelete.add(RowKeyUtil.newKeyBuilder().add(row.buildRowKey()).addKeySeparator().drain());
         }
         return true;
       });

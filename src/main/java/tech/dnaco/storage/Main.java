@@ -43,7 +43,7 @@ public final class Main {
       }
     }
 
-    RocksDbKvStore.init(new File("STORAGE_DATA"), 2 << 30);
+    RocksDbKvStore.init(new File("STORAGE_DATA"), 512L << 20);
 
     // Setup Logger using ServiceConfig
     final LogFileProvider logWriter;
@@ -62,60 +62,58 @@ public final class Main {
     JvmMetrics.INSTANCE.setBuildInfo(buildInfo);
 
     try (ServerEventLoop eventLoop = new ServerEventLoop(conf.getEloopBossGroups(), conf.getEloopWorkerGroups())) {
-      final ServiceEventLoop rpcEventLoop = new ServiceEventLoop(eventLoop.getServerUnixChannelClass(),
-        eventLoop.getClientUnixChannelClass(), eventLoop.getServerChannelClass(), eventLoop.getClientChannelClass(),
-        eventLoop.getWorkerGroup(), eventLoop.getBossGroup());
+      try (ServiceEventLoop rpcEventLoop = new ServiceEventLoop(conf.getEloopBossGroups(), conf.getEloopWorkerGroups())) {
+        final DnacoRpcDispatcher dispatcher = new DnacoRpcDispatcher(DnacoRpcObjectMapper.RPC_CBOR_OBJECT_MAPPER);
+        dispatcher.addHandler(new EntityStorageRpcHandler());
+        dispatcher.addHandler(new EventStorageRpcHandler());
 
-      final DnacoRpcDispatcher dispatcher = new DnacoRpcDispatcher(DnacoRpcObjectMapper.RPC_CBOR_OBJECT_MAPPER);
-      dispatcher.addHandler(new EntityStorageRpcHandler());
-      dispatcher.addHandler(new EventStorageRpcHandler());
+        eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.HOURS, new EntityStorageScheduled());
+        eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.DAYS, new EntityBackupScheduled());
 
-      eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.HOURS, new EntityStorageScheduled());
-      eventLoop.scheduleAtFixedRate(0, 1, TimeUnit.DAYS, new EntityBackupScheduled());
+        final ServerInfo serverInfo = new ServerInfo()
+            .setServiceUrl("goal.mobiledatacollection.it")
+            .setProductName("dnaco-storage");
 
-      final ServerInfo serverInfo = new ServerInfo()
-          .setServiceUrl("goal.mobiledatacollection.it")
-          .setProductName("dnaco-storage");
+        // Setup the Storage Service
 
-      // Setup the Storage Service
+        // Setup the HTTP Service
+        final UriRoutesBuilder routes = new UriRoutesBuilder();
+        routes.addHandler(new DirectTracesHandler());
+        routes.addHandler(new DirectMetricsHandler());
+        routes.addHandler(new EntityStorageHttpHandler());
 
-      // Setup the HTTP Service
-      final UriRoutesBuilder routes = new UriRoutesBuilder();
-      routes.addHandler(new DirectTracesHandler());
-      routes.addHandler(new DirectMetricsHandler());
-      routes.addHandler(new EntityStorageHttpHandler());
+        final NettyHttpServer httpServer = new NettyHttpServer(serverInfo);
+        httpServer.setHttpRoutes(routes, true);
 
-      final NettyHttpServer httpServer = new NettyHttpServer(serverInfo);
-      httpServer.setHttpRoutes(routes, true);
+        // Start the Storage Service
+        final DnacoRpcService service = new DnacoRpcService(dispatcher);
+        service.bindTcpService(rpcEventLoop, conf.getStorageServicePort());
 
-      // Start the Storage Service
-      final DnacoRpcService service = new DnacoRpcService(dispatcher);
-      service.bindTcpService(rpcEventLoop, conf.getStorageServicePort());
+        // Start the HTTP Service
+        httpServer.start(eventLoop, new NettyHttpServerConfig()
+          .setCompressionEnabled(true)
+          .setCorsEnabled(true)
+          .setPort(conf.getStorageHttpPort()));
 
-      // Start the HTTP Service
-      httpServer.start(eventLoop, new NettyHttpServerConfig()
-        .setCompressionEnabled(true)
-        .setCorsEnabled(true)
-        .setPort(conf.getStorageHttpPort()));
+        // Setup the shutdown hook (clean ctrl+c shutdown)
+        final AtomicBoolean running = new AtomicBoolean(true);
+        ShutdownUtil.addShutdownHook("StorageService", running, service, httpServer);
 
-      // Setup the shutdown hook (clean ctrl+c shutdown)
-      final AtomicBoolean running = new AtomicBoolean(true);
-      ShutdownUtil.addShutdownHook("StorageService", running, service, httpServer);
-
-      // main loop...
-      long lastMetricsDump = System.nanoTime();
-      while (running.get()) {
-        final long now = System.nanoTime();
-        if ((now - lastMetricsDump) > TimeUnit.MINUTES.toNanos(5)) {
-          metricsDump();
-          lastMetricsDump = now;
+        // main loop...
+        long lastMetricsDump = System.nanoTime();
+        while (running.get()) {
+          final long now = System.nanoTime();
+          if ((now - lastMetricsDump) > TimeUnit.MINUTES.toNanos(5)) {
+            metricsDump();
+            lastMetricsDump = now;
+          }
+          ThreadUtil.sleep(250);
         }
-        ThreadUtil.sleep(250);
-      }
 
-      // wait "forever" (until ctrl+c)
-      service.waitStopSignal();
-      httpServer.waitStopSignal();
+        // wait "forever" (until ctrl+c)
+        service.waitStopSignal();
+        httpServer.waitStopSignal();
+      }
     } catch (final Throwable e) {
       Logger.error(e, "uncaught exception");
     } finally {

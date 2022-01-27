@@ -201,6 +201,10 @@ public class EntitySchema {
     return fields.get(index);
   }
 
+  public boolean hasFieldName(final String name) {
+    return fields.containsKey(name);
+  }
+
   public String[] getKeyFields() {
     return keys != null ? keys.keySet() : StringUtil.EMPTY_ARRAY;
   }
@@ -264,7 +268,11 @@ public class EntitySchema {
     return true;
   }
 
-  public synchronized boolean update(final String fieldName, final EntityDataType type) {
+  public boolean update(final String fieldName, final EntityDataType type) {
+    return update(fieldName, type, false);
+  }
+
+  public synchronized boolean update(final String fieldName, final EntityDataType type, final boolean allowScaleUp) {
     final int index = fields.add(fieldName);
     if (index == this.types.size()) {
       this.types.add(type);
@@ -272,7 +280,7 @@ public class EntitySchema {
     }
 
     final EntityDataType currentType = this.types.get(index);
-    if (getTypeCompatibility(type, currentType) < 0) {
+    if (!isTypeCompatible(type, currentType)) {
       Logger.error("type mismatch for entity {} field {}. expected {} got {}",
         name, fieldName, currentType, type);
       throw new IllegalArgumentException(StringFormat.format("type mismatch for entity {} field {}. expected {} got {}",
@@ -280,9 +288,12 @@ public class EntitySchema {
     }
 
     if (type != EntityDataType.NULL) {
-      if (currentType == EntityDataType.FLOAT && type == EntityDataType.INT) {
-        // skip assignment. float is bigger
-      } else {
+      if (currentType == EntityDataType.NULL) {
+        this.types.set(index, type);
+      } else if (allowScaleUp) {
+        if (!canScaleUp(type, currentType)) {
+
+        }
         this.types.set(index, type);
       }
     }
@@ -291,41 +302,62 @@ public class EntitySchema {
 
   public boolean update(final String[] fieldNames, final EntityDataType[] types) {
     for (int i = 0; i < fieldNames.length; ++i) {
-      if (!update(fieldNames[i], types[i])) {
+      if (!update(fieldNames[i], types[i], false)) {
         return false;
       }
     }
     return true;
   }
 
-  public static int getTypeCompatibility(final EntityDataType type, final EntityDataType expectedType) {
+
+  private static boolean canScaleUp(final EntityDataType type, final EntityDataType expectedType) {
     switch (expectedType) {
       case NULL:
         // any type is a super type? bool/int/float can be nullable?
-        return 1;
+        return true;
+      case INT:
+        // int can scale up to UTC_TIMESTAMP or FLOAT
+        return type == EntityDataType.UTC_TIMESTAMP || type == EntityDataType.FLOAT;
       case BOOL:
-        return type != EntityDataType.BOOL ? -1 : 0;
+      case FLOAT:
+      case BYTES:
+      case STRING:
+      case UTC_TIMESTAMP:
+      case JSON_ARRAY:
+      case JSON_OBJECT:
+        return false;
+    }
+    throw new UnsupportedOperationException("unexpected type: " + expectedType);
+  }
+
+  private static boolean isTypeCompatible(final EntityDataType type, final EntityDataType expectedType) {
+    switch (expectedType) {
+      case NULL:
+        // any type is a super type? bool/int/float can be nullable?
+        return true;
+      case BOOL:
+        return type == EntityDataType.BOOL;
       case INT:
         // only a float is a super-type
-        return type != EntityDataType.INT ? -1 : 0;
+        return (type == EntityDataType.UTC_TIMESTAMP || type == EntityDataType.INT);
         //return type == EntityDataType.INT ? 0 : (type == EntityDataType.FLOAT ? 1 : -1);
       case FLOAT:
         // consider int and float as same type
-        return (type == EntityDataType.FLOAT || type == EntityDataType.INT) ? 0 : -1;
+        return (type == EntityDataType.FLOAT || type == EntityDataType.INT);
       case BYTES:
         // null is also acceptable
-        return (type == EntityDataType.BYTES || type == EntityDataType.NULL) ? 0 : -1;
+        return (type == EntityDataType.BYTES || type == EntityDataType.NULL);
       case STRING:
         // null is also acceptable
-        return (type == EntityDataType.STRING || type == EntityDataType.NULL) ? 0 : -1;
+        return (type == EntityDataType.STRING || type == EntityDataType.NULL);
       case UTC_TIMESTAMP:
-        return (type == EntityDataType.UTC_TIMESTAMP || type == EntityDataType.INT) ? 0 : -1;
+        return (type == EntityDataType.UTC_TIMESTAMP || type == EntityDataType.INT);
       case JSON_ARRAY:
         // null is also acceptable
-        return (type == EntityDataType.JSON_ARRAY || type == EntityDataType.NULL) ? 0 : -1;
+        return (type == EntityDataType.JSON_ARRAY || type == EntityDataType.NULL);
       case JSON_OBJECT:
         // null is also acceptable
-        return (type == EntityDataType.JSON_OBJECT || type == EntityDataType.NULL) ? 0 : -1;
+        return (type == EntityDataType.JSON_OBJECT || type == EntityDataType.NULL);
     }
     throw new UnsupportedOperationException("unexpected type: " + expectedType);
   }

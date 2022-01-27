@@ -1,5 +1,6 @@
 package tech.dnaco.storage.net;
 
+import java.io.IOException;
 import java.util.List;
 
 import com.gullivernet.server.http.HttpMethod;
@@ -41,7 +42,10 @@ public class EntityStorageHttpHandler implements RestRequestHandler {
 
   @UriMapping(uri = "/v0/entity/schema/detail", method = HttpMethod.POST)
   public ClientSchema getEntitySchema(final SchemaRequest request) throws Exception {
-    return EntityStorage.INSTANCE.getEntitySchema(request);
+    final ClientSchema schema = EntityStorage.INSTANCE.getEntitySchema(request);
+    if (schema != null) return schema;
+
+    throw new IOException("invalid entity " + request.getName());
   }
 
   // ================================================================================

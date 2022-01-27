@@ -33,15 +33,54 @@ import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.strings.StringUtil;
 
 public class EntityDataRows {
-  private final ArrayList<byte[]> values = new ArrayList<>();
+  private static final EntitySchema.Operation[] ENTITY_OPERATION = EntitySchema.Operation.values();
+
+  private final ArrayList<byte[]> values;
   private final EntitySchema schema;
-  private final BitSet fieldSet;
+  private final BitSet keyFields;
+  //private final BitSet fieldSet;
   private final boolean oldHasAllFields;
+
+  public final static class EntityDataRowSchema {
+    private final EntitySchema schema;
+    private final BitSet keyFields;
+    private final boolean oldHasAllFields;
+
+    public EntityDataRowSchema(final EntitySchema schema, final boolean hasAllFields) {
+      this.schema = VerifyArg.verifyNotNull("schema", schema);
+      this.keyFields = new BitSet(schema.fieldsCount());
+      //this.fieldSet = new BitSet(schema.fieldsCount());
+      this.oldHasAllFields = hasAllFields;
+      keyFields.set(schema.getFieldIndex(EntitySchema.SYS_FIELD_GROUP));
+      for (final String key: schema.getKeyFields()) {
+        keyFields.set(schema.getFieldIndex(key));
+      }
+    }
+  }
 
   public EntityDataRows(final EntitySchema schema, final boolean hasAllFields) {
     this.schema = VerifyArg.verifyNotNull("schema", schema);
-    this.fieldSet = new BitSet(schema.fieldsCount());
+    this.keyFields = new BitSet(schema.fieldsCount());
+    //this.fieldSet = new BitSet(schema.fieldsCount());
     this.oldHasAllFields = hasAllFields;
+    keyFields.set(schema.getFieldIndex(EntitySchema.SYS_FIELD_GROUP));
+    for (final String key: schema.getKeyFields()) {
+      keyFields.set(schema.getFieldIndex(key));
+    }
+    this.values = new ArrayList<>(schema.fieldsCount());
+  }
+
+  public EntityDataRows(final EntityDataRowSchema dataRowSchema) {
+    this.schema = dataRowSchema.schema;
+    this.keyFields = dataRowSchema.keyFields;
+    this.oldHasAllFields = dataRowSchema.oldHasAllFields;
+    this.values = new ArrayList<>(schema.fieldsCount());
+  }
+
+  public EntityDataRows reset() {
+    //fieldSet.clear();
+    values.clear();
+    return this;
   }
 
   public EntitySchema getSchema() {
@@ -49,7 +88,7 @@ public class EntityDataRows {
   }
 
   public boolean hasAllFields() {
-    final boolean hasAllFieldsSet = fieldSet.nextClearBit(0) >= schema.fieldsCount();
+    //final boolean hasAllFieldsSet = fieldSet.nextClearBit(0) >= schema.fieldsCount();
     //Logger.debug("HAS ALL FIELDS SET: {old} vs {new} -> {}", oldHasAllFields, hasAllFieldsSet, values);
     return oldHasAllFields;
   }
@@ -91,7 +130,7 @@ public class EntityDataRows {
 
   private void valueSet(final int index, final byte[] value) {
     values.set(index, value);
-    fieldSet.set(index);
+    //fieldSet.set(index);
   }
 
   public void add(final int fieldIndex, final byte[] value) {
@@ -106,13 +145,13 @@ public class EntityDataRows {
 
   public EntityDataRows addObject(final String fieldName, final Object value) {
     final int fieldIndex = schema.getFieldIndex(fieldName);
-    if (schema.isKey(fieldName)) {
+    if (keyFields.get(fieldIndex)) {
       final EntityDataType type = schema.getFieldType(fieldIndex);
       switch (type) {
         case STRING:
           add(fieldIndex, ((String)value).getBytes());
           break;
-        case INT:
+        case INT, UTC_TIMESTAMP:
           if (value instanceof Integer || value instanceof Long) {
             add(fieldIndex, String.valueOf(value).getBytes());
           } else if (value instanceof Float || value instanceof Double) {
@@ -164,7 +203,7 @@ public class EntityDataRows {
   public EntitySchema.Operation getOperation(final int rowIndex) {
     final byte[] v = get(rowIndex, EntitySchema.SYS_FIELD_OPERATION);
     final Number ordinal = (Number) EntityData.decodeInt(new ByteArraySlice(v));
-    return EntitySchema.Operation.values()[ordinal.intValue()];
+    return ENTITY_OPERATION[ordinal.intValue()];
   }
 
   public void setTimestamp(final int rowIndex, final long timestamp) {
@@ -198,11 +237,12 @@ public class EntityDataRows {
     if (value == null) return null;
 
     final EntityDataType type = schema.getFieldType(fieldIndex);
-    if (schema.isKey(fieldIndex)) {
+    //if (schema.isKey(fieldIndex)) {
+    if (keyFields.get(fieldIndex)) {
       switch (type) {
         case STRING:
           return new String(value);
-        case INT:
+        case INT, UTC_TIMESTAMP:
           return Long.parseLong(new String(value));
         default:
           throw new UnsupportedOperationException();

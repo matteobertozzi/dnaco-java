@@ -28,6 +28,8 @@ import tech.dnaco.data.json.JsonObject;
 import tech.dnaco.data.json.JsonUtil;
 
 public final class EntityData {
+  private final static EntityDataType[] ENTITY_DATA_TYPES = EntityDataType.values();
+
   private EntityData() {
     // no-op
   }
@@ -189,7 +191,7 @@ public final class EntityData {
     } else if (rawValue.get(0) == EntityDataType.NULL.ordinal()) {
       return null;
     }
-    throw new IllegalArgumentException("expected NULL or BYTES, got " + rawValue.get(0) + " " + EntityDataType.values()[rawValue.get(0)] + ": " + rawValue);
+    throw new IllegalArgumentException("expected NULL or BYTES, got " + rawValue.get(0) + " " + ENTITY_DATA_TYPES[rawValue.get(0)] + ": " + rawValue);
   }
 
   public static byte[] encodeString(final Object value) {
@@ -204,11 +206,7 @@ public final class EntityData {
 
   public static Object decodeString(final ByteArraySlice rawValue) {
     if (rawValue.get(0) == EntityDataType.STRING.ordinal()) {
-      final byte[] buf = new byte[rawValue.length() - 1];
-      for (int i = 0; i < buf.length; ++i) {
-        buf[i] = (byte) rawValue.get(i + 1);
-      }
-      return new String(buf);
+      return new String(rawValue.rawBuffer(), rawValue.offset() + 1, rawValue.length() - 1);
     } else if (rawValue.get(0) == EntityDataType.NULL.ordinal()) {
       return null;
     }

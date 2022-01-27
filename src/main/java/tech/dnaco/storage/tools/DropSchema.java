@@ -4,10 +4,10 @@ import java.io.File;
 import java.util.ArrayList;
 
 import tech.dnaco.bytes.ByteArraySlice;
-import tech.dnaco.bytes.encoding.RowKeyUtil;
 import tech.dnaco.collections.iterators.PeekIterator;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntitySchema;
+import tech.dnaco.storage.demo.RowKeyUtil;
 import tech.dnaco.storage.demo.driver.RocksDbKvStore;
 import tech.dnaco.storage.demo.logic.Storage;
 import tech.dnaco.storage.demo.logic.StorageLogic;

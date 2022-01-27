@@ -137,7 +137,7 @@ public final class EntityStorage {
           continue;
         }
 
-        if (!schema.update(field.getName(), EntityDataType.valueOf(field.getType()))) {
+        if (!schema.update(field.getName(), EntityDataType.valueOf(field.getType()), true)) {
           throw new Exception("Invalid field type: " + field.getName() + " " + field.getType());
         }
       }
@@ -219,10 +219,11 @@ public final class EntityStorage {
     final LongValue updatedRows = new LongValue();
     final LongValue totalRows = new LongValue();
     final QueryCache queryCache = new QueryCache();
+    final EntityDataRows updatedRow = new EntityDataRows(schema, true);
     for (final String groupId: request.getGroups()) {
       storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
         if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
-          final EntityDataRows updatedRow = new EntityDataRows(schema, true).newRow();
+          updatedRow.reset().newRow();
           updatedRow.copyFrom(row);
           updatedRow.setTimestamp(0, timestamp);
           updatedRow.setOperation(0, Operation.UPDATE);
@@ -279,10 +280,11 @@ public final class EntityStorage {
     }
 
     final QueryCache queryCache = new QueryCache();
+    final EntityDataRows updatedRow = new EntityDataRows(schema, true);
     for (final String groupId: request.getGroups()) {
       storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), false, (row) -> {
         if (request.hasNoFilter() || Query.process(request.getFilter(), row, queryCache)) {
-          final EntityDataRows updatedRow = new EntityDataRows(schema, false).newRow();
+          updatedRow.reset().newRow();
           updatedRow.copyFrom(row);
           updatedRow.setTimestamp(0, timestamp);
           updatedRow.setOperation(0, Operation.DELETE);
@@ -455,7 +457,7 @@ public final class EntityStorage {
 
     final Transaction txn = storage.getTransaction(request.getTxnId());
     return buildScanner(request.getTenantId(), request.getEntity(), startTime, (results) -> {
-      results.setSchema(schema);
+      results.setSchema(schema, request.getFields());
 
       // direct get calls
       if (ArrayUtil.isNotEmpty(request.getRows())) {
@@ -470,6 +472,7 @@ public final class EntityStorage {
       }
 
       // scan
+      final long limit = request.getLimit();
       final QueryCache queryCache = new QueryCache();
       for (final String groupId: request.getGroups()) {
         storage.scanRow(txn, rowKeyEntityGroup(schema, groupId), request.shouldIncludeDeleted(), (row) -> {
@@ -477,7 +480,7 @@ public final class EntityStorage {
             results.add(row);
           }
           results.incRowRead();
-          return true;
+          return (limit <= 0 || results.getRowCount() < limit);
         });
       }
     });
@@ -498,6 +501,7 @@ public final class EntityStorage {
       filterCount.inc(request.getTenantId() + " " + request.getEntity() + " SCAN-ALL " + request.getFilter().toQueryString());
     }
 
+    final long limit = request.getLimit();
     final QueryCache queryCache = new QueryCache();
     return buildScanner(request.getTenantId(), null, startTime, (results) -> {
       for (final String groupId: request.getGroups()) {
@@ -509,7 +513,7 @@ public final class EntityStorage {
             }
           }
           results.incRowRead();
-          return true;
+          return (limit <= 0 || results.getRowCount() < limit);
         });
       }
     });

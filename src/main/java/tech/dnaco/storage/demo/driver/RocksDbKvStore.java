@@ -63,7 +63,7 @@ public class RocksDbKvStore extends AbstractKvStore {
   // ================================================================================
   //  RocksDB Init Related
   // ================================================================================
-  public static void init(final File rootDir, final int cacheSize) {
+  public static void init(final File rootDir, final long cacheSize) {
     storageDir = rootDir;
 
     // Init RocksDb Library
@@ -74,6 +74,7 @@ public class RocksDbKvStore extends AbstractKvStore {
     tableConfig.setBlockCache(new LRUCache(cacheSize));
     tableConfig.setBlockSize(8 << 10);
     tableConfig.setWholeKeyFiltering(false);
+    Logger.debug("init with LRU Cache Size: {}", HumansUtil.humanSize(cacheSize));
   }
 
   // ================================================================================

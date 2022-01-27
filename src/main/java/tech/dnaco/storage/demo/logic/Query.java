@@ -23,12 +23,14 @@ public final class Query {
 
     switch (type) {
       case BOOL: return Boolean.compare((Boolean)a, (Boolean)b);
-      case INT:
-      case UTC_TIMESTAMP:
+      case INT, UTC_TIMESTAMP:
         return Long.compare(((Number)a).longValue(), ((Number)b).longValue());
       case FLOAT: return Double.compare(((Number)a).doubleValue(), ((Number)b).doubleValue());
       case STRING: return StringUtil.compare((String)a, (String)b);
       case BYTES: return BytesUtil.compare((byte[])a, (byte[])b);
+      case JSON_ARRAY:
+      case JSON_OBJECT:
+      case NULL:
       default:
         throw new UnsupportedOperationException();
     }

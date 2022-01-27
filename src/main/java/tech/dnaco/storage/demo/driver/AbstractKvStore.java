@@ -39,6 +39,7 @@ import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
 import tech.dnaco.storage.demo.EntitySchema;
 import tech.dnaco.storage.demo.RowKeyUtil;
+import tech.dnaco.storage.demo.EntityDataRows.EntityDataRowSchema;
 import tech.dnaco.storage.demo.RowKeyUtil.RowKeyBuilder;
 import tech.dnaco.strings.HumansUtil;
 
@@ -303,8 +304,19 @@ public abstract class AbstractKvStore {
   protected abstract Iterator<Entry<ByteArraySlice, byte[]>> scanPrefix(final ByteArraySlice prefix) throws Exception;
 
   protected final class RowIterator extends AbstractFilteredIterator<Entry<ByteArraySlice, byte[]>, EntityDataRow> {
+    private EntityDataRowSchema rowSchema = null;
+    private EntityDataRows rows = null;
+
     public RowIterator(final Iterator<Entry<ByteArraySlice, byte[]>> iterator) {
       super(SimplePeekIterator.newIterator(iterator));
+    }
+
+    private EntityDataRows newRow(final EntitySchema schema) {
+      if (rows == null || rows.getSchema() != schema) {
+        rowSchema = new EntityDataRowSchema(schema, false);
+      }
+      rows = new EntityDataRows(rowSchema);
+      return rows.newRow();
     }
 
     @Override
@@ -324,13 +336,13 @@ public abstract class AbstractKvStore {
       if (BytesUtil.hasPrefix(keyParts.get(0), 0, keyParts.get(0).length, EntityDataRows.SYS_TXN_PREFIX, 0, EntityDataRows.SYS_TXN_PREFIX.length)) {
         // [txn].[group].[entity].[key].[field]
         final EntitySchema schema = getSchema(keyParts.get(2));
-        rows = new EntityDataRows(schema, false).newRow();
+        rows = newRow(schema);
         rows.addTxnKey(keyParts);
       } else {
         // [group].[entity].[key].[field]
         final EntitySchema schema = getSchema(keyParts.get(1));
         if (schema == null) throw new UnsupportedOperationException("invalid schema " + new String(keyParts.get(0)) + "." + new String(keyParts.get(1)));
-        rows = new EntityDataRows(schema, false).newRow();
+        rows = newRow(schema);
         rows.addKey(keyParts);
       }
 

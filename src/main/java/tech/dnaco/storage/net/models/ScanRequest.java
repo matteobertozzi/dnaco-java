@@ -12,6 +12,7 @@ public class ScanRequest {
   private Filter filter;
   private boolean includeDeleted;
   private boolean syncOnly;
+  private int limit;
 
   public ScanRequest() {
     // no-op
@@ -75,5 +76,13 @@ public class ScanRequest {
 
   public void setSyncOnly(final boolean syncOnly) {
     this.syncOnly = syncOnly;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(final int value) {
+    this.limit = value;
   }
 }

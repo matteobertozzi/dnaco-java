@@ -97,7 +97,7 @@ public class DumpStorage {
 
       final Transaction txn = storage.getTransaction(null);
       final CachedScannerResults results = new CachedScannerResults();
-      results.setSchema(schema);
+      results.setSchema(schema, null);
 
       // scan
       for (final String groupId: groups) {
