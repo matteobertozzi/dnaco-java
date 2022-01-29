@@ -49,6 +49,18 @@ public class HashIndexedArray<K> extends AbstractSet<K> {
     }
   }
 
+  public static void main(final String[] args) {
+    final String[] keys = new String[] { "actual_shipm_start", "sales_document", "delivery", "shipment"};
+    final HashIndexedArray<String> hash = new HashIndexedArray<>(keys);
+    boolean result = false;
+    for (int i = 0; i < 1; ++i) {
+      for (int k = 0; k < keys.length; ++k) {
+        result |= hash.contains(keys[k]);
+      }
+    }
+    System.out.println(result);
+  }
+
   public int size() {
     return keys.length;
   }
@@ -96,7 +108,7 @@ public class HashIndexedArray<K> extends AbstractSet<K> {
   private static int tableSizeFor(final int capacity) {
     final int MAXIMUM_CAPACITY = 1 << 30;
     final int n = BitUtil.nextPow2(capacity);
-    return (n < 0) ? 1 : (n >= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n + 1;
+    return (n < 0) ? 1 : (n >= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n;
   }
 
   @Override

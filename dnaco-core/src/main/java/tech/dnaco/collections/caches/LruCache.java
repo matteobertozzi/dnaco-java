@@ -26,13 +26,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
-import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.threading.ThreadUtil;
 import tech.dnaco.util.BitUtil;
 
 public class LruCache<TKey, TValue> {
-  private final long maxSize;
   private final long expirationIntervalNs;
 
   private final ReentrantLock lock = new ReentrantLock();
@@ -51,10 +49,9 @@ public class LruCache<TKey, TValue> {
   }
 
   public LruCache(final int initialCapacity, final int maxSize, final Duration expiration) {
-    this.maxSize = maxSize;
     this.expirationIntervalNs = expiration != null ? expiration.toNanos() : -1;
 
-    final int capacity = BitUtil.nextPow2(Math.max(8, initialCapacity));
+    final int capacity = BitUtil.nextPow2(Math.max(8, maxSize));
     this.entries = new CacheItemNode[capacity];
     this.buckets = new int[capacity];
     Arrays.fill(buckets, -1);
@@ -221,24 +218,17 @@ public class LruCache<TKey, TValue> {
 
   private long newFromFreeSlot = 0;
   private long newFromEviction = 0;
-  private long newFromResize = 0;
+  private final long newFromResize = 0;
 
   private void insertNewEntry(final int keyHash, final TKey key, final TValue value, final long expirationNs) {
     // try to use an evicted item or if we are already at threshold we should evict a node
     if (entries[lruHead.lruPrev].isEmpty()) {
       // no-op
       newFromFreeSlot++;
-    } else if (count >= maxSize) {
+    } else {
       final CacheItemNode entry = entries[lruHead.lruPrev];
       remove(entry.getKey(), entry.keyHash);
       newFromEviction++;
-    } else {
-      final long startTime = System.nanoTime();
-      final int newCapacity = entries.length << 1;
-      if (newCapacity < 0) throw new IllegalStateException("LruCacheMap too big. size=" + entries.length);
-      resize(newCapacity);
-      newFromResize++;
-      Logger.debug("RESIZE {} -> {}", newCapacity, HumansUtil.humanTimeNanos(System.nanoTime() - startTime));
     }
 
     final CacheItemNode node = entries[lruHead.lruPrev];
@@ -249,33 +239,6 @@ public class LruCache<TKey, TValue> {
     node.hashNext = buckets[bucketIndex];
     buckets[bucketIndex] = node.index;
     count++;
-  }
-
-  private static final int MAX_BUCKETS_COUNT = 16 << 10;
-  private void resize(final int newSize) {
-    // resize buckets up to MAX_BUCKETS_COUNT
-    if (buckets.length < MAX_BUCKETS_COUNT) {
-      buckets = new int[Math.min(newSize, MAX_BUCKETS_COUNT)];
-    }
-    // reset buckets
-    Arrays.fill(buckets, -1);
-
-    // reassign entries
-    final int entriesIndex = entries.length;
-    entries = Arrays.copyOf(entries, newSize);
-    for (int i = 0; i < entriesIndex; ++i) {
-      final CacheItemNode node = entries[i];
-      if (node.keyHash < 0) continue;
-      final int bucket = targetBucket(node.keyHash);
-      node.hashNext = buckets[bucket];
-      buckets[bucket] = i;
-    }
-
-    // pre-alloc nodes
-    for (int i = entriesIndex; i < newSize; ++i) {
-      final CacheItemNode node = entries[i] = new CacheItemNode(i);
-      moveToLruTail(node);
-    }
   }
 
   private TValue remove(final TKey key, final int hashCode) {
@@ -365,7 +328,7 @@ public class LruCache<TKey, TValue> {
     private Object key;
     private Object value;
 
-    CacheItemNode(final int index) {
+    private CacheItemNode(final int index) {
       this.index = index;
       this.lruPrev = index;
       this.lruNext = index;
@@ -451,14 +414,17 @@ public class LruCache<TKey, TValue> {
   }
 
   public static void main(final String[] args) {
-    final LruCache<String, String> lru = new LruCache<>(8, 8);
-    for (int i = 0; i < 16; ++i) lru.put("K" + i, "V" + i);
-    lru.dump();
-    lru.clear();
-    lru.dump();
-    for (int i = 16; i < 32; ++i) lru.put("K" + i, "V" + i);
-    lru.dump();
-    //testPerf();
+    final LruCache<String, String> lru = new LruCache<>(32, 1024, Duration.ofMillis(2));
+    for (int i = 0; i < (512 * 1024); ++i) {
+      lru.put("K" + (i % 1024), "V" + i);
+      //ThreadUtil.sleep(1, TimeUnit.MILLISECONDS);
+    }
+    System.out.println(lru.getStats());
+    System.out.println(lru.newFromFreeSlot);
+    System.out.println(lru.newFromEviction);
+    System.out.println(lru.newFromResize);
+
+    testPerf();
   }
 
   private static void testPerf() {

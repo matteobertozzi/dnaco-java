@@ -20,9 +20,13 @@
 package tech.dnaco.storage;
 
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.bytes.encoding.RowKey;
 import tech.dnaco.data.json.JsonArray;
 import tech.dnaco.data.json.JsonObject;
 import tech.dnaco.data.json.JsonUtil;
@@ -169,6 +173,22 @@ public class EntityRowConverter {
         final LatLong latlng = sourceReader.getGeoLocation(sourceFieldId);
         if (targetType == DataType.STRING) {
           targetWriter.writeString(targetFieldId, JsonUtil.toJson(latlng));
+        } else {
+          throw new UnsupportedOperationException();
+        }
+        return;
+      case STRING:
+        if (targetType == DataType.UTC_TIMESTAMP) {
+          final String isoDate = sourceReader.getString(sourceFieldId);
+          if (isoDate.length() < 24) {
+            // expected a timestamp
+            targetWriter.writeInt(targetFieldId, Long.parseLong(isoDate));
+          } else {
+            // expected ISO string: '1970-01-01T00:00:00.000Z'
+            final TemporalAccessor ta = DateTimeFormatter.ISO_ZONED_DATE_TIME.parse(isoDate);
+            final long timestamp = (ta.getLong(ChronoField.INSTANT_SECONDS) * 1000) + ta.get(ChronoField.MILLI_OF_SECOND);
+            targetWriter.writeInt(targetFieldId, timestamp);
+          }
         } else {
           throw new UnsupportedOperationException();
         }

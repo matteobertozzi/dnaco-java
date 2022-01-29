@@ -19,6 +19,11 @@ public class LongValue {
     return ++value;
   }
 
+  public long add(final long amount) {
+    value += amount;
+    return value;
+  }
+
   @Override
   public String toString() {
     return String.valueOf(value);

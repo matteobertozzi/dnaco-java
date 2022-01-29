@@ -12,7 +12,7 @@ import tech.dnaco.util.BitUtil;
 
 public final class IndexedHashSet<K> {
   private static final float DEFAULT_LOAD_FACTOR = 0.75f;
-  private static final int MIN_CAPACITY = 16;
+  private static final int MIN_CAPACITY = 64;
 
   private static final class IndexedSetEntry {
     private int hash;
@@ -40,6 +40,7 @@ public final class IndexedHashSet<K> {
     }
 
     final int capacity = BitUtil.nextPow2(Math.max(MIN_CAPACITY, initialCapacity));
+    System.out.println(capacity);
     this.entriesIndex = 0;
     this.freeList = -1;
     this.entries = new IndexedSetEntry[capacity];
@@ -48,6 +49,17 @@ public final class IndexedHashSet<K> {
 
     Arrays.fill(buckets, -1);
   }
+
+
+  public static void main(final String[] args) {
+    final IndexedHashSet<String> index = new IndexedHashSet<>();
+    index.addAll(List.of("__group__", "__op__", "__seqId__", "__ts__", "date", "id", "latitude", "longitude", "subtypes"));
+    System.out.println();
+    for (int i = 0; i < index.size(); ++i) {
+      System.out.println(i + " -> " + index.get(index.get(i)));
+    }
+  }
+
 
   public int size() {
     return count;

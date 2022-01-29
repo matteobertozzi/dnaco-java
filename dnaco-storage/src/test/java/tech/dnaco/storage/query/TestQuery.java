@@ -22,9 +22,9 @@ package tech.dnaco.storage.query;
 import org.junit.jupiter.api.Test;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.bytes.encoding.RowKey;
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.storage.DataTypes.DataType;
-import tech.dnaco.storage.RowKey;
 import tech.dnaco.storage.Schema;
 import tech.dnaco.storage.format.FieldFormat;
 import tech.dnaco.storage.format.FieldFormatReader;

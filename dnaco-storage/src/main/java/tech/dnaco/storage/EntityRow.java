@@ -22,6 +22,7 @@ package tech.dnaco.storage;
 import java.util.Arrays;
 
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.bytes.encoding.RowKey;
 import tech.dnaco.storage.DataTypes.DataType;
 import tech.dnaco.storage.format.FieldFormat;
 import tech.dnaco.storage.format.FieldFormatReader;

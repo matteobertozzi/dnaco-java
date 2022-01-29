@@ -122,9 +122,9 @@ public class ServiceEventLoop implements AutoCloseable {
 
   private static EventLoopGroup newEventLoop(final EventLoopType type, final String name, final int nThreads) {
     return switch (type) {
-      case EPOLL -> new EpollEventLoopGroup(nThreads, new DefaultThreadFactory("epoll-" + name));
-      case KQUEUE -> new KQueueEventLoopGroup(nThreads, new DefaultThreadFactory("kqueue-" + name));
-      case NIO -> new NioEventLoopGroup(nThreads, new DefaultThreadFactory("nio-" + name));
+      case EPOLL -> new EpollEventLoopGroup(nThreads, new DefaultThreadFactory("xepoll-" + name));
+      case KQUEUE -> new KQueueEventLoopGroup(nThreads, new DefaultThreadFactory("xkqueue-" + name));
+      case NIO -> new NioEventLoopGroup(nThreads, new DefaultThreadFactory("xnio-" + name));
       default -> throw new IllegalArgumentException("Unexpected value: " + type);
     };
   }

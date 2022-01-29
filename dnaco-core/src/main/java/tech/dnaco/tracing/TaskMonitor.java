@@ -32,8 +32,11 @@ import tech.dnaco.logging.Logger;
 import tech.dnaco.strings.HumansTableView;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
+import tech.dnaco.telemetry.ConcurrentTopK;
 import tech.dnaco.telemetry.CounterMap;
 import tech.dnaco.telemetry.TelemetryCollector;
+import tech.dnaco.telemetry.TopK;
+import tech.dnaco.telemetry.TopK.TopType;
 
 public final class TaskMonitor {
   public static final TaskMonitor INSTANCE = new TaskMonitor();
@@ -53,6 +56,12 @@ public final class TaskMonitor {
     .setName("tenant.cpu.time")
     .setLabel("Tenant CPU Time")
     .register(new CounterMap());
+
+  private final TopK topSlow = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_TIME_NANOS)
+    .setName("slow_scripts_blocking_everyone")
+    .setLabel("Slow Scripts Blocking Everyone")
+    .register(new ConcurrentTopK(TopType.MIN_MAX, 10));
 
   private TaskMonitor() {
     supportedTaskTypes.add(RootSpan.class);
@@ -81,6 +90,7 @@ public final class TaskMonitor {
 
     // keep track of cpu time per tenant
     tenantCpuTime.inc(StringUtil.defaultIfEmpty(task.getTenantId(), "unknown"), task.getElapsedNs());
+    topSlow.add(task.getTenantId() + " " + task.getLabel(), task.getElapsedNs());
 
     // call listeners
     if (!taskCompletedListeners.isEmpty()) {
@@ -143,5 +153,9 @@ public final class TaskMonitor {
     }
 
     return table.addHumanView(report);
+  }
+
+  public StringBuilder addSlowTasksToHumanReport(final StringBuilder report) {
+    return this.topSlow.getSnapshot().toHumanReport(report, HumansUtil.HUMAN_TIME_NANOS);
   }
 }
