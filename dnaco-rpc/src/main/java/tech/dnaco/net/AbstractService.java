@@ -23,6 +23,7 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -49,9 +50,18 @@ import tech.dnaco.tracing.Tracer;
 
 public abstract class AbstractService implements ShutdownUtil.StopSignal {
   private final ArrayList<Channel> channels = new ArrayList<>();
+  private final AtomicBoolean running = new AtomicBoolean(false);
 
   protected AbstractService() {
     // no-op
+  }
+
+  protected AtomicBoolean running() {
+    return running;
+  }
+
+  protected boolean isRunning() {
+    return running.get();
   }
 
   protected abstract void setupPipeline(ChannelPipeline pipeline);
@@ -112,10 +122,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
       final InetSocketAddress address) throws InterruptedException {
     final ServerBootstrap bootstrap = newTcpServerBootstrap(eventLoop, workerGroup);
     setupTcpServerBootstrap(bootstrap);
-
-    final Channel channel = bootstrap.bind(address).sync().channel();
-    Logger.info("{} service listening on {}", getClass().getSimpleName(), address);
-    this.channels.add(channel);
+    bind(bootstrap, address);
   }
 
   // ================================================================================
@@ -137,9 +144,16 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
       final DomainSocketAddress address) throws InterruptedException {
     final ServerBootstrap bootstrap = newUnixServerBootstrap(eventLoop, workerGroup);
     setupUnixServerBootstrap(bootstrap);
+    bind(bootstrap, address);
+  }
 
+  // ================================================================================
+  //  Bind helpers
+  // ================================================================================
+  private void bind(final ServerBootstrap bootstrap, final SocketAddress address) throws InterruptedException {
     final Channel channel = bootstrap.bind(address).sync().channel();
-    Logger.info("service listening on {}", address);
+    Logger.info("{} service listening on {}", getClass().getSimpleName(), address);
+    this.running.set(true);
     this.channels.add(channel);
   }
 
@@ -148,6 +162,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
   // ================================================================================
   @Override
   public boolean sendStopSignal() {
+    running.set(false);
     for (final Channel channel: this.channels) {
       channel.close();
     }
@@ -158,6 +173,8 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     for (final Channel channel: this.channels) {
       channel.closeFuture().sync();
     }
+    running.set(false);
+    channels.clear();
   }
 
   public void addShutdownHook() {

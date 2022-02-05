@@ -235,7 +235,13 @@ public final class BytesUtil {
 
   public static int prefix(final byte[] a, final int aOff, final int aLen,
       final byte[] b, final int bOff, final int bLen) {
-    return Arrays.mismatch(a, aOff, aOff + aLen, b, bOff, bOff + bLen);
+    final int len = Math.min(aLen, bLen);
+    for (int i = 0; i < len; ++i) {
+      if (a[aOff + i] != b[bOff + i]) {
+        return i;
+      }
+    }
+    return len;
   }
 
   public static boolean hasPrefix(final byte[] buf, final byte[] prefix) {

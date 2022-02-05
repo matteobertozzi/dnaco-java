@@ -21,7 +21,6 @@ package tech.dnaco.storage.format.v0;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
-import tech.dnaco.bytes.encoding.IntUtil;
 import tech.dnaco.bytes.encoding.VarInt;
 import tech.dnaco.collections.arrays.ArraySortUtil;
 import tech.dnaco.collections.arrays.IntArray;
@@ -29,7 +28,6 @@ import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.data.CborFormat;
 import tech.dnaco.data.json.JsonArray;
 import tech.dnaco.data.json.JsonObject;
-import tech.dnaco.geo.LatLonUtil;
 import tech.dnaco.storage.format.FieldFormatWriter;
 
 public final class FieldFormatWriterV0 implements FieldFormatWriter {
@@ -85,57 +83,25 @@ public final class FieldFormatWriterV0 implements FieldFormatWriter {
   @Override
   public void writeBool(final int fieldId, final boolean value) {
     writeField(fieldId);
-    buffer.add(value ? 1 : 0);
+    DataFormatV0.writeBool(buffer, value);
   }
 
   @Override
-  public void writeInt(final int fieldId, long value) {
+  public void writeInt(final int fieldId, final long value) {
     writeField(fieldId);
-
-    // 00|000000 unsigned
-    // 01|000000 signed
-    // --|111111 (0 - 55)
-    // 56 - 1byte len      60 - 5byte len
-    // 57 - 2byte len      61 - 6byte len
-    // 58 - 3byte len      62 - 7byte len
-    // 59 - 4byte len      63 - 8byte len
-    int head = 0;
-    if (value < 0) {
-      head |= (1 << 7);
-      value = -value;
-    }
-
-    if (value < 56) {
-      head |= (int) value;
-      buffer.add(head);
-    } else {
-      final int bytesWidth = (IntUtil.getWidth(value) + 7) >> 3;
-      buffer.add(head | (55 + bytesWidth));
-      buffer.addFixed(bytesWidth, value);
-    }
+    DataFormatV0.writeInt(buffer, value);
   }
 
   @Override
-  public void writeFloat(final int fieldId, double value) {
+  public void writeFloat(final int fieldId, final double value) {
     writeField(fieldId);
-
-    // 10|111|--- unsigned double
-    // 11|111|--- signed double
-    int head = (1 << 7) | (7 << 3);
-    if (value < 0) {
-      head |= 1 << 6;
-      value = -value;
-    }
-
-    buffer.add(head);
-    buffer.addFixed64(Double.doubleToLongBits(value));
+    DataFormatV0.writeFloat(buffer, value);
   }
 
   @Override
   public void writeBytes(final int fieldId, final byte[] value, final int off, final int len) {
     writeField(fieldId);
-    VarInt.write(buffer, len);
-    buffer.add(value, off, len);
+    DataFormatV0.writeBytes(buffer, value, off, len);
   }
 
   @Override
@@ -162,7 +128,7 @@ public final class FieldFormatWriterV0 implements FieldFormatWriter {
   @Override
   public void writeGeoLocation(final int fieldId, final double latitude, final double longitude) {
     writeField(fieldId);
-    buffer.addFixed64(LatLonUtil.encode(latitude, longitude, 8));
+    DataFormatV0.writeGeoLocation(buffer, latitude, longitude);
   }
 
   // ================================================================================

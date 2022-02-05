@@ -20,13 +20,25 @@
 package tech.dnaco.storage;
 
 import java.io.Closeable;
+import java.io.File;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Map.Entry;
 
 import tech.dnaco.bytes.encoding.VarInt;
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
+import tech.dnaco.data.json.JsonArray;
+import tech.dnaco.data.json.JsonElement;
+import tech.dnaco.data.json.JsonObject;
+import tech.dnaco.data.json.JsonPrimitive;
+import tech.dnaco.data.json.JsonUtil;
+import tech.dnaco.storage.DataTypes.DataType;
 import tech.dnaco.storage.format.FieldFormat;
 import tech.dnaco.storage.format.FieldFormatReader;
 import tech.dnaco.storage.format.FieldFormatWriter;
 import tech.dnaco.storage.format.SchemaFormat;
+import tech.dnaco.strings.HumansUtil;
 
 public class EntityRowsWriter implements Closeable {
   private final FieldFormatWriter writer;
@@ -100,5 +112,76 @@ public class EntityRowsWriter implements Closeable {
     final FieldFormatWriter writer = newRow();
     converter.convert(rowReader, writer);
     closeRow();
+  }
+
+  public static class SchemaBuilder {
+    private final HashMap<String, DataType> fields = new HashMap<>();
+
+    public void add(final String fieldName, final JsonElement value) {
+      if (value == null || value.isJsonNull()) {
+        //add(fieldName, DataType.NULL);
+      } else if (value.isJsonPrimitive()) {
+        final JsonPrimitive primitive = value.getAsJsonPrimitive();
+        if (primitive.isNumber()) {
+          final Number number = primitive.getAsNumber();
+          if (number instanceof Long || number instanceof Integer) {
+            add(fieldName, DataType.INT);
+          } else if (number instanceof Double || number instanceof Float) {
+            add(fieldName, DataType.FLOAT);
+          } else {
+            throw new UnsupportedOperationException("unsupported number type " + number.getClass() + " " + number);
+          }
+        } else if (primitive.isString()) {
+          add(fieldName, DataType.STRING);
+        } else if (primitive.isBoolean()) {
+          add(fieldName, DataType.BOOL);
+        } else {
+          throw new UnsupportedOperationException("unsupported primitive type " + primitive.getClass() + " " + primitive);
+        }
+      } else if (value.isJsonObject()) {
+        add(fieldName, DataType.OBJECT);
+      } else if (value.isJsonArray()) {
+        add(fieldName, DataType.ARRAY);
+      } else {
+        throw new UnsupportedOperationException("unsupported json element " + value.getClass() + " " + value);
+      }
+    }
+
+    public void add(final String fieldName, final DataType dataType) {
+      fields.put(fieldName, dataType);
+    }
+
+    @Override
+    public int hashCode() {
+      return fields.hashCode();
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+      if (this == obj) return true;
+      if (!(obj instanceof final SchemaBuilder other)) return false;
+
+      return Objects.equals(fields, other.fields);
+    }
+  }
+
+  public static void main(final String[] args) throws Exception {
+    final JsonArray items = JsonUtil.fromJson(new File("data.json"), JsonArray.class);
+    System.out.println(" -> " + items.size());
+
+    final HashSet<SchemaBuilder> schemas = new HashSet<>();
+    final long startTime = System.nanoTime();
+    for (final JsonElement item: items) {
+      final JsonObject json = item.getAsJsonObject();
+      final SchemaBuilder schema = new SchemaBuilder();
+      for (final Entry<String, JsonElement> entry: json.entrySet()) {
+        schema.add(entry.getKey(), entry.getValue());
+      }
+      schemas.add(schema);
+      //System.out.println(" --> " + schema.fields);
+    }
+    final long elapsed = System.nanoTime() - startTime;
+    System.out.println(HumansUtil.humanTimeNanos(elapsed));
+    System.out.println("schemas: " + schemas.size());
   }
 }

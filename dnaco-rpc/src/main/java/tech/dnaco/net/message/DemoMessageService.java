@@ -22,6 +22,9 @@ import java.util.concurrent.TimeUnit;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import tech.dnaco.net.AbstractClient.ClientPromise;
 import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.message.DnacoMessageService.DnacoMessageServiceProcessor;
@@ -32,6 +35,9 @@ import tech.dnaco.time.RetryUtil;
 
 public final class DemoMessageService {
   private static class DemoProcessor implements DnacoMessageServiceProcessor {
+    final ChannelGroup channels =
+                new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+
     @Override
     public void sessionMessageReceived(final ChannelHandlerContext ctx, final DnacoMessage msg) throws Exception {
       if (false) {
@@ -63,7 +69,7 @@ public final class DemoMessageService {
       for (int i = 0; true; ++i) {
         if ((i & 1048576) == 0) {
           final long elapsed = System.nanoTime() - startTime;
-          if (elapsed > TimeUnit.SECONDS.toNanos(120)) break;
+          if (elapsed > TimeUnit.SECONDS.toNanos(10)) break;
         }
         final ClientPromise<DnacoMessage> resp = client.sendMessage(new DnacoMetadataMap(Map.of("a", "10")), Unpooled.wrappedBuffer(("hello" + i).getBytes()));
         resp.whenComplete((response, exception) -> {
@@ -75,7 +81,7 @@ public final class DemoMessageService {
       }
       System.out.println(trc.getSnapshot().toHumanReport(new StringBuilder(), HumansUtil.HUMAN_COUNT));
 
-      service.waitStopSignal();
+      //service.waitStopSignal();
     }
   }
 }

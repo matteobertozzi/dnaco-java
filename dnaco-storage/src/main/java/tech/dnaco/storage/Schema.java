@@ -171,7 +171,7 @@ public final class Schema {
     final int index = fieldByName(name);
     if (index < 0) return false;
 
-    final Compatibility compatibility = DataTypes.checkCompatible(fieldTypes[index], newType);
+    final Compatibility compatibility = DataTypes.checkExistingDataCompatibility(fieldTypes[index], newType);
     if (compatibility != Compatibility.NO_CHANGES) {
       Logger.error("cannot change field {} from {} to {}: {}", fieldTypes[index], newType, compatibility);
       return false;
@@ -421,6 +421,25 @@ public final class Schema {
     if (!REGEX_FIELD_NAME.matcher(name).matches()) {
       throw new IllegalArgumentException("invalid field name: " + name);
     }
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + Arrays.hashCode(fieldNames);
+    result = prime * result + Arrays.hashCode(fieldTypes);
+    return result;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) return true;
+    if (!(obj instanceof final Schema other)) return false;
+
+    if (!Arrays.equals(fieldNames, other.fieldNames)) return false;
+    if (!Arrays.equals(fieldTypes, other.fieldTypes)) return false;
+    return true;
   }
 
   @Override

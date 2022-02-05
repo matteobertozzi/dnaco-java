@@ -224,5 +224,20 @@ public final class IndexedHashSet<K> {
   private K getEntryKey(final IndexedSetEntry entry) {
     return (K) entry.key;
   }
+
+  @Override
+  public String toString() {
+    final StringBuilder builder = new StringBuilder();
+    builder.append("{");
+    int itemIndex = 0;
+    for (int i = 0; i < entriesIndex; ++i) {
+      if (entries[i] != null && entries[i].key != null) {
+        if (itemIndex++ > 0) builder.append(", ");
+        builder.append(entries[i].key);
+      }
+    }
+    builder.append("}");
+    return builder.toString();
+  }
 }
 

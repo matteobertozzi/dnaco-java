@@ -19,6 +19,8 @@
 
 package tech.dnaco.net.message;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
@@ -30,7 +32,7 @@ public class DnacoMessageService extends AbstractService {
   private final DnacoMessageHandler handler;
 
   public DnacoMessageService(final DnacoMessageServiceProcessor processor) {
-    this.handler = new DnacoMessageHandler(processor);
+    this.handler = new DnacoMessageHandler(processor, running());
   }
 
   @Override
@@ -45,9 +47,11 @@ public class DnacoMessageService extends AbstractService {
   @Sharable
   private static class DnacoMessageHandler extends ServiceChannelInboundHandler<DnacoMessage> {
     private final DnacoMessageServiceProcessor processor;
+    private final AtomicBoolean running;
 
-    private DnacoMessageHandler(final DnacoMessageServiceProcessor processor) {
+    private DnacoMessageHandler(final DnacoMessageServiceProcessor processor, AtomicBoolean running) {
       this.processor = processor;
+      this.running = running;
     }
 
     @Override
@@ -62,7 +66,11 @@ public class DnacoMessageService extends AbstractService {
 
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final DnacoMessage msg) throws Exception {
-      processor.sessionMessageReceived(ctx, msg);
+      if (running.get()) {
+        processor.sessionMessageReceived(ctx, msg);
+      } else {
+        ctx.close();
+      }
     }
   }
 

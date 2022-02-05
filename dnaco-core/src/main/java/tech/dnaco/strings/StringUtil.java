@@ -74,6 +74,10 @@ public final class StringUtil {
     return StringUtil.isNotEmpty(text) && text.contains(pattern);
   }
 
+  public static boolean startsWith(final String text, final String prefix) {
+    return StringUtil.isNotEmpty(text) && text.startsWith(prefix);
+  }
+
   // ================================================================================
   //  String upper/lower/capitalize case related
   // ================================================================================

@@ -40,7 +40,7 @@ import tech.dnaco.data.modules.TraceIdsModule;
 import tech.dnaco.util.Serialization.SerializationName;
 import tech.dnaco.util.Serialization.SerializeWithSnakeCase;
 
-class DataFormatMapper {
+public class DataFormatMapper {
   public static final String JSON_DATE_FORMAT_PATTERN = "YYYYMMddHHmmss";
 
   private final ObjectMapper mapper;

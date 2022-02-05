@@ -30,7 +30,6 @@ import tech.dnaco.collections.arrays.ArraySortUtil;
 import tech.dnaco.data.CborFormat;
 import tech.dnaco.data.json.JsonArray;
 import tech.dnaco.data.json.JsonObject;
-import tech.dnaco.geo.LatLonUtil;
 import tech.dnaco.geo.LatLong;
 import tech.dnaco.storage.format.FieldFormatReader;
 
@@ -87,62 +86,25 @@ public final class FieldFormatReaderV0 implements FieldFormatReader {
   @Override
   public boolean getBool(final int fieldId) {
     final int offset = offsetByFieldId(fieldId);
-    return block.get(offset) == 1;
+    return DataFormatV0.getBool(block, offset);
   }
 
   @Override
   public long getInt(final int fieldId) {
     final int offset = offsetByFieldId(fieldId);
-
-    // 00|000000 unsigned
-    // 01|000000 signed
-    // --|111111 (0 - 55)
-    // 56 - 1byte len      60 - 5byte len
-    // 57 - 2byte len      61 - 6byte len
-    // 58 - 3byte len      62 - 7byte len
-    // 59 - 4byte len      63 - 8byte len
-    final int head = block.get(offset) & 0xff;
-    final int headValue = head & 0x3f;
-    long value;
-    if (headValue < 56) {
-      value = headValue;
-    } else {
-      value = IntDecoder.LITTLE_ENDIAN.readFixed(block, offset + 1, headValue - 55);
-    }
-    return (((head >> 6) & 1) == 0) ? value : -value;
+    return DataFormatV0.getInt(block, offset);
   }
 
   @Override
   public double getFloat(final int fieldId) {
     final int offset = offsetByFieldId(fieldId);
-
-    // 00|000|--- unsigned int
-    // 01|000|--- signed int
-    // 10|000|--- unsigned float
-    // 11|000|--- signed float
-    final int head = block.get(offset) & 0xff;
-    final double value;
-    if (((head >> 7) & 1) == 1) {
-      final long bits = IntDecoder.LITTLE_ENDIAN.readFixed(block, offset + 1, 8);
-      value = Double.longBitsToDouble(bits);
-    } else {
-      final int headValue = head & 0x3f;
-      if (headValue < 56) {
-        value = headValue;
-      } else {
-        value = IntDecoder.LITTLE_ENDIAN.readFixed(block, offset + 1, headValue - 55);
-      }
-    }
-    return (((head >> 6) & 1) == 0) ? value : -value;
+    return DataFormatV0.getFloat(block, offset);
   }
 
   @Override
   public ByteArraySlice getBytes(final int fieldId) {
     final int offset = offsetByFieldId(fieldId);
-
-    final LongValue length = new LongValue();
-    final int n = VarInt.read(block, offset, block.length() - offset, length);
-    return new ByteArraySlice(block.rawBuffer(), block.offset() + offset + n, length.intValue());
+    return DataFormatV0.getBytes(block, offset);
   }
 
   @Override
@@ -163,8 +125,7 @@ public final class FieldFormatReaderV0 implements FieldFormatReader {
   @Override
   public LatLong getGeoLocation(final int fieldId) {
     final int offset = offsetByFieldId(fieldId);
-    final long value = IntDecoder.LITTLE_ENDIAN.readFixed(block, offset, 8);
-    return LatLonUtil.decode(value, 8);
+    return DataFormatV0.getGeoLocation(block, offset);
   }
 
   // ================================================================================
