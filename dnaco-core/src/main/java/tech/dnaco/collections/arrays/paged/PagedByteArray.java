@@ -83,6 +83,14 @@ public class PagedByteArray {
     }
   }
 
+  public void add(final PagedByteArray buffer) {
+    try {
+      buffer.forEach(this::add);
+    } catch (final Throwable e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   // ================================================================================
   //  PUBLIC clear related methods
   // ================================================================================

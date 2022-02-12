@@ -14,7 +14,7 @@
   <properties>
     <jackson.version>2.13.1</jackson.version>
     <zstd.version>1.5.2-1</zstd.version>
-    <tika.version>2.2.1</tika.version>
+    <tika.version>2.3.0</tika.version>
 
     <junit.version>5.8.2</junit.version>
 

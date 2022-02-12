@@ -1,31 +1,15 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 package tech.dnaco.net.logsync;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.bytes.encoding.VarInt;
+import tech.dnaco.collections.LongValue;
 import tech.dnaco.journal.JournalAsyncWriter;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.logging.Logger;
@@ -36,30 +20,36 @@ import tech.dnaco.net.logsync.LogFileUtil.LogsEventListener;
 import tech.dnaco.net.logsync.LogFileUtil.LogsStorage;
 import tech.dnaco.net.logsync.LogFileUtil.SimpleLogEntryReader;
 import tech.dnaco.net.logsync.LogSyncService.LogSyncServiceStoreHandler;
+import tech.dnaco.threading.ShutdownUtil;
 import tech.dnaco.threading.ThreadUtil;
 import tech.dnaco.time.RetryUtil;
 
-public class DemoLogSync {
-  public static void main(final String[] args) throws Exception {
+public class DemoLogSync2 {
+  private static final String[] TOPICS = new String[] { "topic-0" };
+
+  private static void remoteSyncService() throws Exception {
     Logger.setDefaultLevel(LogLevel.WARNING);
-    final String[] TOPICS = new String[] { "topic-0", "topic-1", "topic-2" };
 
     try (final ServiceEventLoop eventLoop = new ServiceEventLoop(1, 1)) {
-      // bind log-sync service
       final LogsStorage remoteStorage = new LogsStorage(new File("demo-logsync/remote-storage"));
       final LogsTrackerManager remoteLogsTracker = new LogsTrackerManager(remoteStorage);
+
       final LogSyncService service = new LogSyncService();
       service.registerListener(new LogSyncServiceStoreHandler(remoteLogsTracker::get));
       service.bindTcpService(eventLoop, 57025);
 
+      service.waitStopSignal();
+    }
+  }
+
+  private static void localSyncClient(final long startOffset) throws Exception {
+    try (final ServiceEventLoop eventLoop = new ServiceEventLoop(1, 1)) {
       final LogsStorage localStorage = new LogsStorage(new File("demo-logsync/local-storage"));
       final LogsTrackerManager localStorageTracker = new LogsTrackerManager(localStorage);
       final LogSyncClient client = LogSyncClient.newTcpClient(eventLoop, RetryUtil.newFixedRetry(1000));
-
-      if (false) {
-        checksumDirs(localStorage, remoteStorage);
-        return;
-      }
+      client.registerOffsetStore((logsId, offset) -> {
+        Files.write(Path.of("demo-logsync/client." + logsId), String.valueOf(offset).getBytes());
+      });
 
       // load logs already on disk
       for (final String logsId: localStorageTracker.getLogsIds()) {
@@ -94,60 +84,28 @@ public class DemoLogSync {
       client.connect("127.0.0.1", 57025);
       while (!client.isConnected()) Thread.yield();
       client.setReady();
+      System.out.println("CLIENT READY");
 
-      System.out.println("READY");
-      if (true) {
-        final JournalAsyncWriter<LogSyncMessage> journal = new JournalAsyncWriter<>("logs-sync", LogFileUtil.LOG_SYNC_MESSAGE_JOURNAL_SUPPLIER);
-        journal.registerWriter(new LogWriter(localStorageTracker::get));
-        journal.start(100);
+      final JournalAsyncWriter<LogSyncMessage> journal = new JournalAsyncWriter<>("logs-sync", LogFileUtil.LOG_SYNC_MESSAGE_JOURNAL_SUPPLIER);
+      journal.registerWriter(new LogWriter(localStorageTracker::get));
+      journal.start(250);
 
-        final long startTime = System.nanoTime();
-        long lastReport = startTime;
-        for (long i = 0; (System.nanoTime() - startTime) < TimeUnit.MINUTES.toNanos(5); ++i) {
-          final String logId = "topic-" + (i % (TOPICS.length - (i > 20_000 ? 1 : 0)));
-          final byte[] data = ("event-" + i).getBytes();
-          journal.addToLogQueue(Thread.currentThread(), new LogSyncMessage(logId, data));
-          ThreadUtil.sleep(10 + Math.round(Math.random() * 1000), TimeUnit.MICROSECONDS);
+      final AtomicBoolean running = new AtomicBoolean(true);
+      ShutdownUtil.addShutdownHook("shutdown", running);
 
-          if ((System.nanoTime() - lastReport) > TimeUnit.SECONDS.toNanos(1)) {
-            lastReport = System.nanoTime();
-            System.out.println("\n".repeat(40));
-            System.out.println("local storage");
-            for (final String logsId: localStorageTracker.getLogsIds()) {
-              final LogsFileTracker tracker = localStorageTracker.get(logsId);
-              tracker.cleanupAllFiles(Duration.ofSeconds(1), tracker.getGatingSequence());
-              System.out.println(" -> " + logsId + " -> "
-                + tracker.getGatingSequence() + "/" + tracker.getMaxOffset()
-                + " -> " + Arrays.toString(localStorage.getLogsDir(logsId).list()));
-            }
-            System.out.println("remote storage");
-            for (final String logsId: remoteLogsTracker.getLogsIds()) {
-              final LogsFileTracker tracker = remoteLogsTracker.get(logsId);
-              tracker.cleanupAllFiles(Duration.ofSeconds(1), tracker.getGatingSequence());
-              System.out.println(" -> " + logsId + " -> "
-                + tracker.getGatingSequence() + "/" + tracker.getMaxOffset()
-                + " -> " + Arrays.toString(remoteStorage.getLogsDir(logsId).list()));
-            }
-          }
-
-
-          if (false && (i + 1) % 1000 == 0) {
-            for (int c = 0; c < 1; ++c) {
-              localStorageTracker.get(logId).cleanupFiles(Duration.ofSeconds(5));
-              ThreadUtil.sleep(2, TimeUnit.SECONDS);
-            }
-          }
-        }
-        journal.stop();
-        journal.close();
+      final byte[] buf9 = new byte[9];
+      long v = startOffset;
+      for (long i = 0; running.get(); ++i) {
+        final String logId = "topic-" + (i % TOPICS.length);
+        final int n = VarInt.write(buf9, ++v);
+        journal.addToLogQueue(Thread.currentThread(), new LogSyncMessage(logId, buf9, 0, n));
+        ThreadUtil.sleep(75);
       }
+      System.out.println("LAST VALUE: " + v);
 
-      ThreadUtil.sleep(10, TimeUnit.SECONDS);
-
-      //checksumDirs(localStorage, remoteStorage);
-
-      service.waitStopSignal();
-      client.disconnect();
+      journal.stop();
+      journal.close();
+      client.sendStopSignal();
       client.waitForShutdown();
     }
   }
@@ -165,19 +123,60 @@ public class DemoLogSync {
       checksum = checksum(remoteConsumer);
       System.out.println("remot: " + logsId + " -> " + BytesUtil.toHexString(checksum));
     }
+
+    for (final String logsId: localStorageTracker.getLogsIds()) {
+      final LogsConsumer remoteConsumer = remoteLogsTracker.get(logsId).newConsumer("remote-consumer", 0);
+      final LongValue value = new LongValue();
+      final LongValue lastValue = new LongValue();
+      while (remoteConsumer.hasMore()) {
+        final long consumed = SimpleLogEntryReader.read(remoteConsumer, Duration.ofSeconds(1).toNanos(), data -> {
+          //System.out.println(data.length() + " -> " + BytesUtil.toHexString(data.rawBuffer(), data.offset(), data.length()));
+          final int n = VarInt.read(data, value);
+          System.out.println(value.get() + " -> " + (value.get() - lastValue.get()));
+          lastValue.set(value.get());
+        });
+        remoteConsumer.consume(consumed);
+      }
+    }
   }
 
   private static byte[] checksum(final LogsConsumer consumer) throws Exception {
     final MessageDigest digest = MessageDigest.getInstance("SHA-512");
-    long consumed = 0;
+    long totalConsumed = 0;
     while (consumer.hasMore()) {
-      consumed += SimpleLogEntryReader.read(consumer, Duration.ofSeconds(1).toNanos(), data -> {
+      final long consumed = SimpleLogEntryReader.read(consumer, Duration.ofSeconds(1).toNanos(), data -> {
         digest.update(data.rawBuffer(), data.offset(), data.length());
       });
+      consumer.consume(consumed);
+      totalConsumed += consumed;
     }
-    if (consumed != consumer.getMaxOffset()) {
-      throw new IllegalArgumentException(consumer + " expected to be fully consumed: " + consumed + "/" + consumer.getMaxOffset());
+    if (totalConsumed != consumer.getMaxOffset()) {
+      throw new IllegalArgumentException(consumer + " expected to be fully consumed: " + totalConsumed + "/" + consumer.getMaxOffset());
     }
     return digest.digest();
+  }
+
+  public static void main(final String[] args) throws Exception {
+    enum Exec { SERVICE, CLIENT, CHECK }
+    Exec exec = null;
+    long offset = 0;
+    for (int i = 0; i < args.length; ++i) {
+      switch (args[i]) {
+        case "server" -> exec = Exec.SERVICE;
+        case "client" -> exec = Exec.CLIENT;
+        case "check" -> exec = Exec.CHECK;
+        case "offset" -> offset = Long.parseLong(args[++i]);
+      }
+    }
+
+    if (exec == Exec.SERVICE) {
+      remoteSyncService();
+    } else if (exec == Exec.CLIENT) {
+      localSyncClient(offset);
+    } else if (exec == Exec.CHECK) {
+      final LogsStorage remoteStorage = new LogsStorage(new File("demo-logsync/remote-storage"));
+      final LogsStorage localStorage = new LogsStorage(new File("demo-logsync/local-storage"));
+      checksumDirs(localStorage, remoteStorage);
+    }
   }
 }

@@ -179,6 +179,24 @@ public class TestStringUtil {
     Assertions.assertTrue(StringUtil.like(source2, "%abc%"));
     Assertions.assertTrue(StringUtil.like(source2, "%abcdef%"));
     Assertions.assertFalse(StringUtil.like(source2, "%abcdefg%"));
+
+    // test regex escape
+    Assertions.assertTrue(StringUtil.like("foo-bar", "%o-b%"));
+    Assertions.assertTrue(StringUtil.like("foo,bar", "%o,b%"));
+    Assertions.assertTrue(StringUtil.like("foo#bar", "%o#b%"));
+    Assertions.assertTrue(StringUtil.like("foo & bar", "%o & b%"));
+    Assertions.assertTrue(StringUtil.like("foo(bar)", "foo(_%"));
+    Assertions.assertTrue(StringUtil.like("foo(bar)", "%bar)%"));
+    Assertions.assertTrue(StringUtil.like("foo[bar]", "%[bar%"));
+    Assertions.assertTrue(StringUtil.like("foo[bar]", "%bar]"));
+    Assertions.assertTrue(StringUtil.like("foo{bar}", "%{bar%"));
+    Assertions.assertTrue(StringUtil.like("foo{bar}", "%bar}"));
+    Assertions.assertTrue(StringUtil.like("a + b + c", "%b + c%"));
+    Assertions.assertTrue(StringUtil.like("a + b? + c", "%b?%"));
+    Assertions.assertTrue(StringUtil.like("a + b|d + c", "%b|d%"));
+    Assertions.assertTrue(StringUtil.like("a + b>d + c", "%b>d%"));
+    Assertions.assertTrue(StringUtil.like("a + b<d + c", "%b<d%"));
+    Assertions.assertTrue(StringUtil.like("a + b/d + c", "%b/d%"));
   }
 
   @Test

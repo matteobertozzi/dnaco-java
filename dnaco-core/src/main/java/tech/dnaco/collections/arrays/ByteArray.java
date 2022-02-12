@@ -24,6 +24,7 @@ import tech.dnaco.bytes.BytesUtil;
 
 public class ByteArray {
   public static final byte[] EMPTY_ARRAY = BytesUtil.EMPTY_BYTES;
+  private static final int EXTRA_SIZE = 1024;
 
   private byte[] blob;
   private int count;
@@ -85,7 +86,7 @@ public class ByteArray {
 
   public void add(final int value) {
     if (count == blob.length) {
-      this.blob = Arrays.copyOf(blob, count + 16);
+      this.blob = Arrays.copyOf(blob, count + EXTRA_SIZE);
     }
     blob[count++] = (byte) (value & 0xff);
   }
@@ -96,7 +97,7 @@ public class ByteArray {
 
   public void add(final byte[] value, final int off, final int len) {
     if ((count + len) >= blob.length) {
-      this.blob = Arrays.copyOf(blob, count + len + 16);
+      this.blob = Arrays.copyOf(blob, count + len + EXTRA_SIZE);
     }
     System.arraycopy(value, off, blob, count, len);
     count += len;
@@ -105,7 +106,7 @@ public class ByteArray {
   public void insert(final int index, final int value) {
     if (index == count) {
       if (count == blob.length) {
-        this.blob = Arrays.copyOf(blob, count + 16);
+        this.blob = Arrays.copyOf(blob, count + EXTRA_SIZE);
       }
       count++;
     }
@@ -144,5 +145,19 @@ public class ByteArray {
   @Override
   public String toString() {
     return "ByteArray [count=" + count + ", items=" + Arrays.toString(blob) + "]";
+  }
+
+  public void addFixed(final int bytesWidth, final long value) {
+    for (int i = 0; i < bytesWidth; ++i) {
+      //add((int)((value >>> (i << 3)) & 0xff));
+    }
+  }
+
+  public void addFixed32(final long value) {
+    addFixed(4, value);
+  }
+
+  public void addFixed64(final long value) {
+    addFixed(8, value);
   }
 }

@@ -1,7 +1,6 @@
 package tech.dnaco.net.util;
 
 import java.io.IOException;
-import java.util.Base64;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -16,6 +15,7 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.bytes.encoding.IntEncoder;
 import tech.dnaco.data.modules.DataMapperModules;
+import tech.dnaco.strings.BaseX;
 import tech.dnaco.util.RandData;
 
 public class ExecutionId implements Comparable<ExecutionId> {
@@ -62,11 +62,11 @@ public class ExecutionId implements Comparable<ExecutionId> {
 
   @Override
   public String toString() {
-    return Base64.getUrlEncoder().encodeToString(toBytes());
+    return BaseX.encode64(toBytes());
   }
 
   public static ExecutionId fromString(final String id) {
-    return fromBytes(Base64.getUrlDecoder().decode(id));
+    return fromBytes(BaseX.decode64(id));
   }
 
   public static ExecutionId fromBytes(final byte[] id) {

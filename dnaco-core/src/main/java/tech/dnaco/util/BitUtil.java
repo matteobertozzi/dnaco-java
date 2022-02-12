@@ -24,6 +24,11 @@ public final class BitUtil {
     // no-op
   }
 
+  public static boolean isBitSet(final int value, final int bit) {
+    final int bitVal = 1 << (bit - 1);
+    return (value & bitVal) == bitVal;
+  }
+
   public static int align(final int value, final int alignment) {
     return (value + (alignment - 1)) & -alignment;
   }

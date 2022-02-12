@@ -40,7 +40,6 @@ public final class IndexedHashSet<K> {
     }
 
     final int capacity = BitUtil.nextPow2(Math.max(MIN_CAPACITY, initialCapacity));
-    System.out.println(capacity);
     this.entriesIndex = 0;
     this.freeList = -1;
     this.entries = new IndexedSetEntry[capacity];

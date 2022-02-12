@@ -233,6 +233,10 @@ public final class BytesUtil {
     return increaseOne(endKey);
   }
 
+  public static int prefix(final byte[] a, final byte[] b) {
+    return prefix(a, 0, a.length, b, 0, b.length);
+  }
+
   public static int prefix(final byte[] a, final int aOff, final int aLen,
       final byte[] b, final int bOff, final int bLen) {
     final int len = Math.min(aLen, bLen);

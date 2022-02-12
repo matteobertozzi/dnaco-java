@@ -46,7 +46,6 @@ import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.frame.DnacoFrame;
 import tech.dnaco.net.frame.DnacoFrameDecoder;
 import tech.dnaco.net.logsync.LogFileUtil.LogOffsetStore;
-import tech.dnaco.net.logsync.LogFileUtil.LogsConsumer;
 import tech.dnaco.net.util.ByteBufIntUtil;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.HumansUtil.HumanLongValueConverter;
@@ -308,8 +307,9 @@ public class LogSyncClient extends AbstractClient {
     private void tryPublish(final LogState state) {
       if (state.waiting > 0) {
         final long since = System.nanoTime() - state.waiting;
-        if (since > TimeUnit.MINUTES.toNanos(5)) {
-          Logger.warn("WAITING FOR {} ACK since {}", state.getLogsId(), HumansUtil.humanTimeNanos(since));
+        if (since > TimeUnit.SECONDS.toNanos(30)) {
+          Logger.debug("Retry Publish {}, No ACK since {}", state.getLogsId(), HumansUtil.humanTimeNanos(since));
+          state.waiting = client.tryPublish(state);
         } else {
           Logger.debug("WAITING FOR {} ACK since {}", state.getLogsId(), HumansUtil.humanTimeNanos(since));
         }

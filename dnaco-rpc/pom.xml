@@ -11,7 +11,7 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <netty.version>4.1.73.Final</netty.version>
+    <netty.version>4.1.74.Final</netty.version>
     <jctools.version>3.3.0</jctools.version>
 
     <junit.version>5.8.2</junit.version>

@@ -17,6 +17,7 @@
 
 package tech.dnaco.net.message;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -40,7 +41,8 @@ public final class DemoMessageService {
 
     @Override
     public void sessionMessageReceived(final ChannelHandlerContext ctx, final DnacoMessage msg) throws Exception {
-      if (false) {
+      if (true) {
+        System.out.println(msg.packetId() + " RECEIVED: " + msg.metadataMap() + " -> " + msg.data().toString(StandardCharsets.UTF_8));
         ctx.writeAndFlush(msg.retain());
       } else {
         //System.out.println(msg.packetId() + " RECEIVED: " + msg.metadataMap() + " -> " + msg.data().toString(StandardCharsets.UTF_8));
@@ -58,6 +60,10 @@ public final class DemoMessageService {
       final DnacoMessageService service = new DnacoMessageService(new DemoProcessor());
       service.bindTcpService(eloop, 8889);
       service.addShutdownHook();
+      if (true) {
+        service.waitStopSignal();
+        return;
+      }
 
       final DnacoMessageClient client = DnacoMessageClient.newTcpClient(eloop.getWorkerGroup(), eloop.getClientChannelClass(), RetryUtil.newFixedRetry(1000));
       client.connect("localhost", 8889);

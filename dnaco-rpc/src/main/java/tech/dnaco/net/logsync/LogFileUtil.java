@@ -31,12 +31,8 @@ import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import tech.dnaco.bytes.ByteArrayReader;
@@ -46,7 +42,6 @@ import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.bytes.encoding.IntEncoder;
 import tech.dnaco.bytes.encoding.IntUtil;
 import tech.dnaco.collections.LongValue;
-import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.collections.arrays.paged.PagedByteArrayWriter;
 import tech.dnaco.data.compression.ZstdUtil;
@@ -103,57 +98,6 @@ public final class LogFileUtil {
   public interface LogsEventListener {
     void newLogEvent(LogsFileTracker tracker);
     void removeLogEvent(LogsFileTracker tracker);
-  }
-
-  public static class LogsTrackerManager {
-    private final CopyOnWriteArrayList<LogsEventListener> logsEventListeners = new CopyOnWriteArrayList<>();
-    private final ConcurrentHashMap<String, LogsFileTracker> trackers = new ConcurrentHashMap<>();
-    private final LogsStorage storage;
-
-    public LogsTrackerManager(final LogsStorage storage) {
-      this.storage = storage;
-    }
-
-    public Set<String> getLogsIds() {
-      return storage.getLogsIds();
-    }
-
-    public LogsTrackerManager registerLogsEventListener(final LogsEventListener listener) {
-      this.logsEventListeners.add(listener);
-      return this;
-    }
-
-    public LogsFileTracker get(final String logsId) {
-      LogsFileTracker tracker = trackers.get(logsId);
-      if (tracker != null) return tracker;
-
-      synchronized (this) {
-        tracker = trackers.get(logsId);
-        if (tracker != null) return tracker;
-
-        tracker = newTracker(logsId);
-        trackers.put(logsId, tracker);
-      }
-
-      for (final LogsEventListener listener: logsEventListeners) {
-        listener.newLogEvent(tracker);
-      }
-      return tracker;
-    }
-
-    public void remove(final String logId) {
-      final LogsFileTracker tracker = trackers.get(logId);
-      for (final LogsEventListener listener: logsEventListeners) {
-        listener.removeLogEvent(tracker);
-      }
-      trackers.remove(logId, tracker);
-    }
-
-    private LogsFileTracker newTracker(final String logsId) {
-      final LogsFileTracker tracker = new LogsFileTracker(storage.getLogsDir(logsId));
-      tracker.loadFiles();
-      return tracker;
-    }
   }
 
   public static class LogWriter implements JournalWriter<LogSyncMessage> {
@@ -338,183 +282,6 @@ public final class LogFileUtil {
     }
   }
 
-  public static class LogsConsumer {
-    private final ArrayList<String> fileNames = new ArrayList<>();
-    private final LogsFileTracker tracker;
-    private final String name;
-
-    private long offset;
-    private long blkOffset;
-    private long nextOffset;
-    private long maxOffset;
-
-    public LogsConsumer(final LogsFileTracker tracker, final String name, final long offset) {
-      this.tracker = tracker;
-      this.name = name;
-      this.setOffset(offset);
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    public String getLogsId() {
-      return tracker.getLogsId();
-    }
-
-    private ArrayList<String> getFileNames() {
-      return new ArrayList<>(fileNames);
-    }
-
-    public synchronized void setOffset(final long newOffset) {
-      this.offset = 0;
-      this.blkOffset = 0;
-      this.nextOffset = 0;
-      this.maxOffset = tracker.getMaxOffset();
-
-      fileNames.clear();
-      fileNames.addAll(tracker.getFileNames());
-      Logger.debug("{} try setting {newOffset} {maxOffset} - {} files", getLogsId(), newOffset, maxOffset, fileNames.size());
-      if (fileNames.isEmpty()) return;
-
-      if (newOffset > maxOffset) {
-        Logger.fatal("{} invalid offset {newOffset} {maxOffset} - {}", getLogsId(), newOffset, maxOffset, fileNames);
-        throw new IllegalArgumentException(getLogsId() + " invalid offset " + newOffset + ", max offset is " + maxOffset);
-      }
-
-      int fileCount = fileNames.size();
-      while (fileCount > 1) {
-        final long nextOffset = offsetFromFileName(fileNames.get(1));
-        if (nextOffset > newOffset) break;
-
-        fileNames.remove(0);
-        fileCount--;
-      }
-
-      if (fileCount > 0) {
-        final long firstOffset = offsetFromFileName(fileNames.get(0));
-        if (newOffset < firstOffset) {
-          Logger.fatal("{} invalid offset {newOffset} {firstOffset} - {}", getLogsId(), newOffset, firstOffset, fileNames);
-          throw new IllegalArgumentException(getLogsId() + " invalid offset " + newOffset + ", first log available is " + firstOffset);
-        }
-
-        // calculate offset & next offset
-        this.offset = newOffset;
-        this.blkOffset = newOffset - firstOffset;
-        this.nextOffset = (fileNames.size() > 1) ? offsetFromFileName(fileNames.get(1)) : maxOffset;
-        Logger.info("{} new offset set to {}/{} {blkOffset}, files {}", getLogsId(), offset, nextOffset, blkOffset, fileNames);
-        return;
-      }
-
-      throw new UnsupportedOperationException("unexpected offset " + newOffset + " files " + fileNames);
-    }
-
-    public synchronized boolean hasMore() {
-      if (getBlockAvailable() > 0) return true;
-      if (fileNames.size() <= 1) return false;
-
-      // grab the next log
-      nextLog();
-      return getBlockAvailable() > 0;
-    }
-
-    public synchronized long getMaxOffset() {
-      return maxOffset;
-    }
-
-    public synchronized long getOffset() {
-      return offset;
-    }
-
-    public synchronized long getBlockOffset() {
-      return blkOffset;
-    }
-
-    public synchronized long getBlockAvailable() {
-      return nextOffset - offset;
-    }
-
-    public synchronized File getBlockFile() {
-      // TODO: PERF: cache?
-      return tracker.getFile(fileNames.get(0));
-    }
-
-    public synchronized void consume(long consumed) {
-      if (consumed <= 0) {
-        Logger.debug("{} nothing consumed: {blkAvail} {offset}/{maxOffset} - {files}",
-          getLogsId(), getBlockAvailable(), offset, maxOffset, fileNames);
-        return;
-      }
-
-      while (consumed > 0) {
-        final long length = Math.min(consumed, getBlockAvailable());
-        if (length <= 0) {
-          Logger.debug("{} CONSUMED SOMETHING WRONG: {consumedLength}: {blkAvail} {offset}/{maxOffset} - {files}",
-            getLogsId(), consumed, getBlockAvailable(), offset, maxOffset, fileNames);
-          throw new UnsupportedOperationException();
-        }
-
-        consumed -= length;
-        this.offset += length;
-        this.blkOffset += length;
-
-        final long blkAvail = getBlockAvailable();
-        Logger.debug("{} consume {}. avail:{} offset:{} blkOffset:{}", getLogsId(), length, blkAvail, offset, blkOffset);
-        if (blkAvail > 0) return;
-
-        // nothing more available
-        if (offset == maxOffset) {
-          Logger.trace("{} log {} fully consumed. current offset {}/{}", getLogsId(), fileNames.get(0), offset, maxOffset);
-          return;
-        }
-
-        if (fileNames.size() == 1) {
-          Logger.fatal("TRYING TO GRAB A NON EXISTENT NEXT LOG {}: {offset} {maxOffset}: {blkAvail} {blkOff}: {nextOffset} {files}",
-            getLogsId(), offset, maxOffset, blkAvail, blkOffset, nextOffset, fileNames);
-        }
-
-        // grab the next log
-        nextLog();
-      }
-    }
-
-    private void nextLog() {
-      // grab the next log
-      final String fileName = fileNames.remove(0);
-      Logger.trace("{} log {} fully consumed. current offset {}/{}", getLogsId(), fileName, offset, maxOffset);
-
-      // check the next file and the current offset
-      final String nextFile = fileNames.get(0);
-      if (offsetFromFileName(nextFile) != offset) {
-        throw new IllegalStateException(getLogsId() + " expected log starting from offset " + offset + ", got " + nextFile);
-      }
-
-      // calculate next offset
-      this.blkOffset = 0;
-      this.nextOffset = (fileNames.size() > 1) ? offsetFromFileName(fileNames.get(1)) : maxOffset;
-      Logger.info("{} {currentFile} {offset} {nextOffset}", getLogsId(), nextFile, offset, nextOffset);
-    }
-
-    // ==========================================================================================
-    //  Publisher methods
-    // ==========================================================================================
-    private synchronized void addFile(final String name) {
-      this.fileNames.add(name);
-    }
-
-    private synchronized void addData(final long length) {
-      if (fileNames.size() == 1) {
-        // the data is being appended to the current file
-        this.nextOffset += length;
-      }
-      this.maxOffset += length;
-    }
-
-    public void registerDataPublishedListener(final Consumer<LogsFileTracker> consumer) {
-      tracker.registerDataPublishedListener(consumer);
-    }
-  }
-
   private static final class LogsConsumerInputStreamSupplier implements InputStreamSupplier {
     private final ArrayList<String> fileNames;
     private final LogsConsumer consumer;
@@ -540,7 +307,7 @@ public final class LogFileUtil {
 
       // grab the next log
       final String fileName = fileNames.remove(0);
-      final File file = consumer.tracker.getFile(fileName);
+      final File file = consumer.getFile(fileName);
       final long fileLength = file.length();
       final long avail = Math.min(fileLength, consumer.getMaxOffset() - offset);
       offset += avail;
@@ -556,201 +323,25 @@ public final class LogFileUtil {
     }
   }
 
-  public static class LogsFileTracker {
-    private final ArrayList<Consumer<LogsFileTracker>> dataPublishedNotifier = new ArrayList<>();
-    private final ArrayList<LogsConsumer> consumers = new ArrayList<>();
-    private final ArrayList<String> fileNames = new ArrayList<>();
-    private final File logsDir;
-
-    private long maxOffset;
-    private long lastPublished;
-
-    public LogsFileTracker(final File logsDir) {
-      this.logsDir = logsDir;
-      this.maxOffset = 0;
-      this.lastPublished = 0;
-    }
-
-    public String getLogsId() {
-      return logsDir.getName();
-    }
-
-    public File getFile(final String name) {
-      return new File(logsDir, name);
-    }
-
-    private synchronized List<String> getFileNames() {
-      return fileNames;
-    }
-
-    public synchronized long getGatingSequence() {
-      long minSeq = maxOffset;
-      for (final LogsConsumer consumer: this.consumers) {
-        minSeq = Math.min(minSeq, consumer.getOffset());
-      }
-      return minSeq;
-    }
-
-    public synchronized List<LogsConsumer> getConsumers() {
-      return new ArrayList<>(consumers);
-    }
-
-    public synchronized void loadFiles() {
-      final String[] files = logsDir.list();
-      if (ArrayUtil.isEmpty(files)) {
-        Logger.trace("no log file available for dir: {}", logsDir);
-        this.fileNames.clear();
-        this.maxOffset = 0;
-        return;
-      }
-
-      // logs name are in the format of <OFFSET>.<not-imporant>
-      // so they will get sorted by offset.
-      Arrays.sort(files);
-      fileNames.clear();
-      fileNames.addAll(List.of(files));
-
-      // calculate max offset
-      final String lastFileName = files[files.length - 1];
-      final File lastFile = new File(logsDir, lastFileName);
-      final long lastOffset = offsetFromFileName(lastFileName);
-      final long lastSize = lastFile.length();
-      this.maxOffset = lastOffset + lastSize;
-      Logger.debug("found {} logs, {lastOffset} {lastSize} - {maxOffset}", files.length, lastOffset, lastSize, maxOffset);
-    }
-
-    public synchronized boolean cleanupFiles(final Duration retainTime) {
-      return cleanupFiles(retainTime, getGatingSequence());
-    }
-
-    public synchronized boolean cleanupAllFiles(final Duration retainTime, final long gatingSequence) {
-      final boolean fullyCleaned = cleanupFiles(retainTime, gatingSequence);
-      if (fullyCleaned || fileNames.size() > 1) {
-        return fullyCleaned;
-      }
-
-      if (gatingSequence < maxOffset) {
-        Logger.trace("{} still in use {gatingSeq}/{maxOffset}: {} files active",
-          getLogsId(), gatingSequence, fileNames.size());
-        return false;
-      }
-
-      final String fileName = fileNames.get(0);
-      final File lastFile = new File(logsDir, fileName);
-      if ((System.currentTimeMillis() - lastFile.lastModified()) < retainTime.toMillis()) {
-        Logger.trace("{} last file was last modified {}",
-          getLogsId(), HumansUtil.humanTimeMillis(System.currentTimeMillis() - lastFile.lastModified()));
-        return false;
-      }
-
-      Logger.info("{} {gatingSeq}/{maxOffset} removing {}", getLogsId(), gatingSequence, maxOffset, fileName);
-      fileNames.remove(0);
-      lastFile.delete();
-
-      Logger.info("{} removing empty dir", getLogsId(), logsDir);
-      return logsDir.delete();
-    }
-
-    private synchronized boolean cleanupFiles(final Duration retainTime, final long gatingSequence) {
-      if (fileNames.isEmpty()) {
-        Logger.trace("no log files: {}", logsDir);
-        logsDir.delete();
-        return true;
-      }
-
-      final long retainMs = retainTime.toMillis();
-      final long now = System.currentTimeMillis();
-      while (fileNames.size() > 1) {
-        final String nextFileName = fileNames.get(1);
-        final long logOffset = offsetFromFileName(nextFileName);
-        if (gatingSequence < logOffset) break;
-
-        final String fileName = fileNames.get(0);
-        Logger.trace("{} log file {} is candidate for removal {gatingSeq}", getLogsId(), fileName, gatingSequence);
-        final long delta = now - timestampFromFileName(fileName);
-        if (delta < retainMs) {
-          Logger.trace("{} log file {} is in the retain period {}: {}",
-            getLogsId(), fileName, HumansUtil.humanTimeMillis(retainMs), HumansUtil.humanTimeMillis(delta));
-          break;
-        }
-        Logger.trace("{} {gatingSeq} removing {} created {}",
-          getLogsId(), gatingSequence, fileName, HumansUtil.humanTimeMillis(delta));
-        new File(logsDir, fileName).delete();
-        fileNames.remove(0);
-      }
-
-      return false;
-    }
-
-    // ==========================================================================================
-    //  Publisher
-    // ==========================================================================================
-    public synchronized long getMaxOffset() {
-      return maxOffset;
-    }
-
-    public synchronized File getLastBlockFile() {
-      if (fileNames.isEmpty()) return null;
-
-      // TODO: PERF: cache?
-      return getFile(fileNames.get(fileNames.size() - 1));
-    }
-
-    public synchronized File addNewFile() {
-      final String name = newFileName(maxOffset);
-      this.fileNames.add(name);
-      for (final LogsConsumer consumer: consumers) {
-        consumer.addFile(name);
-      }
-      return new File(logsDir, name);
-    }
-
-    public synchronized void addData(final long length) {
-      this.lastPublished = System.currentTimeMillis();
-      this.maxOffset += length;
-      for (final LogsConsumer consumer: consumers) {
-        consumer.addData(length);
-      }
-
-      for (final Consumer<LogsFileTracker> consumer: this.dataPublishedNotifier) {
-        consumer.accept(this);
-      }
-    }
-
-    public synchronized void registerDataPublishedListener(final Consumer<LogsFileTracker> consumer) {
-      dataPublishedNotifier.add(consumer);
-    }
-
-    // ==========================================================================================
-    //  Consumer
-    // ==========================================================================================
-    public synchronized LogsConsumer newConsumer(final String name, final long offset) {
-      final LogsConsumer consumer = new LogsConsumer(this, name, offset);
-      Logger.debug("{} new consumer {} offset {reqOffset}/{offset}", getLogsId(), name, offset, consumer.getOffset());
-      consumers.add(consumer);
-      return consumer;
-    }
-
-    public synchronized void removeConsumer(final LogsConsumer consumer) {
-      consumers.remove(consumer);
-    }
-
-    public synchronized void removeAllConsumers() {
-      consumers.clear();
-    }
-  }
-
   public static class LogSyncMessage implements JournalEntry {
     private final String logId;
     private final byte[] message;
+    private final int offset;
+    private final int length;
 
     public LogSyncMessage(final String logId, final String message) {
       this(logId, message.getBytes());
     }
 
     public LogSyncMessage(final String logId, final byte[] message) {
+      this(logId, message, 0, message.length);
+    }
+
+    public LogSyncMessage(final String logId, final byte[] buf, final int off, final int len) {
       this.logId = logId;
-      this.message = message;
+      this.message = buf;
+      this.offset = off;
+      this.length = len;
     }
 
     @Override
@@ -773,8 +364,8 @@ public final class LogFileUtil {
 
     @Override
     public void writeEntry(final PagedByteArray buffer, final LogSyncMessage entry) {
-      buffer.addFixed32(entry.message.length);
-      buffer.add(entry.message);
+      buffer.addFixed32(entry.length);
+      buffer.add(entry.message, entry.offset, entry.length);
     }
   }
 

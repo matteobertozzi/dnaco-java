@@ -35,6 +35,10 @@ public class BitDecoder {
     this.offset = offset;
   }
 
+  public boolean hasMore() {
+    return offset < buffer.length || vBitsAvail != 0;
+  }
+
   public long readSigned(final int bits) {
     final long value = read(bits);
     final long signMask = (1L << (bits - 1));

@@ -475,12 +475,22 @@ public final class StringUtil {
             break;
           default:
             // escape special regex characters
+            // [-[\]{}()*+?.,\\^$|#\s]/g, '\\$&
             switch (currentChar) {
               case '\\':
               case '^':
               case '$':
               case '.':
               case '*':
+              case '+':
+              case '?':
+              case '|':
+              case '(':
+              case ')':
+              case '[':
+              case ']':
+              case '{':
+              case '}':
                 regex.append('\\');
                 break;
             }
