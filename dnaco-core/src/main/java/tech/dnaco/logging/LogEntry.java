@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.journal.JournalEntry;
 import tech.dnaco.logging.format.LogFormat;
+import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.tracing.SpanId;
 import tech.dnaco.tracing.TraceId;
 import tech.dnaco.util.Serialization.SerializationName;
@@ -140,7 +141,12 @@ public abstract class LogEntry implements JournalEntry {
     final int offset = buffer.size();
     buffer.addFixed32(0);
     writeData(buffer);
-    buffer.setFixed32(offset, buffer.size() - (offset + 4));
+    final int length = buffer.size() - (offset + 4);
+    if (length > (8 << 20)) {
+      Logger.error("log entry {} too large {}: {tenant} {traceId}",
+        getClass(), HumansUtil.humanSize(length), tenantId, traceId);
+    }
+    buffer.setFixed32(offset, length);
   }
 
   protected abstract void writeData(PagedByteArray buffer);

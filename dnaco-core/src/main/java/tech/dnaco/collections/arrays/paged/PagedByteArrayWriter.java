@@ -34,11 +34,7 @@ public class PagedByteArrayWriter extends BytesOutputStream {
   }
 
   public byte[] toByteArray() {
-    final byte[] data = new byte[buf.size()];
-    for (int i = 0; i < data.length; ++i) {
-      data[i] = (byte) (buf.get(i) & 0xff);
-    }
-    return data;
+    return buf.toByteArray();
   }
 
   @Override

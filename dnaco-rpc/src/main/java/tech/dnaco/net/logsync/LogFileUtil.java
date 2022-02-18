@@ -153,7 +153,7 @@ public final class LogFileUtil {
     }
 
     private byte[] writeBlock(final String groupId, final List<JournalBuffer<LogSyncMessage>> buffers) throws IOException {
-      try (PagedByteArrayWriter blockWriter = new PagedByteArrayWriter(1 << 20)) {
+      try (PagedByteArrayWriter blockWriter = new PagedByteArrayWriter(4 << 20)) {
         try (final SimpleLogEntryWriter entryWriter = new SimpleLogEntryWriter(blockWriter)) {
           entryWriter.newBlock();
           for (final JournalBuffer<LogSyncMessage> threadBuf: buffers) {
@@ -163,7 +163,6 @@ public final class LogFileUtil {
             threadBuf.process(groupId, entryWriter::add);
           }
         }
-
         return blockWriter.toByteArray();
       }
     }
