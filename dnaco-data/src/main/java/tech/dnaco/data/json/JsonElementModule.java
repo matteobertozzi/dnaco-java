@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.POJONode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 public final class JsonElementModule {
@@ -149,6 +150,12 @@ public final class JsonElementModule {
       if (node.isInt()) return new JsonPrimitive(node.intValue());
       if (node.isBoolean()) return new JsonPrimitive(node.booleanValue());
       if (node.isBinary()) return new JsonPrimitive(Base64.getEncoder().encodeToString(node.binaryValue()));
+      if (node.isBigInteger()) return new JsonPrimitive(node.bigIntegerValue());
+      if (node.isBigDecimal()) return new JsonPrimitive(node.decimalValue());
+      if (node.isPojo()) {
+        final POJONode pojoNode = (POJONode)node;
+        throw new IOException(pojoNode + ": " + pojoNode.getPojo().getClass() + " " + pojoNode.getPojo());
+      }
     }
 
     throw new IOException(node.getNodeType() + ": " + node);

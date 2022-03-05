@@ -18,7 +18,6 @@
  */
 package tech.dnaco.net.http;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.Date;
 
@@ -40,7 +39,6 @@ import tech.dnaco.net.http.DnacoHttpService.DnacoHttpServiceProcessor;
 import tech.dnaco.net.http.HttpDispatcher.HttpTask;
 import tech.dnaco.net.http.HttpHandler.UriPrefix;
 import tech.dnaco.net.message.DnacoMessage;
-import tech.dnaco.strings.HumansUtil;
 
 public class Demo {
   private static class DemoProcessor implements DnacoHttpServiceProcessor {
@@ -52,7 +50,7 @@ public class Demo {
 
     @Override
     public void sessionMessageReceived(final ChannelHandlerContext ctx, final FullHttpRequest msg) throws Exception {
-      System.out.println("HTTP MSG RECEIVED: " + HumansUtil.humanSize(msg.content().readableBytes()));
+      //System.out.println("HTTP MSG RECEIVED: " + HumansUtil.humanSize(msg.content().readableBytes()));
 
       final HttpTask task = dispatcher.prepare(msg);
       if (task != null) {
@@ -104,6 +102,11 @@ public class Demo {
     public JsonObject aaaa() {
       return new JsonObject().add("x", 10);
     }
+
+    @UriMapping(uri = "/")
+    public String hello() {
+      return "hello, world!";
+    }
   }
 
   /*
@@ -124,14 +127,13 @@ public class Demo {
     Logger.setDefaultLevel(LogLevel.INFO);
 
     final HttpRouters.UriRoutesBuilder routes = new HttpRouters.UriRoutesBuilder();
-    routes.addStaticFileHandler("/static", new File("/Users/th30z/tmp"));
-    routes.addStaticFileHandler("/foo", new File("/Users/th30z/tmp/bar"));
-    routes.addStaticFileHandler("/stat/(.*)/bar", new File("/Users/th30z/tmp"));
+    //routes.addStaticFileHandler("/static", new File("/Users/th30z/tmp"));
+    //routes.addStaticFileHandler("/foo", new File("/Users/th30z/tmp/bar"));
+    //routes.addStaticFileHandler("/stat/(.*)/bar", new File("/Users/th30z/tmp"));
     routes.addHandler(new Foo());
 
     final HttpDispatcher dispatcher = new HttpDispatcher(routes);
-
-    final HttpTask task = dispatcher.prepare("POST", "/foo/test/123/x2?a=10&s=aaa&s=bbb&s=ccc&x=foo");
+    //final HttpTask task = dispatcher.prepare("POST", "/foo/test/123/x2?a=10&s=aaa&s=bbb&s=ccc&x=foo");
     //task.setMessage(List.of(Map.entry("X-Foo", "10"), Map.entry("X-Bar", "xx")), Unpooled.wrappedBuffer("{\"x\": 10}".getBytes()));
 
     try (ServiceEventLoop eventLoop = new ServiceEventLoop(1, 8)) {

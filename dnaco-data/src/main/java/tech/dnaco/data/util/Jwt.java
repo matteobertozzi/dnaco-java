@@ -238,7 +238,7 @@ public class Jwt {
     final int bodyEof = jwt.indexOf('.', headEof + 1);
     if (bodyEof < 0) throw new JwtException("invalid jwt: " + jwt);
     byte[] rawJwtBody = b64.decode(jwt.substring(headEof + 1, bodyEof));
-    if (offset == 3 || jwtHeader.typ().startsWith("GZ")) rawJwtBody = GzipUtil.uncompress(rawJwtBody);
+    if (offset == 3 || StringUtil.startsWith(jwtHeader.typ(), "GZ")) rawJwtBody = GzipUtil.uncompress(rawJwtBody);
     final JsonObject jwtBody = dataFormat.fromBytes(rawJwtBody, JsonObject.class);
 
     // parse signature
