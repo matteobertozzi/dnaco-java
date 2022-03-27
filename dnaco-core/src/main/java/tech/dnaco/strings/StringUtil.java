@@ -78,6 +78,28 @@ public final class StringUtil {
     return StringUtil.isNotEmpty(text) && text.startsWith(prefix);
   }
 
+  public static int prefix(final String a, final String b) {
+    final int len = Math.min(a.length(), b.length());
+    for (int i = 0; i < len; ++i) {
+      if (a.charAt(i) != b.charAt(i)) {
+        return i;
+      }
+    }
+    return len;
+  }
+
+  public static int suffix(final String a, final String b) {
+    final int aLen = a.length();
+    final int bLen = b.length();
+    final int len = Math.min(aLen, bLen);
+    for (int i = 1; i <= len; ++i) {
+      if (a.charAt(aLen - i) != b.charAt(bLen - i)) {
+        return i - 1;
+      }
+    }
+    return len;
+  }
+
   // ================================================================================
   //  String upper/lower/capitalize case related
   // ================================================================================
