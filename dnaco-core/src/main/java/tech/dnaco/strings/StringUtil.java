@@ -574,9 +574,13 @@ public final class StringUtil {
     }
   }
 
-  private static final class RegexLikePattern implements LikePattern {
+  public static final class RegexLikePattern implements LikePattern {
     private final Pattern pattern;
     private final MatchType matchType;
+
+    public RegexLikePattern(final String pattern) {
+      this(Pattern.compile(pattern), false);
+    }
 
     private RegexLikePattern(final Pattern pattern, final boolean prefixMatch) {
       this.pattern = pattern;

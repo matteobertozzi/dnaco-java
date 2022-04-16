@@ -29,7 +29,7 @@ public class Filter {
     EQ, NE,
     GT, GE,
     LT, LE,
-    LIKE, NLIKE,
+    LIKE, NLIKE, REGEX,
     EMPTY, NEMPTY,
     IN, NIN,
     BW
@@ -186,12 +186,16 @@ public class Filter {
       return add(new Filter(FilterType.LE, fieldName, value));
     }
 
-    public Builder like(final String fieldName, final Object value) {
+    public Builder like(final String fieldName, final String value) {
       return add(new Filter(FilterType.LIKE, fieldName, value));
     }
 
-    public Builder notLike(final String fieldName, final Object value) {
+    public Builder notLike(final String fieldName, final String value) {
       return add(new Filter(FilterType.NLIKE, fieldName, value));
+    }
+
+    public Builder regexMatch(final String fieldName, final String value) {
+      return add(new Filter(FilterType.REGEX, fieldName, value));
     }
 
     public Builder empty(final String fieldName) {

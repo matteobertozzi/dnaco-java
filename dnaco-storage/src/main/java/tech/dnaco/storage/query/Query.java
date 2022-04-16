@@ -41,6 +41,7 @@ import tech.dnaco.storage.format.FieldFormatReader;
 import tech.dnaco.storage.query.Filter.FilterType;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.strings.StringUtil.LikePattern;
+import tech.dnaco.strings.StringUtil.RegexLikePattern;
 
 public final class Query {
   private static final QueryCache QUERY_CACHE = new QueryCache();
@@ -151,6 +152,10 @@ public final class Query {
           // TODO: we can remove this query branch if match is nothing and remove the filter if it is everything
           final LikePattern like = QUERY_CACHE.likePattern((String) filter.getValue());
           yield new OptimizerLike(filter.getType(), fieldIndex, like);
+        }
+        case REGEX -> {
+          final LikePattern like = QUERY_CACHE.regexMatchPattern((String) filter.getValue());
+          yield new OptimizerLike(FilterType.LIKE, fieldIndex, like);
         }
         case IN, NIN -> {
           final Object[] inValues = filter.getValues();
@@ -461,10 +466,19 @@ public final class Query {
   }
 
   public static class QueryCache {
+    private final LruCache<String, RegexLikePattern> regexCache = new LruCache<>(128, 512, Duration.ofMinutes(5));
     private final LruCache<String, LikePattern> likeCache = new LruCache<>(128, 512, Duration.ofMinutes(5));
+
+    private QueryCache() {
+      // no-op
+    }
 
     public LikePattern likePattern(final String expr) {
       return likeCache.computeIfAbsent(expr, StringUtil::likePattern);
+    }
+
+    public RegexLikePattern regexMatchPattern(final String expr) {
+      return regexCache.computeIfAbsent(expr, RegexLikePattern::new);
     }
   }
 }

@@ -19,9 +19,12 @@
 
 package tech.dnaco.collections.maps;
 
+import java.sql.Savepoint;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+
+import tech.dnaco.strings.StringConverter;
 
 public class StringObjectMap extends OrderedHashMap<String, Object> {
   public StringObjectMap() {
@@ -69,28 +72,63 @@ public class StringObjectMap extends OrderedHashMap<String, Object> {
   }
 
   public int getInt(final String key, final int defaultValue) {
-    final Number value = (Number) this.get(key);
-    return value != null ? value.intValue() : defaultValue;
+    final Object oValue = this.get(key);
+    if (oValue == null) return defaultValue;
+
+    if (oValue instanceof final Number value) {
+      return value.intValue();
+    } else if (oValue instanceof final String sValue) {
+      return StringConverter.toInt(sValue, defaultValue);
+    }
+    throw new IllegalArgumentException("expected a int got: " + oValue.getClass() + " " + oValue);
   }
 
   public long getLong(final String key, final long defaultValue) {
-    final Number value = (Number) this.get(key);
-    return value != null ? value.longValue() : defaultValue;
+    final Object oValue = this.get(key);
+    if (oValue == null) return defaultValue;
+
+    if (oValue instanceof final Number value) {
+      return value.longValue();
+    } else if (oValue instanceof final String sValue) {
+      return StringConverter.toLong(sValue, defaultValue);
+    }
+    throw new IllegalArgumentException("expected a long got: " + oValue.getClass() + " " + oValue);
   }
 
   public float getFloat(final String key, final float defaultValue) {
-    final Number value = (Number) this.get(key);
-    return value != null ? value.floatValue() : defaultValue;
+    final Object oValue = this.get(key);
+    if (oValue == null) return defaultValue;
+
+    if (oValue instanceof final Number value) {
+      return value.floatValue();
+    } else if (oValue instanceof final String sValue) {
+      return StringConverter.toFloat(sValue, defaultValue);
+    }
+    throw new IllegalArgumentException("expected a float got: " + oValue.getClass() + " " + oValue);
   }
 
   public double getDouble(final String key, final double defaultValue) {
-    final Number value = (Number) this.get(key);
-    return value != null ? value.doubleValue() : defaultValue;
+    final Object oValue = this.get(key);
+    if (oValue == null) return defaultValue;
+
+    if (oValue instanceof final Number value) {
+      return value.floatValue();
+    } else if (oValue instanceof final String sValue) {
+      return StringConverter.toDouble(sValue, defaultValue);
+    }
+    throw new IllegalArgumentException("expected a double got: " + oValue.getClass() + " " + oValue);
   }
 
   public boolean getBoolean(final String key, final boolean defaultValue) {
-    final Boolean value = (Boolean) this.get(key);
-    return value != null ? value.booleanValue() : defaultValue;
+    final Object oValue = this.get(key);
+    if (oValue == null) return defaultValue;
+
+    if (oValue instanceof final Boolean value) {
+      return value;
+    } else if (oValue instanceof final String sValue) {
+      return StringConverter.toBoolean(sValue, defaultValue);
+    }
+    throw new IllegalArgumentException("expected a boolean got: " + oValue.getClass() + " " + oValue);
   }
 
   @SuppressWarnings("unchecked")
