@@ -145,6 +145,10 @@ public class EntityDataRows {
 
   public EntityDataRows addObject(final String fieldName, final Object value) {
     final int fieldIndex = schema.getFieldIndex(fieldName);
+    if (fieldIndex < 0) {
+      throw new UnsupportedOperationException("invalid fieldName: " + fieldName);
+    }
+
     if (keyFields.get(fieldIndex)) {
       final EntityDataType type = schema.getFieldType(fieldIndex);
       switch (type) {

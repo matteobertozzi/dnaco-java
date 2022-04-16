@@ -1,9 +1,13 @@
 package tech.dnaco.storage.net.models;
 
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.collections.sets.HashIndexedArray;
+import tech.dnaco.data.json.JsonElement;
+import tech.dnaco.data.json.JsonObject;
+import tech.dnaco.data.json.JsonUtil;
 import tech.dnaco.storage.demo.EntityDataRow;
 import tech.dnaco.storage.demo.EntityDataRows;
 import tech.dnaco.storage.demo.EntityDataType;
@@ -63,6 +67,22 @@ public class JsonEntityDataRows {
       }
     }
     return true;
+  }
+
+  public void forEachEntityRow(final Consumer<JsonObject> consumer) {
+    final String[] fields = fieldNames.keySet();
+    for (int r = 0, n = rowCount(); r < n; ++r) {
+      final int off = r * fields.length;
+      final JsonObject json = new JsonObject();
+      for (int i = 0; i < fields.length; ++i) {
+        final String fieldName = fields[i];
+        final Object value = values[off + i];
+        if (value == null) continue;
+
+        json.add(fieldName, JsonUtil.toJsonTree(value));
+      }
+      consumer.accept(json);
+    }
   }
 
   public void updateEntityRow(final EntityDataRows rows, final int rowIndex) {

@@ -85,6 +85,30 @@ public final class EntityStorage {
     .setLabel("Entity Storage Modify Time")
     .register(new ConcurrentHistogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
 
+  private final ConcurrentMaxAndAvgTimeRangeGauge scanResultCount = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_COUNT)
+    .setName("entity_storage_scan_result_count")
+    .setLabel("Entity Storage Scan Result Row Count")
+    .register(new ConcurrentMaxAndAvgTimeRangeGauge(24 * 60, 1, TimeUnit.MINUTES));
+
+  private final ConcurrentTopK scanResultTopRows = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_COUNT)
+    .setName("entity_storage_scan_top_row_count")
+    .setLabel("Entity Storage Scan Top Row Count")
+    .register(new ConcurrentTopK(TopType.MIN_MAX, 32));
+
+  private final ConcurrentHistogram scanTime = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_TIME_NANOS)
+    .setName("entity_storage_scan_time")
+    .setLabel("Entity Storage Scan Time")
+    .register(new ConcurrentHistogram(Histogram.DEFAULT_DURATION_BOUNDS_NS));
+
+  private final ConcurrentHistogram scanSize = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_SIZE)
+    .setName("entity_storage_scan_size")
+    .setLabel("Entity Storage Scan Size")
+    .register(new ConcurrentHistogram(Histogram.DEFAULT_SIZE_BOUNDS));
+
   public void createEntitySchema(final ClientSchema request) throws Exception {
     final StorageLogic storage = Storage.getInstance(request.getTenantId());
 
@@ -536,6 +560,10 @@ public final class EntityStorage {
       results.getRowRead(), results.getRowCount(),
       HumansUtil.humanSize(results.getRowsSize()),
       HumansUtil.humanTimeNanos(elapsed));
+    scanResultCount.update(results.getRowCount());
+    scanResultTopRows.add(tenant + " " + entity, results.getRowCount());
+    scanTime.add(elapsed);
+    scanSize.add(results.getRowsSize());
 
     // no data...
     if (results.isEmpty()) {
