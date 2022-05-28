@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package tech.dnaco.net.message;
+package tech.dnaco.dispatcher.message;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -35,38 +35,38 @@ import tech.dnaco.strings.StringConverter;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.BitUtil;
 
-public class DnacoMetadataMap extends AbstractMap<String, String> {
+public class MessageMetadataMap extends AbstractMap<String, String> {
   private static final int MIN_CAPACITY = 8;
 
-  private HeaderEntry[] entries;
+  private MetadataEntry[] entries;
   private int[] buckets;
   private int count;
 
-  public DnacoMetadataMap() {
+  public MessageMetadataMap() {
     this(MIN_CAPACITY);
   }
 
-  public DnacoMetadataMap(final int initialCapacity) {
+  public MessageMetadataMap(final int initialCapacity) {
     final int capacity = BitUtil.nextPow2(Math.max(MIN_CAPACITY, initialCapacity));
 
-    this.entries = new HeaderEntry[capacity];
+    this.entries = new MetadataEntry[capacity];
     this.buckets = new int[capacity];
     this.count = 0;
 
     Arrays.fill(buckets, -1);
   }
 
-  public DnacoMetadataMap(final Collection<Entry<String, String>> entries) {
+  public MessageMetadataMap(final Collection<Entry<String, String>> entries) {
     this(entries.size());
     addAll(entries);
   }
 
-  public DnacoMetadataMap(final Map<String, String> headers) {
+  public MessageMetadataMap(final Map<String, String> headers) {
     this(headers.entrySet());
   }
 
-  public static DnacoMetadataMap fromMultiMap(final Map<String, List<String>> multiMap) {
-    final DnacoMetadataMap headers = new DnacoMetadataMap(multiMap.size());
+  public static MessageMetadataMap fromMultiMap(final Map<String, List<String>> multiMap) {
+    final MessageMetadataMap headers = new MessageMetadataMap(multiMap.size());
     for (final Entry<String, List<String>> entry: multiMap.entrySet()) {
       for (final String value: entry.getValue()) {
         headers.add(entry.getKey(), value);
@@ -75,8 +75,8 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     return headers;
   }
 
-  public static DnacoMetadataMap single(final String key, final String value) {
-    final DnacoMetadataMap headers = new DnacoMetadataMap();
+  public static MessageMetadataMap single(final String key, final String value) {
+    final MessageMetadataMap headers = new MessageMetadataMap();
     headers.add(key, value);
     return headers;
   }
@@ -96,12 +96,16 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     return findEntry((String)key) != null;
   }
 
+  public MetadataEntry[] rawEntries() {
+    return entries;
+  }
+
   public List<Map.Entry<String, String>> entries() {
     if (isEmpty()) return Collections.emptyList();
 
     final ArrayList<Map.Entry<String, String>> headers = new ArrayList<>(count);
     for (int i = 0; i < count; ++i) {
-      final HeaderEntry entry = entries[i];
+      final MetadataEntry entry = entries[i];
       headers.add(entry);
     }
     return headers;
@@ -110,7 +114,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
   @Override
   public void forEach(final BiConsumer<? super String, ? super String> action) {
     for (int i = 0; i < count; ++i) {
-      final HeaderEntry entry = entries[i];
+      final MetadataEntry entry = entries[i];
       action.accept(entry.getKey(), entry.value);
     }
   }
@@ -122,7 +126,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
 
   @Override
   public String get(final Object key) {
-    final HeaderEntry entry = findEntry((String) key);
+    final MetadataEntry entry = findEntry((String) key);
     return entry != null ? entry.value : null;
   }
 
@@ -134,7 +138,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     final String lowerKey = key.toLowerCase();
     final int hashCode = Objects.hashCode(lowerKey) & 0x7FFFFFFF;
 
-    HeaderEntry entry = findEntry(lowerKey, hashCode);
+    MetadataEntry entry = findEntry(lowerKey, hashCode);
     if (entry == null) return Collections.emptyList();
 
     final String firstValue = entry.value;
@@ -152,15 +156,15 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     return values != null ? values : Collections.singletonList(firstValue);
   }
 
-  private HeaderEntry findEntry(final String key) {
+  private MetadataEntry findEntry(final String key) {
     final String lowerKey = key.toLowerCase();
     final int hashCode = Objects.hashCode(lowerKey) & 0x7FFFFFFF;
     return findEntry(lowerKey, hashCode);
   }
 
-  private HeaderEntry findEntry(final String key, final int hashCode) {
+  private MetadataEntry findEntry(final String key, final int hashCode) {
     for (int i = buckets[hashCode % buckets.length]; i >= 0; i = entries[i].next) {
-      final HeaderEntry entry = entries[i];
+      final MetadataEntry entry = entries[i];
       if (entry.hash == hashCode && StringUtil.equals(entry.key, key)) {
         return entry;
       }
@@ -180,7 +184,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
   public String set(final String key, final String value) {
     final String lowerKey = key.toLowerCase();
     final int hashCode = Objects.hashCode(lowerKey) & 0x7FFFFFFF;
-    final HeaderEntry entry = findEntry(lowerKey, hashCode);
+    final MetadataEntry entry = findEntry(lowerKey, hashCode);
     if (entry != null) {
       final String oldValue = entry.value;
       entry.value = value;
@@ -191,11 +195,11 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     return null;
   }
 
-  public DnacoMetadataMap add(final String key, final long value) {
+  public MessageMetadataMap add(final String key, final long value) {
     return add(key, String.valueOf(value));
   }
 
-  public DnacoMetadataMap add(final String key, final String value) {
+  public MessageMetadataMap add(final String key, final String value) {
     final String lowerKey = key.toLowerCase();
     final int hashCode = Objects.hashCode(lowerKey) & 0x7FFFFFFF;
     insertNewEntry(hashCode, lowerKey, value);
@@ -220,7 +224,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     }
 
     final int index = count++;
-    final HeaderEntry entry = new HeaderEntry();
+    final MetadataEntry entry = new MetadataEntry();
     entries[index] = entry;
     entry.hash = hashCode;
     entry.next = buckets[targetBucket];
@@ -233,7 +237,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     final int[] newBuckets = new int[newSize];
     Arrays.fill(newBuckets, -1);
 
-    final HeaderEntry[] newEntries = new HeaderEntry[newSize];
+    final MetadataEntry[] newEntries = new MetadataEntry[newSize];
     System.arraycopy(entries, 0, newEntries, 0, count);
     for (int i = 0; i < count; i++) {
       if (newEntries[i].hash >= 0) {
@@ -246,7 +250,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
     this.entries = newEntries;
   }
 
-  private static final class HeaderEntry implements Map.Entry<String, String> {
+  public static final class MetadataEntry implements Map.Entry<String, String> {
     private int hash;
     private int next;
     private String key;
@@ -269,7 +273,7 @@ public class DnacoMetadataMap extends AbstractMap<String, String> {
 
     @Override
     public String toString() {
-      return "HeaderEntry [hash=" + hash + ", key=" + key + ", next=" + next + ", value=" + value + "]";
+      return "MetadataEntry [hash=" + hash + ", key=" + key + ", next=" + next + ", value=" + value + "]";
     }
   }
 }

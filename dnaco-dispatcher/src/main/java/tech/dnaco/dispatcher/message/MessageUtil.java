@@ -1,40 +1,21 @@
+package tech.dnaco.dispatcher.message;
+
+import tech.dnaco.bytes.encoding.IntDecoder;
+import tech.dnaco.bytes.encoding.IntEncoder;
+
+public class MessageUtil {
+  private static final IntEncoder INT_ENCODER = IntEncoder.BIG_ENDIAN;
+  private static final IntDecoder INT_DECODER = IntDecoder.BIG_ENDIAN;
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-package tech.dnaco.net.message;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map.Entry;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
-import tech.dnaco.bytes.encoding.IntUtil;
-import tech.dnaco.collections.sets.IndexedHashSet;
-import tech.dnaco.dispatcher.message.MessageMetadataMap;
-import tech.dnaco.net.frame.DnacoFrame;
-import tech.dnaco.net.util.ByteBufIntUtil;
-import tech.dnaco.strings.StringUtil;
-
-public final class DnacoMessageUtil {
-  private DnacoMessageUtil() {
+  private MessageUtil() {
     // no-op
+  }
+
+  public static class DnacoMessage {
+
+    public DnacoMessage(final long packetId, final int metaCount, final ByteArraySlice metadata, final ByteArraySlice body) {
+    }
+
   }
 
   //
@@ -46,9 +27,10 @@ public final class DnacoMessageUtil {
   // | data ...                                                       |
   // +----------------------------------------------------------------+
   public static DnacoMessage decodeMessage(final DnacoFrame frame) {
-    final ByteBuf buf = frame.getData();
+    final ByteArraySlice buf = frame.getData();
+    int bufOff = 0;
 
-    final int head = buf.readByte() & 0xff;
+    final int head = buf.get(bufOff++) & 0xff;
     final int metaCountBytes = ((head >> 5) & 3);
     final int metaSizeBytes = 1 + ((head >> 3) & 3);
     final int pktIdBytes = 1 + (head & 7);
@@ -56,13 +38,14 @@ public final class DnacoMessageUtil {
     int metaCount = 0;
     int metaSize = 0;
     if (metaCountBytes > 0) {
-      metaCount = Math.toIntExact(ByteBufIntUtil.readFixed(buf, metaCountBytes));
-      metaSize = Math.toIntExact(ByteBufIntUtil.readFixed(buf, metaSizeBytes));
+      metaCount = Math.toIntExact(INT_DECODER.readFixed(buf, bufOff, metaCountBytes)); bufOff += metaCountBytes;
+      metaSize = Math.toIntExact(INT_DECODER.readFixed(buf, bufOff, metaSizeBytes)); bufOff += metaSizeBytes;
     }
 
-    final long packetId = ByteBufIntUtil.readFixed(buf, pktIdBytes);
-    final ByteBuf metadata = metaSize > 0 ? buf.readRetainedSlice(metaSize) : null;
-    final ByteBuf body = buf.readRetainedSlice(buf.readableBytes());
+    final long packetId = INT_DECODER.readFixed(buf, bufOff, pktIdBytes); bufOff += pktIdBytes;
+    final ByteArraySlice metadata = metaSize > 0 ? new ByteArraySlice(buf.rawBuffer(), bufOff, metaSize) : null;
+    bufOff += metaSize;
+    final ByteArraySlice body = new ByteArraySlice(buf.rawBuffer(), bufOff, buf.length() - bufOff)
     return new DnacoMessage(packetId, metaCount, metadata, body);
   }
 
@@ -105,8 +88,6 @@ public final class DnacoMessageUtil {
   public static final String METADATA_FOR_HTTP_METHOD = ":method";
   public static final String METADATA_FOR_HTTP_URI = ":uri";
   public static final String METADATA_FOR_HTTP_STATUS = ":status";
-  public static final String METADATA_CONTENT_TYPE = "content-type";
-  public static final String METADATA_CONTENT_LENGTH = "content-length";
 
   private static final int STD_KEYS_MAX = 64;
   private static final IndexedHashSet<String> STD_HEADERS_KEYS = new IndexedHashSet<>();
@@ -114,16 +95,16 @@ public final class DnacoMessageUtil {
     STD_HEADERS_KEYS.add(METADATA_FOR_HTTP_METHOD);
     STD_HEADERS_KEYS.add(METADATA_FOR_HTTP_URI);
     STD_HEADERS_KEYS.add(METADATA_FOR_HTTP_STATUS);
-    STD_HEADERS_KEYS.add(METADATA_CONTENT_TYPE);
-    STD_HEADERS_KEYS.add(METADATA_CONTENT_LENGTH);
+    STD_HEADERS_KEYS.add("content-type");
+    STD_HEADERS_KEYS.add("content-length");
   }
 
   public static boolean isMetaKeyReserved(final String key) {
-    return key.charAt(0) == ':';
+    return key.startsWith(":");
   }
 
-  public static MessageMetadataMap decodeMetadata(final ByteBuf buffer, final int count) {
-    final MessageMetadataMap metadata = new MessageMetadataMap(count);
+  public static DnacoMetadataMap decodeMetadata(final ByteBuf buffer, final int count) {
+    final DnacoMetadataMap metadata = new DnacoMetadataMap(count);
 
     String prevKey = null;
     for (int i = 0; i < count; ++i) {
@@ -150,7 +131,7 @@ public final class DnacoMessageUtil {
     return metadata;
   }
 
-  public static void encodeMetadata(final ByteBuf buffer, final MessageMetadataMap metadata) {
+  public static void encodeMetadata(final ByteBuf buffer, final DnacoMetadataMap metadata) {
     final List<Entry<String, String>> entries = metadata.entries();
     entries.sort((a, b) -> {
       final int cmp = StringUtil.compare(a.getKey(), b.getKey());
@@ -177,4 +158,5 @@ public final class DnacoMessageUtil {
       buffer.writeBytes(value);
     }
   }
+*/
 }

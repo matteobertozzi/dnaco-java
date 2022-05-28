@@ -26,6 +26,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import tech.dnaco.dispatcher.message.MessageMetadataMap;
 import tech.dnaco.net.AbstractClient.ClientPromise;
 import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.message.DnacoMessageService.DnacoMessageServiceProcessor;
@@ -47,7 +48,7 @@ public final class DemoMessageService {
       } else {
         //System.out.println(msg.packetId() + " RECEIVED: " + msg.metadataMap() + " -> " + msg.data().toString(StandardCharsets.UTF_8));
 
-        final DnacoMetadataMap metadata = new DnacoMetadataMap(16);
+        final MessageMetadataMap metadata = new MessageMetadataMap(16);
         metadata.put("foo", "10");
         final DnacoMessage rezp = new DnacoMessage(msg.packetId(), metadata, Unpooled.wrappedBuffer("hello".getBytes()));
         ctx.writeAndFlush(rezp, ctx.channel().voidPromise());
@@ -77,7 +78,7 @@ public final class DemoMessageService {
           final long elapsed = System.nanoTime() - startTime;
           if (elapsed > TimeUnit.SECONDS.toNanos(10)) break;
         }
-        final ClientPromise<DnacoMessage> resp = client.sendMessage(new DnacoMetadataMap(Map.of("a", "10")), Unpooled.wrappedBuffer(("hello" + i).getBytes()));
+        final ClientPromise<DnacoMessage> resp = client.sendMessage(new MessageMetadataMap(Map.of("a", "10")), Unpooled.wrappedBuffer(("hello" + i).getBytes()));
         resp.whenComplete((response, exception) -> {
           trc.inc();
           //System.out.println("CLIENT HOOK " + response.metadataMap() + " -> " + response.data().toString(StandardCharsets.UTF_8));

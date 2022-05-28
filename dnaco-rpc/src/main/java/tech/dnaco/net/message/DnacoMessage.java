@@ -22,9 +22,10 @@ package tech.dnaco.net.message;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCounted;
+import tech.dnaco.dispatcher.message.MessageMetadataMap;
 
 public class DnacoMessage extends AbstractReferenceCounted {
-  private DnacoMetadataMap metadataMap;
+  private MessageMetadataMap metadataMap;
   private ByteBuf metadata;
   private ByteBuf data;
   private final long packetId;
@@ -38,7 +39,7 @@ public class DnacoMessage extends AbstractReferenceCounted {
     this.data = data;
   }
 
-  public DnacoMessage(final long packetId, final DnacoMetadataMap metadata, final ByteBuf data) {
+  public DnacoMessage(final long packetId, final MessageMetadataMap metadata, final ByteBuf data) {
     this.setRefCnt(1);
     this.packetId = packetId;
     this.metaCount = (metadata != null) ? metadata.size() : 0;
@@ -63,7 +64,7 @@ public class DnacoMessage extends AbstractReferenceCounted {
     return data;
   }
 
-  public DnacoMetadataMap metadataMap() {
+  public MessageMetadataMap metadataMap() {
     if (metadataMap != null) return metadataMap;
 
     metadataMap = DnacoMessageUtil.decodeMetadata(metadata, metaCount);

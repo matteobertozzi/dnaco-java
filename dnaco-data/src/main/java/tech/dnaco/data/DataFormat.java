@@ -38,6 +38,9 @@ public abstract class DataFormat {
     // no-op
   }
 
+  public abstract String name();
+  public abstract String contentType();
+
   protected abstract DataFormatMapper get();
 
   protected ObjectMapper getObjectMapper() {

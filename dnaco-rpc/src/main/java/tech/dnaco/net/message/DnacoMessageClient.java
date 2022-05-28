@@ -29,6 +29,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
+import tech.dnaco.dispatcher.message.MessageMetadataMap;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.net.AbstractClient;
 import tech.dnaco.net.frame.DnacoFrameDecoder;
@@ -82,7 +83,7 @@ public class DnacoMessageClient extends AbstractClient {
     return sendMessage(new DnacoMessage(pkgId.incrementAndGet(), null, data));
   }
 
-  public ClientPromise<DnacoMessage> sendMessage(final DnacoMetadataMap metadata, final ByteBuf data) {
+  public ClientPromise<DnacoMessage> sendMessage(final MessageMetadataMap metadata, final ByteBuf data) {
     return sendMessage(new DnacoMessage(pkgId.incrementAndGet(), metadata, data));
   }
 

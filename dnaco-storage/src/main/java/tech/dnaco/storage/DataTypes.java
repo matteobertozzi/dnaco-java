@@ -22,7 +22,7 @@ package tech.dnaco.storage;
 public final class DataTypes {
   public enum DataType {
     BOOL, INT, FLOAT, BYTES, STRING, ARRAY, OBJECT,
-    UTC_TIMESTAMP,
+    UTC_TIMESTAMP, NULL,
     GEO_LOCATION, GEO_LINE, GEO_POLYGON,
   }
 

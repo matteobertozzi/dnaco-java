@@ -17,11 +17,7 @@
  * under the License.
  */
 
-package tech.dnaco.net.dispatcher;
+package tech.dnaco.dispatcher;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Parameter;
-
-public interface ParamParserFactory {
-  ParamParser newParser(Parameter param, final Annotation annotation);
+public class TestParamMappers {
 }

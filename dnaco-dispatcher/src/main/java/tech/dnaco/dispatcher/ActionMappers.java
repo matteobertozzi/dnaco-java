@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package tech.dnaco.net.dispatcher;
+package tech.dnaco.dispatcher;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

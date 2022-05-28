@@ -17,10 +17,12 @@
  * under the License.
  */
 
-package tech.dnaco.net.dispatcher;
+package tech.dnaco.dispatcher;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 
-public interface ActionParserFactory {
-  ActionParser newParser(Annotation annotation);
+public interface ActionParser {
+  boolean beforeParamParse(CallContext context, Object message) throws Exception;
+  boolean beforeExecute(CallContext context, Method method, Object[] params, Object message) throws Exception;
+  Object afterExecute(CallContext context, Object message, Object result) throws Exception;
 }

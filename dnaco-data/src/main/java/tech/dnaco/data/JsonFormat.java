@@ -29,6 +29,16 @@ public final class JsonFormat extends DataFormat {
   }
 
   @Override
+  public String name() {
+    return "JSON";
+  }
+
+  @Override
+  public String contentType() {
+    return "application/json";
+  }
+
+  @Override
   protected DataFormatMapper get() {
     return mapper.get();
   }

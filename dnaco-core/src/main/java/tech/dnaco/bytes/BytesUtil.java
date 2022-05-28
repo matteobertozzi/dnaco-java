@@ -257,6 +257,21 @@ public final class BytesUtil {
     return prefix(buf, off, len, prefix, prefixOff, prefixLen) == prefixLen;
   }
 
+  public static int suffix(final byte[] a, final byte[] b) {
+    return suffix(a, 0, a.length, b, 0, b.length);
+  }
+
+  public static int suffix(final byte[] a, final int aOff, final int aLen,
+      final byte[] b, final int bOff, final int bLen) {
+    final int len = Math.min(aLen, bLen);
+    for (int i = 1; i <= len; ++i) {
+      if ((a[aLen - i] & 0xff) != (b[bLen - i] & 0xff)) {
+        return i - 1;
+      }
+    }
+    return len;
+  }
+
   // ================================================================================
   //  Bytes concatenation
   // ================================================================================

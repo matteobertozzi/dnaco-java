@@ -24,6 +24,7 @@ import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.http.FullHttpRequest;
+import tech.dnaco.dispatcher.message.MessageMetadataMap;
 
 @Sharable
 public class DnacoMessageHttpDecoder extends MessageToMessageDecoder<FullHttpRequest> {
@@ -39,7 +40,7 @@ public class DnacoMessageHttpDecoder extends MessageToMessageDecoder<FullHttpReq
   }
 
   public static DnacoMessage decode(final FullHttpRequest request) {
-    final DnacoMetadataMap metadata = new DnacoMetadataMap(request.headers().entries());
+    final MessageMetadataMap metadata = new MessageMetadataMap(request.headers().entries());
     metadata.add(DnacoMessageUtil.METADATA_FOR_HTTP_METHOD, request.method().name());
     metadata.add(DnacoMessageUtil.METADATA_FOR_HTTP_URI, request.uri());
     final ByteBuf data = request.content().retain();

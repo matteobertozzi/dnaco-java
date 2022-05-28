@@ -29,6 +29,16 @@ public final class XmlFormat extends DataFormat {
   }
 
   @Override
+  public String name() {
+    return "XML";
+  }
+
+  @Override
+  public String contentType() {
+    return "application/xml";
+  }
+
+  @Override
   protected DataFormatMapper get() {
     return mapper.get();
   }

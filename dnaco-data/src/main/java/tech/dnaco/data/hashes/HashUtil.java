@@ -85,6 +85,38 @@ public final class HashUtil {
     }
   }
 
+  public static byte[] md5(final byte[]... content) {
+    return hash("MD5", content);
+  }
+
+  public static byte[] sha1(final byte[]... content) {
+    return hash("SHA1", content);
+  }
+
+  public static byte[] sha256(final byte[]... content) {
+    return hash("SHA-256", content);
+  }
+
+  public static byte[] sha512(final byte[]... content) {
+    return hash("SHA-512", content);
+  }
+
+  public static byte[] sha3_256(final byte[]... content) {
+    return hash("SHA3-512", content);
+  }
+
+  public static byte[] sha3_512(final byte[]... content) {
+    return hash("SHA3-512", content);
+  }
+
+  private static byte[] hash(final String algo, final byte[][] content) {
+    final MessageDigest digest = digest(algo);
+    for (int i = 0; i < content.length; ++i) {
+      digest.update(content[i]);
+    }
+    return digest.digest();
+  }
+
   public static void main(final String[] args) {
     final byte[] h = new byte[33];
     Arrays.fill(h, (byte)0xff);

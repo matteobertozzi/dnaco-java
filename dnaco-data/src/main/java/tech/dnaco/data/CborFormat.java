@@ -29,6 +29,16 @@ public final class CborFormat extends DataFormat {
   }
 
   @Override
+  public String name() {
+    return "CBOR";
+  }
+
+  @Override
+  public String contentType() {
+    return "application/cbor";
+  }
+
+  @Override
   protected DataFormatMapper get() {
     return mapper.get();
   }

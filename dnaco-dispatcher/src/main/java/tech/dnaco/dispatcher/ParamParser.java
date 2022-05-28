@@ -17,12 +17,8 @@
  * under the License.
  */
 
-package tech.dnaco.net.dispatcher;
+package tech.dnaco.dispatcher;
 
-import java.lang.reflect.Method;
-
-public interface ActionParser {
-  boolean beforeParamParse(CallContext context, Object message) throws Exception;
-  boolean beforeExecute(CallContext context, Method method, Object[] params, Object message) throws Exception;
-  Object afterExecute(CallContext context, Object message, Object result) throws Exception;
+public interface ParamParser {
+  Object parse(CallContext context, Object message) throws Exception;
 }

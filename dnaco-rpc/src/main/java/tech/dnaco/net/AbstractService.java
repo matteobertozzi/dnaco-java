@@ -22,7 +22,7 @@ package tech.dnaco.net;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -49,7 +49,7 @@ import tech.dnaco.tracing.TraceAttributes;
 import tech.dnaco.tracing.Tracer;
 
 public abstract class AbstractService implements ShutdownUtil.StopSignal {
-  private final ArrayList<Channel> channels = new ArrayList<>();
+  private final CopyOnWriteArrayList<Channel> channels = new CopyOnWriteArrayList<>();
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   protected AbstractService() {

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package tech.dnaco.net.dispatcher;
+package tech.dnaco.dispatcher;
 
 public interface CallContext {
 

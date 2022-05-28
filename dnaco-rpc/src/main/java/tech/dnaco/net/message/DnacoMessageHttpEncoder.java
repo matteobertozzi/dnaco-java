@@ -30,6 +30,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import tech.dnaco.dispatcher.message.MessageMetadataMap;
 import tech.dnaco.logging.Logger;
 
 @Sharable
@@ -47,15 +48,20 @@ public class DnacoMessageHttpEncoder extends MessageToMessageEncoder<DnacoMessag
   }
 
   public static FullHttpResponse encode(final DnacoMessage msg) {
-    final DnacoMetadataMap metadata = msg.metadataMap();
+    final MessageMetadataMap metadata = msg.metadataMap();
     final HttpResponseStatus status = HttpResponseStatus.valueOf(metadata.getInt(DnacoMessageUtil.METADATA_FOR_HTTP_STATUS, -1));
+    //final HttpResponseStatus status = HttpResponseStatus.OK;
     final DefaultFullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, msg.data().retain());
+    //response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, 19);
+          //response.headers().set(HttpHeaderNames.SERVER, "Armeria/1.16.0");
+          //response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8");
+          //response.headers().set(HttpHeaderNames.DATE, new Date());
     encodeHeaders(response.headers(), metadata);
     return response;
   }
 
   public static FullHttpRequest encodeAsRequest(final DnacoMessage msg) {
-    final DnacoMetadataMap metadata = msg.metadataMap();
+    final MessageMetadataMap metadata = msg.metadataMap();
 
     final HttpMethod method = HttpMethod.valueOf(metadata.get(DnacoMessageUtil.METADATA_FOR_HTTP_METHOD));
     final String uri = metadata.get(DnacoMessageUtil.METADATA_FOR_HTTP_URI);
@@ -64,10 +70,11 @@ public class DnacoMessageHttpEncoder extends MessageToMessageEncoder<DnacoMessag
     return request;
   }
 
-  private static void encodeHeaders(final HttpHeaders headers, final DnacoMetadataMap metadata) {
-    metadata.forEach((key, val) -> {
-      if (!DnacoMessageUtil.isMetaKeyReserved(key)) {
-        headers.add(key, val);
+  private static void encodeHeaders(final HttpHeaders headers, final MessageMetadataMap metadata) {
+    metadata.forEach((k, v) -> {
+      //System.out.println("META KEY " + entry.getKey());
+      if (!DnacoMessageUtil.isMetaKeyReserved(k)) {
+        headers.add(k, v);
       }
     });
   }

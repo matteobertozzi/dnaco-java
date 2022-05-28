@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package tech.dnaco.net.dispatcher;
+package tech.dnaco.dispatcher;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -53,11 +53,7 @@ public class MethodInvoker {
     // call action-parsers (before param-parse)
     for (int i = 0; i < actionParsers.length; ++i) {
       if (actionParsers[i].beforeParamParse(context, message)) {
-        Object result = null;
-        for (int j = 0; j < i; ++j) {
-          result = actionParsers[j].afterExecute(context, message, result);
-        }
-        return result;
+        return callActionAfterExecute(context, message, null, i);
       }
     }
 
@@ -75,15 +71,14 @@ public class MethodInvoker {
     }
 
     // execute
-    final Object result;
     try {
-      result = method.invoke(handler, params);
+      final Object result = method.invoke(handler, params);
+
+      // call action-parsers (after execute)
+      return callActionAfterExecute(context, message, result, actionParsers.length);
     } catch (final InvocationTargetException e) {
       throw e.getCause();
     }
-
-    // call action-parsers (after execute)
-    return callActionAfterExecute(context, message, result, actionParsers.length);
   }
 
   private Object callActionAfterExecute(final CallContext context, final Object message,

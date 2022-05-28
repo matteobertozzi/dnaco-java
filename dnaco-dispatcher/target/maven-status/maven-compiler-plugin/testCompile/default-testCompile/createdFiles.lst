@@ -1,0 +1,14 @@
+tech/dnaco/dispatcher/TestMessageDispatcher$TestActionB.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestHandler.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestActionParserA.class
+tech/dnaco/dispatcher/TestParamMappers.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestParamParserA.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestActionA.class
+tech/dnaco/dispatcher/TestMessageDispatcher.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestIntParamParser.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestDefaultParamParser.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestParamB.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestParamA.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestActionParserB.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestIntParam.class
+tech/dnaco/dispatcher/TestMessageDispatcher$TestParamParserB.class

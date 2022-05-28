@@ -3,8 +3,10 @@ package tech.dnaco.collections;
 public class LongValue {
   private long value = 0;
 
-  public void set(final long value) {
-    this.value = value;
+  public long set(final long newValue) {
+    final long oldValue = this.value;
+    this.value = newValue;
+    return oldValue;
   }
 
   public long get() {

@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package tech.dnaco.net.http;
 
-import tech.dnaco.dispatcher.message.MessageHandler;
+package tech.dnaco.dispatcher;
 
-public interface HttpHandler extends MessageHandler {
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Parameter;
 
+public interface ParamParserFactory {
+  ParamParser newParser(Parameter param, final Annotation annotation);
 }

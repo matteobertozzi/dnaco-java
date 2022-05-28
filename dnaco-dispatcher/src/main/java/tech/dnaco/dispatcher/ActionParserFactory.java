@@ -17,8 +17,10 @@
  * under the License.
  */
 
-package tech.dnaco.net.dispatcher;
+package tech.dnaco.dispatcher;
 
-public interface ParamParser {
-  Object parse(CallContext context, Object message) throws Exception;
+import java.lang.annotation.Annotation;
+
+public interface ActionParserFactory {
+  ActionParser newParser(Annotation annotation);
 }
