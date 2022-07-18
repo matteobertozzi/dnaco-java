@@ -101,6 +101,12 @@ public class ByteArrayReader extends BytesInputStream {
     return block;
   }
 
+  public ByteArraySlice readSlice(final int len) {
+    final int off = rpos;
+    rpos += len;
+    return new ByteArraySlice(buffer, off, len);
+  }
+
   @Override
   public void copyTo(final int blockLen, final OutputStream stream) throws IOException {
     stream.write(buffer, rpos, blockLen);
