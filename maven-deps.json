@@ -1,0 +1,288 @@
+{
+  "com.fasterxml.jackson.core": {
+    "jackson-core": {
+      "name": "jackson.version",
+      "version": "2.13.3"
+    },
+    "jackson-databind": {
+      "name": "jackson.version",
+      "version": "2.13.3"
+    }
+  },
+  "com.fasterxml.jackson.dataformat": {
+    "jackson-dataformat-cbor": {
+      "name": "jackson.version",
+      "version": "2.13.3"
+    },
+    "jackson-dataformat-xml": {
+      "name": "jackson.version",
+      "version": "2.13.3"
+    }
+  },
+  "com.fasterxml.jackson.module": {
+    "jackson-module-parameter-names": {
+      "name": "jackson.version",
+      "version": "2.13.3"
+    }
+  },
+  "com.github.jai-imageio": {
+    "jai-imageio-core": {
+      "name": "jai.imageio.version",
+      "version": "1.4.0"
+    }
+  },
+  "com.github.luben": {
+    "zstd-jni": {
+      "name": "zstd.version",
+      "version": "1.5.2-3"
+    }
+  },
+  "com.google.firebase": {
+    "firebase-admin": {
+      "name": "firebase.version",
+      "version": "8.2.0"
+    }
+  },
+  "com.google.zxing": {
+    "core": {
+      "name": "zxing.version",
+      "version": "3.5.0"
+    }
+  },
+  "com.graphql-java": {
+    "graphql-java": {
+      "name": "graphql.version",
+      "version": "18.0"
+    }
+  },
+  "com.jayway.jsonpath": {
+    "json-path": {
+      "name": "jsonpath.version",
+      "version": "2.7.0"
+    }
+  },
+  "com.jcraft": {
+    "jsch": {
+      "name": "jcraft.jsch",
+      "version": "0.1.55"
+    }
+  },
+  "com.microsoft.sqlserver": {
+    "mssql-jdbc": {
+      "name": "sqlserver.version",
+      "version": "11.2.0.jre17"
+    }
+  },
+  "com.oracle.database.jdbc": {
+    "ojdbc11": {
+      "name": "oracle.version",
+      "version": "21.6.0.0.1"
+    }
+  },
+  "com.rabbitmq": {
+    "amqp-client": {
+      "name": "amqp.version",
+      "version": "5.15.0"
+    }
+  },
+  "com.sun.mail": {
+    "jakarta.mail": {
+      "name": "mail.version",
+      "version": "1.6.7"
+    }
+  },
+  "commons-net": {
+    "commons-net": {
+      "name": "commons.net.version",
+      "version": "3.8.0"
+    }
+  },
+  "io.netty": {
+    "netty-buffer": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    },
+    "netty-codec": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    },
+    "netty-codec-http": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    },
+    "netty-codec-http2": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    },
+    "netty-common": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    },
+    "netty-handler": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    },
+    "netty-transport-native-epoll": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    },
+    "netty-transport-native-kqueue": {
+      "name": "netty.version",
+      "version": "4.1.80.Final"
+    }
+  },
+  "mysql": {
+    "mysql-connector-java": {
+      "name": "mysql.version",
+      "version": "8.0.30"
+    }
+  },
+  "org.antlr": {
+    "antlr4-maven-plugin": {
+      "name": "antlr.version",
+      "version": "4.10.1"
+    },
+    "antlr4-runtime": {
+      "name": "antlr.version",
+      "version": "4.10.1"
+    }
+  },
+  "org.apache.commons": {
+    "commons-vfs2": {
+      "name": "commons.vfs2.version",
+      "version": "2.9.0"
+    }
+  },
+  "org.apache.maven.plugins": {
+    "maven-compiler-plugin": {
+      "name": "maven.compiler.version",
+      "version": "3.10.1"
+    },
+    "maven-dependency-plugin": {
+      "name": "maven.dependency.version",
+      "version": "3.3.0"
+    },
+    "maven-failsafe-plugin": {
+      "name": "maven.failsafe.version",
+      "version": "3.0.0-M7"
+    },
+    "maven-jar-plugin": {
+      "name": "maven.jar.version",
+      "version": "3.2.2"
+    },
+    "maven-shade-plugin": {
+      "name": "maven.shade.version",
+      "version": "3.3.0"
+    },
+    "maven-surefire-plugin": {
+      "name": "maven.surefire.version",
+      "version": "3.0.0-M7"
+    }
+  },
+  "org.apache.poi": {
+    "poi": {
+      "name": "poi.version",
+      "version": "5.2.2"
+    },
+    "poi-ooxml": {
+      "name": "poi.version",
+      "version": "5.2.2"
+    }
+  },
+  "org.apache.tika": {
+    "tika-core": {
+      "name": "tika.version",
+      "version": "2.4.1"
+    }
+  },
+  "org.codehaus.mojo": {
+    "exec-maven-plugin": {
+      "name": "maven.exec.version",
+      "version": "3.1.0"
+    }
+  },
+  "org.graalvm.sdk": {
+    "graal-sdk": {
+      "name": "graalvm.version",
+      "version": "22.2.0"
+    }
+  },
+  "org.graalvm.truffle": {
+    "truffle-api": {
+      "name": "graalvm.version",
+      "version": "22.2.0"
+    },
+    "truffle-dsl-processor": {
+      "name": "graalvm.version",
+      "version": "22.2.0"
+    }
+  },
+  "org.jctools": {
+    "jctools-core": {
+      "name": "jctools.version",
+      "version": "3.3.0"
+    }
+  },
+  "org.junit.jupiter": {
+    "junit-jupiter-api": {
+      "name": "junit.version",
+      "version": "5.9.0"
+    },
+    "junit-jupiter-engine": {
+      "name": "junit.version",
+      "version": "5.9.0"
+    }
+  },
+  "org.openjdk.jmh": {
+    "jmh-core": {
+      "name": "jmh.version",
+      "version": "1.35"
+    },
+    "jmh-generator-annprocess": {
+      "name": "jmh.version",
+      "version": "1.35"
+    }
+  },
+  "org.postgresql": {
+    "postgresql": {
+      "name": "postgresql.version",
+      "version": "42.5.0"
+    }
+  },
+  "org.rocksdb": {
+    "rocksdbjni": {
+      "name": "rocksdb.version",
+      "version": "7.4.5"
+    }
+  },
+  "org.xerial": {
+    "sqlite-jdbc": {
+      "name": "sqlite.version",
+      "version": "3.39.2.1"
+    }
+  },
+  "software.amazon.awssdk": {
+    "dynamodb-enhanced": {
+      "name": "aws.sdk.version",
+      "version": "2.17.261"
+    },
+    "lambda": {
+      "name": "aws.sdk.version",
+      "version": "2.17.261"
+    },
+    "s3": {
+      "name": "aws.sdk.version",
+      "version": "2.17.261"
+    },
+    "sqs": {
+      "name": "aws.sdk.version",
+      "version": "2.17.261"
+    }
+  },
+  "software.aws.rds": {
+    "aws-mysql-jdbc": {
+      "name": "aws.mysql.version",
+      "version": "1.1.0"
+    }
+  }
+}

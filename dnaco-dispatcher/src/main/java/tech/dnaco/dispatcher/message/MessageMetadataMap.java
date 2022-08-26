@@ -19,7 +19,6 @@
 
 package tech.dnaco.dispatcher.message;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,15 +26,15 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import tech.dnaco.strings.StringConverter;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.BitUtil;
 
-public class MessageMetadataMap extends AbstractMap<String, String> {
+public class MessageMetadataMap implements MessageMetadata {
   private static final int MIN_CAPACITY = 8;
 
   private MetadataEntry[] entries;
@@ -65,6 +64,19 @@ public class MessageMetadataMap extends AbstractMap<String, String> {
     this(headers.entrySet());
   }
 
+  public MessageMetadataMap(final MessageMetadata headers) {
+    this(headers.size());
+    headers.forEach(this::add);
+  }
+
+  public static MessageMetadataMap fromKeyValues(final String[] kvs) {
+    final MessageMetadataMap headers = new MessageMetadataMap(kvs.length / 2);
+    for (int i = 0; i < kvs.length; i += 2) {
+      headers.add(kvs[i], kvs[i + 1]);
+    }
+    return headers;
+  }
+
   public static MessageMetadataMap fromMultiMap(final Map<String, List<String>> multiMap) {
     final MessageMetadataMap headers = new MessageMetadataMap(multiMap.size());
     for (final Entry<String, List<String>> entry: multiMap.entrySet()) {
@@ -81,17 +93,14 @@ public class MessageMetadataMap extends AbstractMap<String, String> {
     return headers;
   }
 
-  @Override
   public int size() {
     return count;
   }
 
-  @Override
   public boolean isEmpty() {
     return count == 0;
   }
 
-  @Override
   public boolean containsKey(final Object key) {
     return findEntry((String)key) != null;
   }
@@ -119,19 +128,19 @@ public class MessageMetadataMap extends AbstractMap<String, String> {
     }
   }
 
-  @Override
   public Set<Entry<String, String>> entrySet() {
     return new HashSet<>(entries());
   }
 
-  @Override
   public String get(final Object key) {
     final MetadataEntry entry = findEntry((String) key);
     return entry != null ? entry.value : null;
   }
 
-  public int getInt(final String key, final int defaultValue) {
-    return StringConverter.toInt(get(key), defaultValue);
+  @Override
+  public String get(final String key) {
+    final MetadataEntry entry = findEntry(key);
+    return entry != null ? entry.value : null;
   }
 
   public List<String> getList(final String key) {
@@ -172,9 +181,12 @@ public class MessageMetadataMap extends AbstractMap<String, String> {
     return null;
   }
 
-  @Override
   public String put(final String key, final String value) {
     return set(key, value);
+  }
+
+  public String set(final String key, final boolean value) {
+    return set(key, String.valueOf(value));
   }
 
   public String set(final String key, final long value) {
@@ -196,6 +208,10 @@ public class MessageMetadataMap extends AbstractMap<String, String> {
   }
 
   public MessageMetadataMap add(final String key, final long value) {
+    return add(key, String.valueOf(value));
+  }
+
+  public MessageMetadataMap add(final String key, final boolean value) {
     return add(key, String.valueOf(value));
   }
 

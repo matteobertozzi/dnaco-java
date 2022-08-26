@@ -19,7 +19,6 @@
 package tech.dnaco.net.http;
 
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
@@ -86,13 +85,11 @@ public class HttpResponseUtil {
   private static void writeAndFlush(final ChannelHandlerContext ctx,
       final FullHttpResponse response, final boolean keepAlive) {
     // handle keep alive flag
-    final int status = response.status().code();
-    if (KEEP_ALIVE_SUPPORTED && keepAlive && (status >= 200 && status < 300)) {
+    if (KEEP_ALIVE_SUPPORTED && keepAlive) {
       response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
       ctx.writeAndFlush(response, ctx.channel().voidPromise());
     } else {
-      response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
-      ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+      ctx.writeAndFlush(response);
     }
   }
 

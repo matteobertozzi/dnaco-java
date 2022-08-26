@@ -45,11 +45,11 @@ public final class StringUtil {
   }
 
   public static boolean isEmpty(final String input) {
-    return (input == null) || (input.length() == 0);
+    return (input == null) || input.isEmpty();
   }
 
   public static boolean isNotEmpty(final String input) {
-    return (input != null) && input.length() > 0;
+    return (input != null) && !input.isEmpty();
   }
 
   // ================================================================================

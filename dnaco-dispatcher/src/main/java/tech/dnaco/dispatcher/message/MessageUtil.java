@@ -1,162 +1,215 @@
 package tech.dnaco.dispatcher.message;
 
-import tech.dnaco.bytes.encoding.IntDecoder;
-import tech.dnaco.bytes.encoding.IntEncoder;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
 
-public class MessageUtil {
-  private static final IntEncoder INT_ENCODER = IntEncoder.BIG_ENDIAN;
-  private static final IntDecoder INT_DECODER = IntDecoder.BIG_ENDIAN;
-/*
+import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.collections.LongValue;
+import tech.dnaco.data.CborFormat;
+import tech.dnaco.data.DataFormat;
+import tech.dnaco.data.JsonFormat;
+import tech.dnaco.data.XmlFormat;
+import tech.dnaco.strings.StringUtil;
+
+public final class MessageUtil {
+  public static final String METADATA_FOR_HTTP_METHOD = ":method";
+  public static final String METADATA_FOR_HTTP_URI = ":uri";
+  public static final String METADATA_FOR_HTTP_STATUS = ":status";
+  public static final String METADATA_ACCEPT = "accept";
+  public static final String METADATA_CONTENT_TYPE = "content-type";
+  public static final String METADATA_CONTENT_LENGTH = "content-length";
+
+  public static final String CONTENT_TYPE_FORM_URLENCODED = "application/x-www-form-urlencoded";
+  public static final String CONTENT_TYPE_TEXT_XML = "text/xml";
+  public static final String CONTENT_TYPE_APP_XML = "application/xml";
+  public static final String CONTENT_TYPE_APP_CBOR = "application/cbor";
+  public static final String CONTENT_TYPE_APP_JSON = "application/json";
+
   private MessageUtil() {
     // no-op
   }
 
-  public static class DnacoMessage {
+  // ====================================================================================================
+  //  Metadata util
+  // ====================================================================================================
+  public static DataFormat parseAcceptFormat(final MessageMetadata metadata) {
+    final String accept = metadata.getString(METADATA_ACCEPT, null);
+    if (StringUtil.isEmpty(accept)) return JsonFormat.INSTANCE;
 
-    public DnacoMessage(final long packetId, final int metaCount, final ByteArraySlice metadata, final ByteArraySlice body) {
+    DataFormat format = parseAcceptFormat(accept);
+    if (format != null) return format;
+
+    int lastIndex = 0;
+    while (lastIndex < accept.length()) {
+      int eof = accept.indexOf(',', lastIndex);
+      if (eof < 0) eof = accept.length();
+
+      String type = accept.substring(lastIndex, eof);
+      final int qIndex = type.lastIndexOf(';');
+      if (qIndex > 0) type = type.substring(0, qIndex);
+
+      format = parseAcceptFormat(type);
+      if (format != null) return format;
+      lastIndex = eof + 1;
+    }
+    return JsonFormat.INSTANCE;
+  }
+
+  private static DataFormat parseAcceptFormat(final String type) {
+    return switch (type) {
+      case CONTENT_TYPE_APP_XML, CONTENT_TYPE_TEXT_XML -> XmlFormat.INSTANCE;
+      case CONTENT_TYPE_APP_CBOR -> CborFormat.INSTANCE;
+      case CONTENT_TYPE_APP_JSON -> JsonFormat.INSTANCE;
+      default -> null;
+    };
+  }
+
+  // ====================================================================================================
+  //  Message util
+  // ====================================================================================================
+  public static Message newMessage(final Map<String, String> metadata, final Object data) {
+    return new ObjectMessage(metadata, data);
+  }
+
+  public static Message newMessage(final MessageMetadata metadata, final Object data) {
+    return new ObjectMessage(metadata, data);
+  }
+
+  public static Message newMessage(final Map<String, String> metadata, final byte[] content) {
+    return new RawMessage(metadata, content);
+  }
+
+  public static Message newMessage(final MessageMetadata metadata, final byte[] content) {
+    return new RawMessage(metadata, content);
+  }
+
+  public static Message newEmptyMessage(final Map<String, String> metadata) {
+    return new EmptyMessage(metadata);
+  }
+
+  public static Message newEmptyMessage(final MessageMetadata metadata) {
+    return new EmptyMessage(metadata);
+  }
+
+  private static abstract class AbstractMessage implements Message {
+    private final MessageMetadata metadata;
+
+    protected AbstractMessage(final Map<String, String> metadata) {
+      this.metadata = new MessageMetadataMap(metadata);
     }
 
-  }
-
-  //
-  // +---+----+----+-----+----------------+---------------+-----------+
-  // | - | 11 | 11 | 111 | metadata-count | metadata-size | packet-id |
-  // +---+----+----+-----+----------------+---------------+-----------+
-  // | metadata ...                                                   |
-  // +----------------------------------------------------------------+
-  // | data ...                                                       |
-  // +----------------------------------------------------------------+
-  public static DnacoMessage decodeMessage(final DnacoFrame frame) {
-    final ByteArraySlice buf = frame.getData();
-    int bufOff = 0;
-
-    final int head = buf.get(bufOff++) & 0xff;
-    final int metaCountBytes = ((head >> 5) & 3);
-    final int metaSizeBytes = 1 + ((head >> 3) & 3);
-    final int pktIdBytes = 1 + (head & 7);
-
-    int metaCount = 0;
-    int metaSize = 0;
-    if (metaCountBytes > 0) {
-      metaCount = Math.toIntExact(INT_DECODER.readFixed(buf, bufOff, metaCountBytes)); bufOff += metaCountBytes;
-      metaSize = Math.toIntExact(INT_DECODER.readFixed(buf, bufOff, metaSizeBytes)); bufOff += metaSizeBytes;
+    protected AbstractMessage(final MessageMetadata metadata) {
+      this.metadata = metadata;
     }
 
-    final long packetId = INT_DECODER.readFixed(buf, bufOff, pktIdBytes); bufOff += pktIdBytes;
-    final ByteArraySlice metadata = metaSize > 0 ? new ByteArraySlice(buf.rawBuffer(), bufOff, metaSize) : null;
-    bufOff += metaSize;
-    final ByteArraySlice body = new ByteArraySlice(buf.rawBuffer(), bufOff, buf.length() - bufOff)
-    return new DnacoMessage(packetId, metaCount, metadata, body);
-  }
+    @Override public Message retain() { return this; }
+    @Override public Message release() { return this; }
 
-  public static DnacoFrame encodeMessage(final DnacoMessage message) {
-    final ByteBuf data = message.data();
-
-    final ByteBuf frame = PooledByteBufAllocator.DEFAULT.buffer();
-    if (message.hasMetadata()) {
-      final ByteBuf metadata = PooledByteBufAllocator.DEFAULT.buffer();
-      try {
-        encodeMetadata(metadata, message.metadataMap());
-
-        final int metaCountBytes = IntUtil.size(message.metadataCount());
-        final int metaBytes = IntUtil.size(metadata.readableBytes());
-        final int pktIdBytes = IntUtil.size(message.packetId());
-        frame.writeByte((metaCountBytes << 5) | ((metaBytes - 1) << 3) | (pktIdBytes - 1));
-        ByteBufIntUtil.writeFixed(frame, message.metadataCount(), metaCountBytes);
-        ByteBufIntUtil.writeFixed(frame, metadata.readableBytes(), metaBytes);
-        ByteBufIntUtil.writeFixed(frame, message.packetId(), pktIdBytes);
-        frame.writeBytes(metadata);
-        frame.writeBytes(data);
-      } finally {
-        metadata.release();
-      }
-    } else {
-      final int pktIdBytes = IntUtil.size(message.packetId());
-      frame.writeByte(pktIdBytes - 1);
-      ByteBufIntUtil.writeFixed(frame, message.packetId(), pktIdBytes);
-      frame.writeBytes(data);
+    @Override
+    public MessageMetadata metadata() {
+      return metadata;
     }
 
-    return DnacoFrame.alloc(1, frame);
-  }
-
-  // ===============================================================================================
-  //  Message Metadata related
-  // ===============================================================================================
-  //  metadata = {key1: val1, key2: val2, key3: [val3a, val3b]}
-  // ===============================================================================================
-  public static final String METADATA_FOR_HTTP_METHOD = ":method";
-  public static final String METADATA_FOR_HTTP_URI = ":uri";
-  public static final String METADATA_FOR_HTTP_STATUS = ":status";
-
-  private static final int STD_KEYS_MAX = 64;
-  private static final IndexedHashSet<String> STD_HEADERS_KEYS = new IndexedHashSet<>();
-  static {
-    STD_HEADERS_KEYS.add(METADATA_FOR_HTTP_METHOD);
-    STD_HEADERS_KEYS.add(METADATA_FOR_HTTP_URI);
-    STD_HEADERS_KEYS.add(METADATA_FOR_HTTP_STATUS);
-    STD_HEADERS_KEYS.add("content-type");
-    STD_HEADERS_KEYS.add("content-length");
-  }
-
-  public static boolean isMetaKeyReserved(final String key) {
-    return key.startsWith(":");
-  }
-
-  public static DnacoMetadataMap decodeMetadata(final ByteBuf buffer, final int count) {
-    final DnacoMetadataMap metadata = new DnacoMetadataMap(count);
-
-    String prevKey = null;
-    for (int i = 0; i < count; ++i) {
-      final int head = buffer.readByte() & 0xff;
-      final int keyLength = head >> 1;
-      final int valLenBytes = 1 + (head & 1);
-
-      final String key;
-      if (keyLength >= STD_KEYS_MAX) {
-        key = STD_HEADERS_KEYS.get(keyLength - STD_KEYS_MAX);
-        prevKey = key;
-      } else if (keyLength == 0) {
-        key = prevKey;
-      } else {
-        key = buffer.readSlice(keyLength).toString(StandardCharsets.UTF_8);
-        prevKey = key;
-      }
-
-      final int valLength = Math.toIntExact(ByteBufIntUtil.readFixed(buffer, valLenBytes));
-      final String value = buffer.readSlice(valLength).toString(StandardCharsets.UTF_8);
-      metadata.add(key, value);
-    }
-
-    return metadata;
-  }
-
-  public static void encodeMetadata(final ByteBuf buffer, final DnacoMetadataMap metadata) {
-    final List<Entry<String, String>> entries = metadata.entries();
-    entries.sort((a, b) -> {
-      final int cmp = StringUtil.compare(a.getKey(), b.getKey());
-      return cmp != 0 ? cmp : StringUtil.compare(a.getValue(), b.getValue());
-    });
-
-    String prevKey = null;
-    for (final Entry<String, String> entry: entries) {
-      final byte[] value = entry.getValue().getBytes(StandardCharsets.UTF_8);
-      final int valLenBytes = (value.length <= 0xff) ? 1 : 2;
-      final int tableIndex = STD_HEADERS_KEYS.get(entry.getKey());
-      if (tableIndex >= 0) {
-        buffer.writeByte(((STD_KEYS_MAX + tableIndex) << 1) | (valLenBytes - 1));
-      } else if (StringUtil.equals(prevKey, entry.getKey())) {
-        buffer.writeByte(valLenBytes - 1);
-      } else {
-        final byte[] key = entry.getKey().getBytes(StandardCharsets.UTF_8);
-        buffer.writeByte((key.length << 1) | (valLenBytes - 1));
-        buffer.writeBytes(key);
-        prevKey = entry.getKey();
-      }
-
-      ByteBufIntUtil.writeFixed(buffer, value.length, valLenBytes);
-      buffer.writeBytes(value);
+    @Override
+    public int estimateSize() {
+      final LongValue size = new LongValue();
+      size.add(contentLength());
+      metadata.forEach((key, val) -> size.add(8 + key.length() + val.length()));
+      return size.intValue();
     }
   }
-*/
+
+  public static final class RawMessage extends AbstractMessage {
+    private final byte[] content;
+
+    private RawMessage(final Map<String, String> metadata, final byte[] content) {
+      super(metadata);
+      this.content = content;
+    }
+
+    private RawMessage(final MessageMetadata metadata, final byte[] content) {
+      super(metadata);
+      this.content = content;
+    }
+
+    public byte[] content() {
+      return content;
+    }
+
+    @Override
+    public int contentLength() {
+      return BytesUtil.length(content);
+    }
+
+    @Override
+    public long writeContentToStream(final OutputStream stream) throws IOException {
+      if (content == null) return 0;
+      stream.write(content);
+      return content.length;
+    }
+
+    @Override
+    public <T> T convertContent(final DataFormat format, final Class<T> classOfT) {
+      return format.fromBytes(content, classOfT);
+    }
+  }
+
+  public static final class ObjectMessage extends AbstractMessage {
+    private final Object data;
+
+    private ObjectMessage(final Map<String, String> metadata, final Object data) {
+      super(metadata);
+      this.data = data;
+    }
+
+    private ObjectMessage(final MessageMetadata metadata, final Object data) {
+      super(metadata);
+      this.data = data;
+    }
+
+    public Object content() {
+      return data;
+    }
+
+    @Override public int contentLength() { throw new UnsupportedOperationException(); }
+    @Override public long writeContentToStream(final OutputStream stream) { throw new UnsupportedOperationException(); }
+
+    @Override
+    public <T> T convertContent(final DataFormat format, final Class<T> classOfT) {
+      return format.convert(data, classOfT);
+    }
+  }
+
+  public static final class EmptyMessage extends AbstractMessage {
+    private EmptyMessage(final Map<String, String> metadata) {
+      super(metadata);
+    }
+
+    private EmptyMessage(final MessageMetadata metadata) {
+      super(metadata);
+    }
+
+    @Override public int contentLength() { return 0; }
+    @Override public long writeContentToStream(final OutputStream stream) { return 0; }
+    @Override public <T> T convertContent(final DataFormat format, final Class<T> classOfT) { return null; }
+  }
+
+  public static final class EmptyMetadata implements MessageMetadata {
+    public static final EmptyMetadata INSTANCE = new EmptyMetadata();
+
+    private EmptyMetadata() {
+      // no-op
+    }
+
+    @Override public boolean isEmpty() { return true; }
+    @Override public int size() { return 0; }
+
+    @Override public String get(final String key) { return null; }
+    @Override public List<String> getList(final String key) { return null; }
+
+    @Override public void forEach(final BiConsumer<? super String, ? super String> action) { }
+  }
 }

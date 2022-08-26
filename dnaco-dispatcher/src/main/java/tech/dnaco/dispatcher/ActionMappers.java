@@ -24,13 +24,12 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.logging.Logger;
 
 public class ActionMappers {
-  private final Map<Class<? extends Annotation>, ActionParserFactory> parserFactories = new HashMap<>();
+  private final HashMap<Class<? extends Annotation>, ActionParserFactory> parserFactories = new HashMap<>(64);
 
   public boolean addMapper(final Class<? extends Annotation> annotationType, final ActionParserFactory factory) {
     final ActionParserFactory oldFactory = parserFactories.put(annotationType, factory);

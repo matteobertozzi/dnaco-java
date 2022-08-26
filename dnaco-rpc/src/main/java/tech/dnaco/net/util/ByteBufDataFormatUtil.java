@@ -20,6 +20,7 @@
 package tech.dnaco.net.util;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -32,6 +33,7 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import tech.dnaco.data.DataFormat;
 import tech.dnaco.data.modules.DataMapperModules;
@@ -41,19 +43,40 @@ public final class ByteBufDataFormatUtil {
     // no-op
   }
 
-  public static <T> T fromBytes(final DataFormat format, final ByteBuf data, final Class<T> valueType) throws IOException {
+  public static <T> T fromBytes(final DataFormat format, final ByteBuf data, final Class<T> valueType) {
     try (ByteBufInputStream stream = new ByteBufInputStream(data)) {
       try {
         return format.fromStream(stream, valueType);
       } finally {
         stream.reset();
       }
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
-  public static void addToBytes(final DataFormat format, final ByteBuf buffer, final Object obj) throws IOException {
+  public static ByteBuf asBytes(final DataFormat format, final Object obj) {
+    final ByteBuf buffer = PooledByteBufAllocator.DEFAULT.buffer();
+    ByteBufDataFormatUtil.addToBytes(format, buffer, obj);
+    return buffer;
+  }
+
+  public static void addToBytes(final DataFormat format, final ByteBuf buffer, final Object obj) {
     try (ByteBufOutputStream stream = new ByteBufOutputStream(buffer)) {
       format.addToStream(stream, obj);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static long transferTo(final ByteBuf buffer, final OutputStream stream) throws IOException {
+    try (ByteBufInputStream bufStream = new ByteBufInputStream(buffer, false)) {
+      try {
+        return bufStream.transferTo(stream);
+        // assert(length == body.readableBytes());
+      } finally {
+        bufStream.reset();
+      }
     }
   }
 

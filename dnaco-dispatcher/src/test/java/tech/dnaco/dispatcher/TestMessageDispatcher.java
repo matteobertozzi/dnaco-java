@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 public class TestMessageDispatcher {
   @Test
   public void testDispatcher() {
-    final MessageDispatcher dispatcher = new MessageDispatcher();
+    final MessageMapper dispatcher = new MessageMapper();
     dispatcher.addActionMapper(TestActionA.class, TestActionParserA::new);
     dispatcher.addActionMapper(TestActionB.class, TestActionParserB::new);
     dispatcher.addParamAnnotationMapper(TestParamA.class, TestParamParserA::new);

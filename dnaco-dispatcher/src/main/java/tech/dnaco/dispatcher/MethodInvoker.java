@@ -24,12 +24,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
+import tech.dnaco.dispatcher.Actions.AsyncResult;
+import tech.dnaco.logging.Logger;
 
 public class MethodInvoker {
   private final Object handler;
   private final Method method;
   private final ParamParser[] paramParsers;
   private final ActionParser[] actionParsers;
+  private final boolean asyncResult;
+  private final boolean voidResult;
 
   public MethodInvoker(final Object handler, final Method method,
       final ActionParser[] actionParsers, final ParamParser[] paramParsers) {
@@ -37,16 +41,28 @@ public class MethodInvoker {
     this.method = method;
     this.paramParsers = paramParsers;
     this.actionParsers = actionParsers;
+    this.asyncResult = hasAnnotation(AsyncResult.class);
+    this.voidResult = hasVoidResult(method);
+    Logger.trace("{handler} {method} {asyncResult} {voidResult} {actions} {params}",
+      handler, method, voidResult, actionParsers, paramParsers);
+  }
+
+  private static boolean hasVoidResult(final Method method) {
+    final Class<?> returnType = method.getReturnType();
+    return returnType == void.class || returnType == Void.class;
   }
 
   public boolean hasAnnotation(final Class<? extends Annotation> annotationType) {
     return ArrayUtil.isNotEmpty(method.getDeclaringClass().getAnnotationsByType(annotationType))
-      || ArrayUtil.isNotEmpty(method.getAnnotationsByType(annotationType));
+        || ArrayUtil.isNotEmpty(method.getAnnotationsByType(annotationType));
+  }
+
+  public boolean hasAsyncResult() {
+    return asyncResult;
   }
 
   public boolean hasVoidResult() {
-    final Class<?> returnType = method.getReturnType();
-    return returnType == void.class || returnType == Void.class;
+    return voidResult;
   }
 
   public Object invoke(final CallContext context, final Object message) throws Throwable {
@@ -78,6 +94,9 @@ public class MethodInvoker {
       return callActionAfterExecute(context, message, result, actionParsers.length);
     } catch (final InvocationTargetException e) {
       throw e.getCause();
+    } catch (final IllegalArgumentException e) {
+      Logger.error(e, "failed to call {handler} {method} {params}", handler, method.getName(), params);
+      throw e;
     }
   }
 

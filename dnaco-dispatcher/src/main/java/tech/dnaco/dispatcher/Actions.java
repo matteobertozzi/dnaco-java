@@ -64,4 +64,9 @@ public interface Actions {
   @Target(METHOD)
   @interface InlineFast {
   }
+
+  @Retention(RUNTIME)
+  @Target(METHOD)
+  @interface AsyncResult {
+  }
 }

@@ -17,9 +17,9 @@
 
 package tech.dnaco.bytes.encoding;
 
+import tech.dnaco.bytes.ByteArrayAppender;
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.collections.LongValue;
-import tech.dnaco.collections.arrays.paged.PagedByteArray;
 
 public final class VarInt {
   private VarInt() {
@@ -100,14 +100,14 @@ public final class VarInt {
     buffer[off + 3] = (byte) (y & 0xff);
   }
 
-  public static void write32(final PagedByteArray buf, final long y) {
+  private static void write32(final ByteArrayAppender buf, final long y) {
     buf.add((int) ((y >> 24) & 0xff));
     buf.add((int) ((y >> 16) & 0xff));
     buf.add((int) ((y >> 8) & 0xff));
     buf.add((int) (y & 0xff));
   }
 
-  public static int write(final PagedByteArray buf, final long x) {
+  public static int write(final ByteArrayAppender buf, final long x) {
     if (x < 0) {
       buf.add(255);
       write32(buf, x >> 32);

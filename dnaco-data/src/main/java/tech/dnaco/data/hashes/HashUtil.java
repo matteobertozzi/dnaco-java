@@ -19,8 +19,6 @@ package tech.dnaco.data.hashes;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.Base64;
 
 import tech.dnaco.bytes.BytesUtil;
 
@@ -115,11 +113,5 @@ public final class HashUtil {
       digest.update(content[i]);
     }
     return digest.digest();
-  }
-
-  public static void main(final String[] args) {
-    final byte[] h = new byte[33];
-    Arrays.fill(h, (byte)0xff);
-    System.out.println(Base64.getUrlEncoder().withoutPadding().encodeToString(h).length());
   }
 }

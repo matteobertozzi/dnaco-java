@@ -18,7 +18,14 @@
  */
 package tech.dnaco.net.http;
 
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.LongAdder;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -31,79 +38,92 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
-import tech.dnaco.data.json.JsonUtil;
-import tech.dnaco.dispatcher.message.MessageMetadataMap;
+import tech.dnaco.data.json.JsonObject;
+import tech.dnaco.dispatcher.Actions.AsyncResult;
+import tech.dnaco.dispatcher.message.Message;
+import tech.dnaco.dispatcher.message.MessageError;
+import tech.dnaco.dispatcher.message.MessageException;
+import tech.dnaco.dispatcher.message.MessageUtil;
+import tech.dnaco.dispatcher.message.UriDispatcher.MessageTask;
 import tech.dnaco.dispatcher.message.UriRouters;
 import tech.dnaco.logging.LogUtil.LogLevel;
 import tech.dnaco.logging.Logger;
 import tech.dnaco.net.ServiceEventLoop;
 import tech.dnaco.net.http.DnacoHttpService.DnacoHttpServiceProcessor;
-import tech.dnaco.net.http.HttpDispatcher.HttpTask;
-import tech.dnaco.net.message.DnacoMessage;
-import tech.dnaco.net.message.DnacoMessageHttpEncoder;
-import tech.dnaco.net.message.DnacoMessageUtil;
-import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.threading.BenchUtil;
+import tech.dnaco.threading.ShutdownUtil;
+import tech.dnaco.threading.ThreadUtil;
 
 public class Demo {
-  private static class DemoProcessor implements DnacoHttpServiceProcessor {
+  private static final byte[] TEST_DATA = "hello world".getBytes();
+
+  private static final class StaticPerfProcessor implements DnacoHttpServiceProcessor {
+    private StaticPerfProcessor(final HttpDispatcher dispatcher) {
+      // no-op
+    }
+
+    @Override
+    public void sessionMessageReceived(final ChannelHandlerContext ctx, final FullHttpRequest message) throws Exception {
+      final ByteBuf body = Unpooled.wrappedBuffer(TEST_DATA);
+      final FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, body);
+      response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, body.readableBytes());
+      response.headers().set(HttpHeaderNames.SERVER, "Armeria/1.16.0");
+      response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8");
+      response.headers().set(HttpHeaderNames.DATE, new Date());
+      ctx.write(response);
+      REQ_COUNT.increment();
+    }
+  }
+
+  protected static class DefaultHttpProcessor implements DnacoHttpServiceProcessor {
     private final HttpDispatcher dispatcher;
 
-    private DemoProcessor(final HttpDispatcher dispatcher)  {
+    protected DefaultHttpProcessor(final HttpDispatcher dispatcher) {
       this.dispatcher = dispatcher;
     }
 
     @Override
-    public void sessionMessageReceived(final ChannelHandlerContext ctx, final FullHttpRequest msg) throws Exception {
-      //System.out.println("HTTP MSG RECEIVED: " + HumansUtil.humanSize(msg.content().readableBytes()));
-
-      if (false) {
-        final ByteBuf body = Unpooled.wrappedBuffer(JsonUtil.toJson(new String[] { "aaa", "bbb", "ccc" }).getBytes());
-        if (false) {
-          final FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, body);
-          response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, 19);
-          response.headers().set(HttpHeaderNames.SERVER, "Armeria/1.16.0");
-          response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8");
-          response.headers().set(HttpHeaderNames.DATE, new Date());
-          ctx.write(response);
-        } else {
-          final DnacoMessage message = new DnacoMessage(0L, new MessageMetadataMap()
-            .add(DnacoMessageUtil.METADATA_FOR_HTTP_STATUS, 200)
-            .add("content-length", 19)
-            .add("server", "Armeria/1.16.0")
-            .add("content-type", "application/json; charset=utf-8")
-            .add("date", "Mon, 23 May 2022 09:27:56 GMT"),
-            body);
-          ctx.write(message);
-        }
-        return;
-      }
-
-      final HttpTask task = dispatcher.prepare(msg);
+    public void sessionMessageReceived(final ChannelHandlerContext ctx, final FullHttpRequest req) throws Exception {
+      REQ_COUNT.increment();
+      System.out.println("MESSAGE ON THREAD " + Thread.currentThread().getName());
+      final MessageTask task = dispatcher.prepare(req);
       if (task != null) {
-        final DnacoMessage message = task.execute();
-        ctx.write(message);
+        final Message message = task.execute();
+        respondWithMessage(ctx, req, message);
         return;
       }
 
-      if (dispatcher.serveStaticFileHandler(ctx, msg)) {
+      System.out.println("SBANG!");
+      if (dispatcher.serveStaticFileHandler(ctx, req)) {
         return;
       }
 
-      final FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND, Unpooled.EMPTY_BUFFER);
-      response.headers().set(HttpHeaderNames.DATE, new Date());
-      if (HttpUtil.isKeepAlive(msg)) {
-        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+      respondWithNotFound(ctx, req);
+    }
+
+    protected void respondWithMessage(final ChannelHandlerContext ctx, final FullHttpRequest request, final Message response) {
+      if (response instanceof final HttpMessageResponse httpResponse) {
+        ctx.write(httpResponse.rawResponse());
       } else {
-        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+        System.out.println("SBONG!");
       }
+    }
+
+    protected void respondWithNotFound(final ChannelHandlerContext ctx, final FullHttpRequest msg) {
+      final FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NO_CONTENT, Unpooled.EMPTY_BUFFER);
+      response.headers().set(HttpHeaderNames.DATE, new Date());
+      response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+      response.headers().set("X-Thread", Thread.currentThread().getName());
+      response.headers().set("X-Count", String.valueOf(REQ_COUNT.sum()));
       ctx.write(response);
+      System.out.println(" ----> RESPOND " + Thread.currentThread());
     }
   }
 
+  private static final LongAdder REQ_COUNT = new LongAdder();
+
   public static class Foo implements HttpHandler {
-    /*
     @UriVariableMapping(uri = "/test/{p1}/{p2}", method = UriMethod.POST)
     public JsonObject foo(
         @QueryParam("a") final int intValue,
@@ -126,11 +146,18 @@ public class Demo {
       return new JsonObject().add("foo", 10);
     }
 
-    @UriMapping(uri = "/aaa")
-    public JsonObject aaaa() {
-      return new JsonObject().add("x", 10);
+    @UriMapping(uri = "/void")
+    public void testVoid() {
+      //System.out.println("/void");
+      REQ_COUNT.increment();
     }
-*/
+
+    @AsyncResult
+    @UriMapping(uri = "/async")
+    public void testAsyncResult() {
+      System.out.println("/async");
+    }
+
     @UriMapping(uri = "/")
     public String hello() {
       return "hello, world!";
@@ -139,6 +166,21 @@ public class Demo {
     @UriMapping(uri = "/bar")
     public String[] helloJson() {
       return new String[] { "aaa", "bbb", "ccc" };
+    }
+
+    @UriMapping(uri = "/raw")
+    public byte[] helloRaw() {
+      return "hello-bytes".getBytes();
+    }
+
+    @UriMapping(uri = "/msg")
+    public Message helloMsg() {
+      return MessageUtil.newMessage(Map.of("X-Foo", "10"), List.of("a", "b", "c"));
+    }
+
+    @UriMapping(uri = "/except")
+    public void helloExcept() throws MessageException {
+      throw new MessageException(new MessageError(512, "boom", "hello, world!"));
     }
   }
 
@@ -167,18 +209,14 @@ public class Demo {
 
     final HttpDispatcher dispatcher = new HttpDispatcher(routes);
     if (false) {
-      final int N = 1_000_000;
-      final long startTime = System.nanoTime();
-      for (int i = 0; i < N; ++i) {
-        final FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/bar");
-        final HttpTask task = dispatcher.prepare(request);
-        final DnacoMessage message = task.execute();
-        DnacoMessageHttpEncoder.encode(message).release();
-        message.release();
-      }
-      final long elapsed = System.nanoTime() - startTime;
-
-      System.out.println(HumansUtil.humanTimeNanos(elapsed) + " -> " + HumansUtil.humanRate((double)N / (elapsed / 1000000000.0)));
+      BenchUtil.run("httpDispatcher", Duration.ofMinutes(5), () -> {
+        final FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/bar", false);
+        final MessageTask task = dispatcher.prepare(request);
+        final Message m = task.execute();
+        if (m instanceof final HttpMessageResponse httpResponse) {
+          httpResponse.rawResponse().release();
+        }
+      });
       return;
     }
 
@@ -186,10 +224,18 @@ public class Demo {
     //final HttpTask task = dispatcher.prepare("POST", "/foo/test/123/x2?a=10&s=aaa&s=bbb&s=ccc&x=foo");
     //task.setMessage(List.of(Map.entry("X-Foo", "10"), Map.entry("X-Bar", "xx")), Unpooled.wrappedBuffer("{\"x\": 10}".getBytes()));
 
+    final AtomicBoolean running = new AtomicBoolean(true);
     try (ServiceEventLoop eventLoop = new ServiceEventLoop(1, 8)) {
-      final DnacoHttpService service = new DnacoHttpService(new DemoProcessor(dispatcher));
+      final DnacoHttpService service = new DnacoHttpService(new DefaultHttpProcessor(dispatcher));
       service.bindTcpService(eventLoop, 55123);
-      service.addShutdownHook();
+      //service.addShutdownHook();
+      ShutdownUtil.addShutdownHook("services", running, service);
+
+      while (running.get()) {
+        ThreadUtil.sleep(1, TimeUnit.SECONDS);
+        //System.out.println("REQ COUNT: " + HumansUtil.humanCount(REQ_COUNT.longValue()));
+      }
+
       service.waitStopSignal();
     }
   }

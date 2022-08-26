@@ -26,14 +26,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.logging.Logger;
 
 public class ParamMappers {
-  private final Map<Class<? extends Annotation>, ParamParserFactory> parserFactories = new HashMap<>();
-  private final Map<Class<?>, ParamParserFactory> typeFactories = new HashMap<>();
+  private final HashMap<Class<? extends Annotation>, ParamParserFactory> parserFactories = new HashMap<>(64);
+  private final HashMap<Class<?>, ParamParserFactory> typeFactories = new HashMap<>(64);
   private ParamParserFactory defaultFactory;
 
   public boolean addDefaultMapper(final ParamParserFactory factory) {
@@ -65,23 +64,18 @@ public class ParamMappers {
   }
 
   public ParamParser newParser(final Parameter param) {
-    System.out.println("NEW PARSER " + param);
     // annotation-based param parser
     final Annotation[] annotations = param.getAnnotations();
     if (ArrayUtil.isNotEmpty(annotations)) {
       final ArrayList<ParamParser> parsers = new ArrayList<>();
       for (final Annotation annotation: annotations) {
-        System.out.println(" - Annotation: " + annotation);
         final ParamParserFactory factory = parserFactories.get(annotation.annotationType());
-        System.out.println(" - Factory: " + factory);
         if (factory == null) continue;
 
         final ParamParser parser = factory.newParser(param, annotation);
-        System.out.println(" - ParamParser: " + parser);
         if (parser != null) parsers.add(parser);
       }
 
-      System.out.println(" - PARAM PARSER: " + parsers.size() + " " + param);
       if (!parsers.isEmpty()) {
         if (parsers.size() > 1) {
           return new ChainedParamParser(parsers);

@@ -30,8 +30,16 @@ public final class RandData {
     // no-op
   }
 
+  public static double random() {
+    return Holder.secureRand.nextDouble();
+  }
+
   public static long generateLong() {
     return Holder.secureRand.nextLong();
+  }
+
+  public static int generateInt() {
+    return Holder.secureRand.nextInt();
   }
 
   // ================================================================================

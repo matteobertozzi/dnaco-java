@@ -19,10 +19,11 @@ package tech.dnaco.collections.arrays;
 
 import java.util.Arrays;
 
+import tech.dnaco.bytes.ByteArrayAppender;
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
 
-public class ByteArray {
+public class ByteArray implements ByteArrayAppender {
   public static final byte[] EMPTY_ARRAY = BytesUtil.EMPTY_BYTES;
   private static final int EXTRA_SIZE = 1024;
 
@@ -32,6 +33,15 @@ public class ByteArray {
   public ByteArray(final int initialCapacity) {
     this.blob = new byte[initialCapacity];
     this.count = 0;
+  }
+
+  public ByteArray(final byte[] blob) {
+    this.blob = blob;
+    this.count = blob.length;
+  }
+
+  public void truncate(final int offset) {
+    this.count = offset;
   }
 
   public void reset() {
@@ -76,7 +86,7 @@ public class ByteArray {
     return new ByteArraySlice(blob, 0, count);
   }
 
-  public long get(final int index) {
+  public byte get(final int index) {
     return blob[index];
   }
 
@@ -84,6 +94,12 @@ public class ByteArray {
     blob[index] = (byte) (value & 0xff);
   }
 
+  public void set(final byte[] value) {
+    this.blob = value;
+    this.count = value.length;
+  }
+
+  @Override
   public void add(final int value) {
     if (count == blob.length) {
       this.blob = Arrays.copyOf(blob, count + EXTRA_SIZE);
@@ -91,10 +107,12 @@ public class ByteArray {
     blob[count++] = (byte) (value & 0xff);
   }
 
+  @Override
   public void add(final byte[] value) {
     add(value, 0, value.length);
   }
 
+  @Override
   public void add(final byte[] value, final int off, final int len) {
     if ((count + len) >= blob.length) {
       this.blob = Arrays.copyOf(blob, count + len + EXTRA_SIZE);

@@ -60,6 +60,11 @@ public final class HumansUtil {
     return String.format("%.2f/sec", rate);
   }
 
+  public static String humanRate(final long count, final long duration, final TimeUnit unit) {
+    final double sec = unit.toNanos(duration) / 1000000000.0;
+    return humanRate(count / sec);
+  }
+
   // ================================================================================
   //  Date related
   // ================================================================================

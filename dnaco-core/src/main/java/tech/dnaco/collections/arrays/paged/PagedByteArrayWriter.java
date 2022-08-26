@@ -20,6 +20,7 @@ package tech.dnaco.collections.arrays.paged;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import tech.dnaco.bytes.ByteArrayAppender;
 import tech.dnaco.io.BytesOutputStream;
 
 public class PagedByteArrayWriter extends BytesOutputStream {
@@ -60,6 +61,14 @@ public class PagedByteArrayWriter extends BytesOutputStream {
   @Override
   public void write(final byte[] buf, final int off, final int len) {
     this.buf.add(buf, off, len);
+  }
+
+  public int writeTo(final ByteArrayAppender stream) {
+    try {
+      return this.buf.forEach(stream::add);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

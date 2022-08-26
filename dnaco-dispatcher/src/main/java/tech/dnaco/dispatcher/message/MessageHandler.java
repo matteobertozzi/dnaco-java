@@ -25,9 +25,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import java.util.List;
-
-import tech.dnaco.data.DataFormat;
 
 public interface MessageHandler {
   enum UriMethod {
@@ -120,6 +117,14 @@ public interface MessageHandler {
 
   @Retention(RUNTIME)
   @Target(PARAMETER)
+  @interface MetaParam {
+    String header() default "";
+    String query() default "";
+    String defaultValue() default "";
+  }
+
+  @Retention(RUNTIME)
+  @Target(PARAMETER)
   @interface JsonBody {
   }
 
@@ -138,9 +143,26 @@ public interface MessageHandler {
   @interface FormEncodedBody {
   }
 
+  // ===========================================================================
+  //  Security related
+  // ===========================================================================
   @Retention(RUNTIME)
   @Target(PARAMETER)
-  @interface Context {
+  @interface TokenSession {
+  }
+
+  @Retention(RUNTIME)
+  @Target(METHOD)
+  @interface RequirePermission {
+    String module();
+    String[] any() default {};
+    String[] members() default {};
+    boolean signature() default false;
+  }
+
+  @Retention(RUNTIME)
+  @Target({TYPE, METHOD})
+  @interface RequireEncryption {
   }
 
   // ===========================================================================
@@ -154,16 +176,5 @@ public interface MessageHandler {
   @Retention(RUNTIME)
   @Target(METHOD)
   @interface Task {
-  }
-
-  interface MessageData {
-    String method();
-    String path();
-
-    List<String> queryParamAsList(String name);
-    List<String> metadataValueAsList(String name);
-    String getMetadata(String key, String defaultValue);
-
-    <T> T convertBody(DataFormat format, Class<T> classOfT);
   }
 }

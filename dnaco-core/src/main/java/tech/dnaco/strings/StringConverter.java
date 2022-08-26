@@ -87,7 +87,7 @@ public final class StringConverter {
 
   public static int toInt(final String key, final String inputValue, final int defaultValue) {
     final String value = StringUtil.trim(inputValue);
-    if (!StringUtil.isEmpty(value)) {
+    if (StringUtil.isNotEmpty(value)) {
       try {
         return Integer.parseInt(value);
       } catch (final Exception e) {
@@ -116,7 +116,7 @@ public final class StringConverter {
 
   public static long toLong(final String key, final String inputValue, final long defaultValue) {
     final String value = StringUtil.trim(inputValue);
-    if (!StringUtil.isEmpty(value)) {
+    if (StringUtil.isNotEmpty(value)) {
       try {
         return Long.parseLong(value);
       } catch (final Exception e) {
@@ -145,7 +145,7 @@ public final class StringConverter {
 
   public static short toShort(final String key, final String inputValue, final short defaultValue) {
     final String value = StringUtil.trim(inputValue);
-    if (!StringUtil.isEmpty(value)) {
+    if (StringUtil.isNotEmpty(value)) {
       try {
         return Short.parseShort(value);
       } catch (final Exception e) {
@@ -174,7 +174,7 @@ public final class StringConverter {
 
   public static float toFloat(final String key, final String inputValue, final float defaultValue) {
     final String value = StringUtil.trim(inputValue);
-    if (!StringUtil.isEmpty(value)) {
+    if (StringUtil.isNotEmpty(value)) {
       try {
         return Float.parseFloat(value);
       } catch (final Exception e) {
@@ -211,7 +211,7 @@ public final class StringConverter {
 
   public static double toDouble(final String key, final String inputValue, final double defaultValue) {
     final String value = StringUtil.trim(inputValue);
-    if (!StringUtil.isEmpty(value)) {
+    if (StringUtil.isNotEmpty(value)) {
       try {
         return Double.parseDouble(value);
       } catch (final Exception e) {
@@ -248,7 +248,7 @@ public final class StringConverter {
 
   public static BigDecimal toDecimal(final String key, final String inputValue, final BigDecimal defaultValue) {
     final String value = StringUtil.trim(inputValue);
-    if (!StringUtil.isEmpty(value)) {
+    if (StringUtil.isNotEmpty(value)) {
       try {
         return new BigDecimal(value);
       } catch (final Exception e) {
@@ -330,7 +330,7 @@ public final class StringConverter {
   public static <T extends Enum<T>> T toEnumValue(final Class<T> enumType, final String key, final String inputValue,
       final T defaultValue) {
     final String value = StringUtil.trim(inputValue);
-    if (!StringUtil.isEmpty(value)) {
+    if (StringUtil.isNotEmpty(value)) {
       try {
         return Enum.valueOf(enumType, value);
       } catch (final Exception e) {

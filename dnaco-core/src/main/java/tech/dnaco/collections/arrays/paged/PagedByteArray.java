@@ -20,11 +20,12 @@ package tech.dnaco.collections.arrays.paged;
 import java.io.IOException;
 import java.util.Arrays;
 
+import tech.dnaco.bytes.ByteArrayAppender;
 import tech.dnaco.bytes.encoding.VarInt;
 import tech.dnaco.collections.arrays.ByteArray;
 import tech.dnaco.util.BitUtil;
 
-public class PagedByteArray {
+public class PagedByteArray implements ByteArrayAppender {
   private static final int DEFAULT_PAGES_GROWTH = 16;
   private static final int DEFAULT_PAGE_SIZE = 1024;
 
@@ -113,15 +114,18 @@ public class PagedByteArray {
   // ================================================================================
   //  PUBLIC write related methods
   // ================================================================================
+  @Override
   public void add(final int value) {
     if (pageItems == pageSize) rollPage();
     lastPage[pageItems++] = (byte) (value & 0xff);
   }
 
+  @Override
   public void add(final byte[] buf) {
     add(buf, 0, buf.length);
   }
 
+  @Override
   public void add(final byte[] buf, int off, int len) {
     while (len > 0) {
       int avail = lastPage.length - pageItems;
@@ -300,6 +304,14 @@ public class PagedByteArray {
       wlen += avail;
     }
     return wlen;
+  }
+
+  public int writeTo(final ByteArrayAppender stream) {
+    try {
+      return forEach(stream::add);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // ================================================================================

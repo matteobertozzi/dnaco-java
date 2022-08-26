@@ -253,7 +253,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
 
         final long count = activeChannels.incrementAndGet();
         final Channel channel = ctx.channel();
-        Logger.debug("channel active: {} {} {}", count, channelType(channel), channel.remoteAddress());
+        Logger.trace("channel active: {} {} {}", count, channelType(channel), channel.remoteAddress());
 
         try {
           final AbstractServiceSession session = sessionConnected(ctx);
@@ -273,7 +273,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
 
         final Channel channel = ctx.channel();
         final long count = activeChannels.decrementAndGet();
-        Logger.debug("channel inactive: {} {} {}", count, channelType(channel), channel.remoteAddress());
+        Logger.trace("channel inactive: {} {} {}", count, channelType(channel), channel.remoteAddress());
 
         final AbstractServiceSession session = channel.attr(SESSION_ATTR_KEY).getAndSet(null);
         if (session != null) {

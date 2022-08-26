@@ -20,7 +20,6 @@
 package tech.dnaco.strings;
 
 import java.math.BigInteger;
-import java.security.MessageDigest;
 import java.util.Arrays;
 
 import tech.dnaco.bytes.BytesUtil;
@@ -38,11 +37,12 @@ public final class BaseN {
   }
 
   public static void main(final String[] args) throws Exception {
-    final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-    final byte[] hash = digest.digest(new byte[] { -1, 2 });
-
-    System.out.println(BaseN.encodeBase58(123));
-    System.out.println(BaseN.decodeBase58("38"));
+    final byte[] h = new byte[16];
+    Arrays.fill(h, (byte)0xff);
+    System.out.println(h.length + "/" + (h.length * 8));
+    System.out.println(" - 32: " + BaseN.encodeBase32(h).length());
+    System.out.println(" - 58: " + BaseN.encodeBase58(new BigInteger(1, h)).length());
+    System.out.println(" - 62: " + BaseN.encodeBase62(new BigInteger(1, h)).length());
   }
 
   // --------------------------------------------------------------------------------

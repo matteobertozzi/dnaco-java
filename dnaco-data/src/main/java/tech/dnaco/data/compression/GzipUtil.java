@@ -21,12 +21,33 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+
+import tech.dnaco.bytes.BytesUtil;
 
 public class GzipUtil {
   private GzipUtil() {
     // no-op
+  }
+
+  public static void main(final String[] args) throws Exception {
+    final byte[] TEST_DATA = "hello hello hello".getBytes();
+
+    System.out.println("GZIP: " + compress(TEST_DATA).length);
+    System.out.println("ZLIB: " + inflate(TEST_DATA).length);
+    System.out.println(BytesUtil.toHexString(inflate(TEST_DATA)));
+  }
+
+  public static byte[] inflate(final byte[] data) throws IOException {
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream(data.length)) {
+      try (DeflaterOutputStream gz = new DeflaterOutputStream(out, new Deflater(9, true))) {
+        gz.write(data);
+      }
+      return out.toByteArray();
+    }
   }
 
   public static byte[] compress(final String data) throws IOException {
@@ -69,7 +90,7 @@ public class GzipUtil {
       def.setLevel(level);
     }
 
-    private GzipOutputStreamWithLevel(final OutputStream out, int blockSize, final int level) throws IOException {
+    private GzipOutputStreamWithLevel(final OutputStream out, final int blockSize, final int level) throws IOException {
       super(out, blockSize, false);
       def.setLevel(level);
     }

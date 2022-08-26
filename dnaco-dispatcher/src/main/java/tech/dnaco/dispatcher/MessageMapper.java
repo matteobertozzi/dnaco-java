@@ -21,8 +21,14 @@ package tech.dnaco.dispatcher;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.function.Function;
 
-public class MessageDispatcher {
+import tech.dnaco.dispatcher.message.MessageError;
+import tech.dnaco.logging.Logger;
+
+public class MessageMapper {
+  private final HashMap<Class<? extends Throwable>, Function<Throwable, MessageError>> exceptionMappers = new HashMap<>(64);
   private final ActionMappers actionMappers = new ActionMappers();
   private final ParamMappers paramMappers = new ParamMappers();
 
@@ -42,12 +48,32 @@ public class MessageDispatcher {
     return paramMappers.addAnnotationMapper(annotationType, factory);
   }
 
+  public boolean addExceptionMapper(final Class<? extends Throwable> exceptionType, final Function<Throwable, MessageError> mapper) {
+    final Function<? extends Throwable, MessageError> oldMapper = exceptionMappers.put(exceptionType, mapper);
+    if (oldMapper != null) {
+      Logger.warn("exception mapper {} for exception {} is replacing {}", mapper, exceptionType, oldMapper);
+      return false;
+    }
+    return true;
+  }
+
   protected ActionParser[] parseActions(final Method method) {
     return actionMappers.parseActions(method);
   }
 
   protected ParamParser[] parseParams(final Method method) {
     return paramMappers.parseParams(method);
+  }
+
+  public MessageError mapException(final Throwable exception) {
+    Class<?> classOfException = exception.getClass();
+    do {
+      final Function<Throwable, MessageError> mapper = exceptionMappers.get(classOfException);
+      if (mapper != null) return mapper.apply(exception);
+
+      classOfException = classOfException.getSuperclass();
+    } while (classOfException != Throwable.class && classOfException != null);
+    return null;
   }
 
   public MethodInvoker newMethodInvoker(final Object handler, final Method method) {

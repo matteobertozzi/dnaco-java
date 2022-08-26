@@ -18,29 +18,31 @@
  */
 package tech.dnaco.net.http;
 
+import java.util.Date;
+
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpContentDecompressor;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.HttpServerExpectContinueHandler;
 import io.netty.handler.codec.http.HttpServerKeepAliveHandler;
+import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.cors.CorsConfig;
 import io.netty.handler.codec.http.cors.CorsConfigBuilder;
 import io.netty.handler.codec.http.cors.CorsHandler;
-import io.netty.handler.stream.ChunkedWriteHandler;
+import io.netty.util.concurrent.EventExecutorGroup;
 import tech.dnaco.net.AbstractService;
+import tech.dnaco.net.http.HttpMessageResponse.HttpMessageResponseEncoder;
 import tech.dnaco.net.message.DnacoMessageHttpEncoder;
 
 public class DnacoHttpService extends AbstractService {
   private static final int MAX_HTTP_REQUEST_SIZE = (4 << 20);
-
-  private static final String X_HEADER_TRACE_ID = "X-TraceId";
-  private static final String X_HEADER_SPAN_ID = "X-SpanId";
-  private static final String X_HEADER_TOTAL_TIME = "X-TotalTime";
 
   private final HttpFrameHandler handler;
   private final CorsConfig corsConfig;
@@ -50,6 +52,11 @@ public class DnacoHttpService extends AbstractService {
   }
 
   public DnacoHttpService(final DnacoHttpServiceProcessor processor, final boolean enableCors) {
+    this(processor, enableCors, null);
+  }
+
+  public DnacoHttpService(final DnacoHttpServiceProcessor processor,
+      final boolean enableCors, final EventExecutorGroup[] shards) {
     this.handler = new HttpFrameHandler(processor);
 
     if (enableCors) {
@@ -58,7 +65,7 @@ public class DnacoHttpService extends AbstractService {
         .allowCredentials()
         .allowedRequestMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)
         .allowedRequestHeaders("*")
-        .exposeHeaders(X_HEADER_TRACE_ID, X_HEADER_SPAN_ID, X_HEADER_TOTAL_TIME)
+        .exposeHeaders("*")
         .build();
     } else {
       this.corsConfig = null;
@@ -68,16 +75,17 @@ public class DnacoHttpService extends AbstractService {
 	@Override
 	protected void setupPipeline(final ChannelPipeline pipeline) {
     pipeline.addLast(new HttpServerCodec());
-    pipeline.addLast(new HttpContentDecompressor());
     pipeline.addLast(new HttpServerKeepAliveHandler());
-    pipeline.addLast(new HttpServerExpectContinueHandler());
+    pipeline.addLast(new HttpContentDecompressor());
+    //pipeline.addLast(new HttpServerExpectContinueHandler());
     pipeline.addLast(new HttpObjectAggregator(MAX_HTTP_REQUEST_SIZE));
     pipeline.addLast(new SmartHttpContentCompressor());
-    pipeline.addLast(new ChunkedWriteHandler());
+    //pipeline.addLast(new ChunkedWriteHandler());
     if (corsConfig != null) {
       pipeline.addLast(new CorsHandler(corsConfig));
     }
     pipeline.addLast(DnacoMessageHttpEncoder.INSTANCE);
+    pipeline.addLast(HttpMessageResponseEncoder.INSTANCE);
     pipeline.addLast(handler);
   }
 
@@ -101,7 +109,19 @@ public class DnacoHttpService extends AbstractService {
 
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final FullHttpRequest msg) throws Exception {
+      addMissingHeaders(msg);
       processor.sessionMessageReceived(ctx, msg);
+    }
+
+    private static void addMissingHeaders(final FullHttpRequest request) {
+      final HttpHeaders headers = request.headers();
+      if (!headers.contains(HttpHeaderNames.DATE)) {
+        headers.set(HttpHeaderNames.DATE, new Date());
+      }
+
+      if (HttpUtil.isKeepAlive(request) && !headers.contains(HttpHeaderNames.CONNECTION)) {
+        headers.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+      }
     }
   }
 

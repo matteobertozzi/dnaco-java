@@ -12,9 +12,17 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <junit.version>5.8.2</junit.version>
     <jmh.version>1.35</jmh.version>
-    <antlr.version>4.9.3</antlr.version>
+    <antlr.version>4.10.1</antlr.version>
+    <rocksdb.version>7.4.5</rocksdb.version>
+    <sqlite.version>3.39.2.1</sqlite.version>
+    <graphql.version>18.0</graphql.version>
+
+    <junit.version>5.9.0</junit.version>
+    <maven.jar.version>3.2.2</maven.jar.version>
+    <maven.compiler.version>3.10.1</maven.compiler.version>
+    <maven.surefire.version>3.0.0-M7</maven.surefire.version>
+    <maven.failsafe.version>3.0.0-M7</maven.failsafe.version>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -29,13 +37,13 @@
     <dependency>
         <groupId>org.rocksdb</groupId>
         <artifactId>rocksdbjni</artifactId>
-        <version>7.0.4</version>
+        <version>${rocksdb.version}</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc -->
     <dependency>
       <groupId>org.xerial</groupId>
       <artifactId>sqlite-jdbc</artifactId>
-      <version>3.36.0.3</version>
+      <version>${sqlite.version}</version>
     </dependency>
 
     <!-- Unit Tests Related -->
@@ -68,7 +76,7 @@
     <dependency>
       <groupId>com.graphql-java</groupId>
       <artifactId>graphql-java</artifactId>
-      <version>18.0</version>
+      <version>${graphql.version}</version>
     </dependency>
     <dependency>
       <groupId>org.antlr</groupId>

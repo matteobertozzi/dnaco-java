@@ -1,4 +1,23 @@
-package tech.dnaco.net.util;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package tech.dnaco.dispatcher;
 
 import java.io.IOException;
 
@@ -14,6 +33,8 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 import tech.dnaco.bytes.encoding.IntDecoder;
 import tech.dnaco.bytes.encoding.IntEncoder;
+import tech.dnaco.collections.arrays.ByteArray;
+import tech.dnaco.data.hashes.Hash;
 import tech.dnaco.data.modules.DataMapperModules;
 import tech.dnaco.strings.BaseX;
 import tech.dnaco.util.RandData;
@@ -52,12 +73,33 @@ public class ExecutionId implements Comparable<ExecutionId> {
     return new ExecutionId(System.currentTimeMillis(), 0, shard, lo, hi);
   }
 
+  public static ExecutionId randomId(final int shard) {
+    final byte[] randomBytes = new byte[16];
+    RandData.generateBytes(randomBytes);
+
+    final long lo = IntDecoder.BIG_ENDIAN.readFixed64(randomBytes, 0);
+    final long hi = IntDecoder.BIG_ENDIAN.readFixed64(randomBytes, 8);
+    return new ExecutionId(System.currentTimeMillis(), 0, shard, lo, hi);
+  }
+
+  public void addToHash(final Hash hash) {
+    hash.update(ts);
+    hash.update(lo);
+    hash.update(hi);
+  }
+
   public byte[] toBytes() {
     final byte[] buffer = new byte[24];
     IntEncoder.BIG_ENDIAN.writeFixed64(buffer,  0, ts);
     IntEncoder.BIG_ENDIAN.writeFixed64(buffer,  8, lo);
     IntEncoder.BIG_ENDIAN.writeFixed64(buffer, 16, hi);
     return buffer;
+  }
+
+  public void writeTo(final ByteArray buffer) {
+    IntEncoder.BIG_ENDIAN.writeFixed(buffer, ts, 8);
+    IntEncoder.BIG_ENDIAN.writeFixed(buffer, lo, 8);
+    IntEncoder.BIG_ENDIAN.writeFixed(buffer, hi, 8);
   }
 
   @Override
@@ -70,14 +112,22 @@ public class ExecutionId implements Comparable<ExecutionId> {
   }
 
   public static ExecutionId fromBytes(final byte[] id) {
-    final long ts = IntDecoder.BIG_ENDIAN.readFixed64(id,  0);
-    final long lo = IntDecoder.BIG_ENDIAN.readFixed64(id,  8);
-    final long hi = IntDecoder.BIG_ENDIAN.readFixed64(id, 16);
+    return fromBytes(id, 0);
+  }
+
+  public static ExecutionId fromBytes(final byte[] id, final int off) {
+    final long ts = IntDecoder.BIG_ENDIAN.readFixed64(id, off);
+    final long lo = IntDecoder.BIG_ENDIAN.readFixed64(id, off + 8);
+    final long hi = IntDecoder.BIG_ENDIAN.readFixed64(id, off + 16);
     return new ExecutionId(ts, lo, hi);
   }
 
   public long timestamp() {
     return TIMESTAMP_OFFSET + (ts >>> 23);
+  }
+
+  public int shard() {
+    return (int) (ts & 0xffff);
   }
 
   @Override
@@ -94,7 +144,7 @@ public class ExecutionId implements Comparable<ExecutionId> {
     if (this == obj) return true;
     if (obj == null) return false;
     if (!(obj instanceof final ExecutionId other)) return false;
-    return (hi != other.hi) && (lo != other.lo) && (ts != other.ts);
+    return (hi == other.hi) && (lo == other.lo) && (ts == other.ts);
   }
 
   @Override

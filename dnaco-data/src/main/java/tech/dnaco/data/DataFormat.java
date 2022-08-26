@@ -31,6 +31,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import tech.dnaco.bytes.ByteArrayReader;
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.collections.arrays.ByteArray;
+import tech.dnaco.collections.arrays.paged.PagedByteArray;
+import tech.dnaco.collections.arrays.paged.PagedByteArrayWriter;
 import tech.dnaco.strings.StringUtil;
 
 public abstract class DataFormat {
@@ -142,6 +145,21 @@ public abstract class DataFormat {
 
   public void addToPrettyPrintStream(final OutputStream stream, final Object obj) throws IOException {
     getObjectMapper().writerWithDefaultPrettyPrinter().writeValue(stream, obj);
+  }
+
+  public void addToByteArray(final ByteArray buffer, final Object obj) {
+    final PagedByteArray wbuffer = new PagedByteArray(64 << 10);
+    addToByteArray(wbuffer, obj);
+    wbuffer.writeTo(buffer);
+  }
+
+  public void addToByteArray(final PagedByteArray buffer, final Object obj) {
+    try (PagedByteArrayWriter writer = new PagedByteArrayWriter(buffer)) {
+      getObjectMapper().writeValue(writer, obj);
+      writer.flush();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public String asPrettyPrintString(final Object value) {
