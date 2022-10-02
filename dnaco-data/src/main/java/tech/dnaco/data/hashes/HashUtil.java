@@ -100,7 +100,7 @@ public final class HashUtil {
   }
 
   public static byte[] sha3_256(final byte[]... content) {
-    return hash("SHA3-512", content);
+    return hash("SHA3-256", content);
   }
 
   public static byte[] sha3_512(final byte[]... content) {

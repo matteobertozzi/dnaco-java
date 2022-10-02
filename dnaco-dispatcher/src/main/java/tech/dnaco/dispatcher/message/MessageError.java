@@ -1,5 +1,6 @@
 package tech.dnaco.dispatcher.message;
 
+import tech.dnaco.data.DataFormat;
 import tech.dnaco.tracing.TraceId;
 import tech.dnaco.tracing.Tracer;
 
@@ -26,16 +27,22 @@ public class MessageError {
     this(statusCode, Tracer.getCurrentTraceId(), status, message, data);
   }
 
-  public MessageError() {
-  }
-
-  public MessageError(final int statusCode, final TraceId traceId,
-      final String status, final String message, final Object data) {
+  public MessageError(final int statusCode, final TraceId traceId, final String status, final String message, final Object data) {
     this.statusCode = statusCode;
     this.traceId = traceId;
     this.status = status;
     this.message = message;
     this.data = data;
+  }
+
+  public MessageError() {
+    // used by jackson deserialized
+  }
+
+  public static MessageError fromBytes(final DataFormat format, final int statusCode, final byte[] data) {
+    final MessageError error = format.fromBytes(data, MessageError.class);
+    error.statusCode = statusCode;
+    return error;
   }
 
   public int statusCode() { return statusCode; }

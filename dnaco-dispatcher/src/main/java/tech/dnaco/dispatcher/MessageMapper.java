@@ -24,11 +24,13 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.function.Function;
 
+import tech.dnaco.dispatcher.message.Message;
 import tech.dnaco.dispatcher.message.MessageError;
 import tech.dnaco.logging.Logger;
 
 public class MessageMapper {
   private final HashMap<Class<? extends Throwable>, Function<Throwable, MessageError>> exceptionMappers = new HashMap<>(64);
+  private final HashMap<Class<?>, Function<Object, Message>> typeToMessageMappers = new HashMap<>(64);
   private final ActionMappers actionMappers = new ActionMappers();
   private final ParamMappers paramMappers = new ParamMappers();
 
@@ -48,13 +50,29 @@ public class MessageMapper {
     return paramMappers.addAnnotationMapper(annotationType, factory);
   }
 
-  public boolean addExceptionMapper(final Class<? extends Throwable> exceptionType, final Function<Throwable, MessageError> mapper) {
-    final Function<? extends Throwable, MessageError> oldMapper = exceptionMappers.put(exceptionType, mapper);
+  @SuppressWarnings("unchecked")
+  public <T extends Throwable> boolean addExceptionMapper(final Class<T> exceptionType, final Function<T, MessageError> mapper) {
+    final Function<? extends Throwable, MessageError> oldMapper = exceptionMappers.put((Class<? extends Throwable>)exceptionType, (Function<Throwable, MessageError>) mapper);
     if (oldMapper != null) {
       Logger.warn("exception mapper {} for exception {} is replacing {}", mapper, exceptionType, oldMapper);
       return false;
     }
     return true;
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T> boolean addTypeMapper(final Class<T> classType, final Function<T, Message> mapper) {
+    final Function<?, Message> oldMapper = typeToMessageMappers.put((Class<?>)classType, (Function<Object, Message>)mapper);
+    if (oldMapper != null) {
+      Logger.warn("type mapper {} for {} is replacing {}", mapper, classType, oldMapper);
+      return false;
+    }
+    return true;
+  }
+
+  public final Message mapTypedResultToMessage(final Object result) {
+    final Function<Object, Message> func = this.typeToMessageMappers.get(result.getClass());
+    return func != null ? func.apply(result) : null;
   }
 
   protected ActionParser[] parseActions(final Method method) {

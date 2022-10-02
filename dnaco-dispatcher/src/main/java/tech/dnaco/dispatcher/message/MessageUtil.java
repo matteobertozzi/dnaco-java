@@ -125,12 +125,12 @@ public final class MessageUtil {
   public static final class RawMessage extends AbstractMessage {
     private final byte[] content;
 
-    private RawMessage(final Map<String, String> metadata, final byte[] content) {
+    public RawMessage(final Map<String, String> metadata, final byte[] content) {
       super(metadata);
       this.content = content;
     }
 
-    private RawMessage(final MessageMetadata metadata, final byte[] content) {
+    public RawMessage(final MessageMetadata metadata, final byte[] content) {
       super(metadata);
       this.content = content;
     }
@@ -157,20 +157,30 @@ public final class MessageUtil {
     }
   }
 
-  public static final class ObjectMessage extends AbstractMessage {
-    private final Object data;
-
+  public static final class ObjectMessage extends TypedMessage<Object> {
     private ObjectMessage(final Map<String, String> metadata, final Object data) {
-      super(metadata);
-      this.data = data;
+      super(metadata, data);
     }
 
     private ObjectMessage(final MessageMetadata metadata, final Object data) {
+      super(metadata, data);
+    }
+  }
+
+  public static class TypedMessage<TData> extends AbstractMessage {
+    private final TData data;
+
+    public TypedMessage(final Map<String, String> metadata, final TData data) {
       super(metadata);
       this.data = data;
     }
 
-    public Object content() {
+    public TypedMessage(final MessageMetadata metadata, final TData data) {
+      super(metadata);
+      this.data = data;
+    }
+
+    public TData content() {
       return data;
     }
 

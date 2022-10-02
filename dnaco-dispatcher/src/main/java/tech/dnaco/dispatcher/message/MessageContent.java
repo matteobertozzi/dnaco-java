@@ -5,6 +5,7 @@ import java.io.OutputStream;
 
 import tech.dnaco.bytes.ByteArrayWriter;
 import tech.dnaco.data.DataFormat;
+import tech.dnaco.data.hashes.Hash;
 
 public interface MessageContent {
   /**
@@ -27,5 +28,9 @@ public interface MessageContent {
       throw new RuntimeException(e);
     }
     return buffer;
+  }
+
+  default Hash contentHash(final Hash hash) {
+    return hash.update(convertContentToBytes());
   }
 }

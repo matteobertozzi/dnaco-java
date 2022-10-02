@@ -65,7 +65,15 @@ public class DnacoHttpService extends AbstractService {
         .allowCredentials()
         .allowedRequestMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)
         .allowedRequestHeaders("*")
-        .exposeHeaders("*")
+        .exposeHeaders("x-goal-chunk-hasmore",
+                          "x-goal-execms",
+                          "x-goal-longtask",
+                          "x-goal-status",
+                          "x-goal-targetproject",
+                          "x-goal-targeturi",
+                          "x-goal-taskid",
+                          "x-goal-taskstate",
+                          "x-request-query")
         .build();
     } else {
       this.corsConfig = null;

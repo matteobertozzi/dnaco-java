@@ -228,6 +228,7 @@ if __name__ == '__main__':
     print('Usage: %s' % sys.argv[0])
     print('  EXTRACT [pomfiles...]')
     print('  CHECK <deps json file>')
+    print('  REPLACE <sources dir>')
     sys.exit(1)
 
   if sys.argv[1] == 'EXTRACT':

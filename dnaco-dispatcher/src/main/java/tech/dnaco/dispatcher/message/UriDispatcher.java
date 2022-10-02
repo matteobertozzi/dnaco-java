@@ -52,8 +52,8 @@ import tech.dnaco.dispatcher.message.MessageHandler.UriVariable;
 import tech.dnaco.dispatcher.message.MessageHandler.XmlBody;
 import tech.dnaco.dispatcher.message.MessageUtil.EmptyMessage;
 import tech.dnaco.dispatcher.message.MessageUtil.EmptyMetadata;
-import tech.dnaco.dispatcher.message.MessageUtil.ObjectMessage;
 import tech.dnaco.dispatcher.message.MessageUtil.RawMessage;
+import tech.dnaco.dispatcher.message.MessageUtil.TypedMessage;
 import tech.dnaco.dispatcher.message.UriRouters.UriPatternHandler;
 import tech.dnaco.dispatcher.message.UriRouters.UriPatternRouter;
 import tech.dnaco.dispatcher.message.UriRouters.UriRoute;
@@ -145,7 +145,11 @@ public abstract class UriDispatcher implements Closeable {
     } catch (final DispatchLaterException e) {
       throw e;
     } catch (final MessageException e) {
-      Logger.error(e, "message exception");
+      if (e.shouldLogTrace()) {
+        Logger.error(e, "message exception: {}", e.getMessage());
+      } else {
+        Logger.error("message exception: {}", e.getMessage());
+      }
       return newErrorMessage(requestMetadata, e.getMessageError());
     } catch (final DataFormatException e) {
       Logger.error(e, "data format exception");
@@ -172,24 +176,34 @@ public abstract class UriDispatcher implements Closeable {
       }
     }
 
-    if (result instanceof Message) {
-      if (result instanceof final RawMessage rawResult) {
-        return messageBuilder.newMessage(requestMetadata, rawResult.metadata(), rawResult.content());
-      } else if (result instanceof final ObjectMessage objResult) {
-        final DataFormat format = MessageUtil.parseAcceptFormat(requestMetadata);
-        return messageBuilder.newMessage(requestMetadata, objResult.metadata(), format, objResult.content());
-      } else if (result instanceof final EmptyMessage emptyResult) {
-        return messageBuilder.newEmptyMessage(requestMetadata, emptyResult.metadata());
-      }
-      throw new IllegalArgumentException("unsupported message type: " + result.getClass().getName());
+    if (result instanceof final Message messageResult) {
+      return convertMessageResult(hasAsyncResult, hasVoidResult, requestMetadata, defaultResultMetadata, messageResult);
     }
 
     if (result instanceof final byte[] bytesResult) {
       return messageBuilder.newMessage(requestMetadata, defaultResultMetadata, bytesResult);
     }
 
+    final Message messageResult = this.messageDispatcher.mapTypedResultToMessage(result);
+    if (messageResult != null) {
+      return convertMessageResult(hasAsyncResult, hasVoidResult, requestMetadata, defaultResultMetadata, messageResult);
+    }
+
     final DataFormat format = MessageUtil.parseAcceptFormat(requestMetadata);
     return messageBuilder.newMessage(requestMetadata, defaultResultMetadata, format, result);
+  }
+
+  private Message convertMessageResult(final boolean hasAsyncResult, final boolean hasVoidResult,
+      final MessageMetadata requestMetadata, final MessageMetadata defaultResultMetadata, final Message result) {
+    if (result instanceof final RawMessage rawResult) {
+      return messageBuilder.newMessage(requestMetadata, rawResult.metadata(), rawResult.content());
+    } else if (result instanceof final TypedMessage<?> objResult) {
+      final DataFormat format = MessageUtil.parseAcceptFormat(requestMetadata);
+      return messageBuilder.newMessage(requestMetadata, objResult.metadata(), format, objResult.content());
+    } else if (result instanceof final EmptyMessage emptyResult) {
+      return messageBuilder.newEmptyMessage(requestMetadata, emptyResult.metadata());
+    }
+    throw new IllegalArgumentException("unsupported message type: " + result.getClass().getName());
   }
 
   public Message newErrorMessage(final MessageMetadata request, final MessageError error) {

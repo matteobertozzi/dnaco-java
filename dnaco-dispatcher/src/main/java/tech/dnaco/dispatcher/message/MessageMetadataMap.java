@@ -19,6 +19,8 @@
 
 package tech.dnaco.dispatcher.message;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -91,6 +93,32 @@ public class MessageMetadataMap implements MessageMetadata {
     final MessageMetadataMap headers = new MessageMetadataMap();
     headers.add(key, value);
     return headers;
+  }
+
+  public static MessageMetadataMap fromFormUrlEncoded(final String formData) {
+    if (StringUtil.isEmpty(formData)) {
+      return new MessageMetadataMap();
+    }
+
+    final MessageMetadataMap metadata = new MessageMetadataMap();
+    int index = formData.indexOf('?') + 1;
+    while (index < formData.length()) {
+      final int keyEndIndex = formData.indexOf('=', index);
+      int valEndIndex = formData.indexOf('&', keyEndIndex + 1);
+      if (valEndIndex < 0) valEndIndex = formData.length();
+
+      final String key = URLDecoder.decode(formData.substring(index, keyEndIndex), StandardCharsets.UTF_8);
+      final String val = URLDecoder.decode(formData.substring(keyEndIndex + 1, valEndIndex), StandardCharsets.UTF_8);
+      metadata.add(key, val);
+
+      index = valEndIndex + 1;
+    }
+    return metadata;
+  }
+
+  public static void main(final String[] args) throws Exception {
+    final MessageMetadataMap x = fromFormUrlEncoded("c=20&a=10&b=10");
+    System.out.println(Arrays.toString(x.toStringArray()));
   }
 
   public int size() {
@@ -291,5 +319,20 @@ public class MessageMetadataMap implements MessageMetadata {
     public String toString() {
       return "MetadataEntry [hash=" + hash + ", key=" + key + ", next=" + next + ", value=" + value + "]";
     }
+  }
+
+  @Override
+  public String toString() {
+    int count = 0;
+    final StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < entries.length; ++i) {
+      if (entries[i] == null) continue;
+
+      if (count++ > 0) builder.append(", ");
+      builder.append(entries[i].key);
+      builder.append(":");
+      builder.append(entries[i].value);
+    }
+    return builder.toString();
   }
 }

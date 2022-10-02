@@ -180,6 +180,10 @@ public final class HumansUtil {
          + (dateTime.getDayOfMonth() * 1000000L);
   }
 
+  public static String toHumanUtcTsString(final ZonedDateTime dateTime) {
+    return String.valueOf(toHumanTs(dateTime.toInstant().atZone(ZoneOffset.UTC)));
+  }
+
   public static ZonedDateTime fromUtcHumanTs(final String humanTs) {
     return fromUtcHumanTs(Long.parseLong(humanTs));
   }

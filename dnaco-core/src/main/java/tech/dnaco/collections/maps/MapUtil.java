@@ -35,7 +35,7 @@ public final class MapUtil {
   }
 
   public static <K, V> Map<K, V> newHashMap(final int expectedSize) {
-    return new HashMap<>(expectedSize * 4);
+    return new HashMap<>((int) Math.ceil(expectedSize / 0.75));
   }
 
   public static <K, V> int size(final Map<K, V> input) {

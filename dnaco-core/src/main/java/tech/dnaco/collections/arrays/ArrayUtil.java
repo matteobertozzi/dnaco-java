@@ -189,6 +189,18 @@ public final class ArrayUtil {
   // ================================================================================
   //  PUBLIC Array copy helpers
   // ================================================================================
+  public static int[] copy(final int[] other) {
+    return Arrays.copyOf(other, length(other));
+  }
+
+  public static long[] copy(final long[] other) {
+    return Arrays.copyOf(other, length(other));
+  }
+
+  public static <T> T[] copy(final T[] other) {
+    return Arrays.copyOf(other, length(other));
+  }
+
   public static byte[] copyIfNotAtSize(final byte[] buf, final int off, final int len) {
     if (off == 0 && buf.length == len) return buf;
     return Arrays.copyOfRange(buf, off, off + len);

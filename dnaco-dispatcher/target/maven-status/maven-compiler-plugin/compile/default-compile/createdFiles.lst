@@ -15,6 +15,7 @@ tech/dnaco/dispatcher/Invokable.class
 tech/dnaco/dispatcher/ParamParserFactory.class
 tech/dnaco/dispatcher/message/Message.class
 tech/dnaco/dispatcher/message/MessageHandler$UriMethod.class
+tech/dnaco/dispatcher/message/MessageHandler$LoggerAuthSession.class
 tech/dnaco/dispatcher/message/UriDispatcher$CborFormatParamParser.class
 tech/dnaco/dispatcher/message/MessageHandler$UriVariableMapping.class
 tech/dnaco/dispatcher/Actions$LowPriority.class
@@ -47,9 +48,11 @@ tech/dnaco/dispatcher/message/UriRouters$StaticFileUriRoute.class
 tech/dnaco/dispatcher/message/MessageHandler$HeaderValue.class
 tech/dnaco/dispatcher/message/UriDispatcher.class
 tech/dnaco/dispatcher/message/MessageUtil$EmptyMetadata.class
+tech/dnaco/dispatcher/message/MessageUtil$TypedMessage.class
 tech/dnaco/dispatcher/message/MessageUtil$ObjectMessage.class
 tech/dnaco/dispatcher/Actions$HighPriority.class
 tech/dnaco/dispatcher/message/UriRouters$UriVariableHandler.class
+tech/dnaco/dispatcher/message/MessageHandler$Doc.class
 tech/dnaco/dispatcher/message/MessageHandler$UriVariable.class
 tech/dnaco/dispatcher/message/MessageHandler$XmlBody.class
 tech/dnaco/dispatcher/message/MessageHandler$UriPrefix.class
@@ -62,10 +65,12 @@ tech/dnaco/dispatcher/ExecutionId.class
 tech/dnaco/dispatcher/ExecutionId$ExecutionIdDeserializer.class
 tech/dnaco/dispatcher/message/UriRouters$UriRoute.class
 tech/dnaco/dispatcher/Actions$Slow.class
+tech/dnaco/dispatcher/message/MessageHandler$DocPath.class
 tech/dnaco/dispatcher/message/UriDispatcher$BodyParamParser.class
 tech/dnaco/dispatcher/message/UriRouters$UriVariableParts.class
 tech/dnaco/dispatcher/message/UriRouters$UriStaticRouteNode.class
 tech/dnaco/dispatcher/message/MessageMetadataMap$MetadataEntry.class
+tech/dnaco/dispatcher/DispatchOnShardException.class
 tech/dnaco/dispatcher/message/MessageHandler$UriPattern.class
 tech/dnaco/dispatcher/message/MessageHandler$TokenSession.class
 tech/dnaco/dispatcher/message/MessageError.class

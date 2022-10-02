@@ -107,6 +107,15 @@ public class HttpDispatcher extends UriDispatcher {
     ctx.write(message.rawResponse());
   }
 
+  public void sendErrorMessage(final ChannelHandlerContext ctx, final FullHttpRequest request, final MessageError error) {
+    final HttpMessageResponse message = (HttpMessageResponse) newErrorMessage(request, error);
+    ctx.write(message.rawResponse());
+  }
+
+  public Message newErrorMessage(final FullHttpRequest request, final MessageError error) {
+    return newErrorMessage(new HttpMessageMetadata(request.headers()), error);
+  }
+
   private static final class HttpMessageBuilder implements MessageBuilder {
     private static final HttpMessageBuilder INSTANCE = new HttpMessageBuilder();
 
@@ -119,7 +128,7 @@ public class HttpDispatcher extends UriDispatcher {
         final DataFormat format, final MessageError error) {
       final ByteBuf buffer = ByteBufDataFormatUtil.asBytes(format, error);
       final HttpResponseStatus status = HttpResponseStatus.valueOf(error.statusCode());
-      return newMessage(reqMetadata, status, resultMetadata, buffer);
+      return newMessage(reqMetadata, status, resultMetadata, format.contentType(), buffer);
     }
 
     @Override
@@ -127,29 +136,32 @@ public class HttpDispatcher extends UriDispatcher {
         final DataFormat format, final Object result) {
       final ByteBuf buffer = ByteBufDataFormatUtil.asBytes(format, result);
       final int code = resultMetadata.getInt(MessageUtil.METADATA_FOR_HTTP_STATUS, buffer.readableBytes() > 0 ? 200 : 204);
-      return newMessage(reqMetadata, HttpResponseStatus.valueOf(code), resultMetadata, buffer);
+      return newMessage(reqMetadata, HttpResponseStatus.valueOf(code), resultMetadata, format.contentType(), buffer);
     }
 
     @Override
     public Message newMessage(final MessageMetadata reqMetadata, final MessageMetadata resultMetadata, final byte[] result) {
       final int code = resultMetadata.getInt(MessageUtil.METADATA_FOR_HTTP_STATUS, BytesUtil.isEmpty(result) ? 204 : 200);
-      return newMessage(reqMetadata, HttpResponseStatus.valueOf(code), resultMetadata, Unpooled.wrappedBuffer(result));
+      return newMessage(reqMetadata, HttpResponseStatus.valueOf(code), resultMetadata, null, Unpooled.wrappedBuffer(result));
     }
 
     @Override
     public Message newEmptyMessage(final MessageMetadata reqMetadata, final MessageMetadata resultMetadata) {
       final int code = resultMetadata.getInt(MessageUtil.METADATA_FOR_HTTP_STATUS, 204);
-      return newMessage(reqMetadata, HttpResponseStatus.valueOf(code), resultMetadata, Unpooled.EMPTY_BUFFER);
+      return newMessage(reqMetadata, HttpResponseStatus.valueOf(code), resultMetadata, null, Unpooled.EMPTY_BUFFER);
     }
 
     private Message newMessage(final MessageMetadata reqMetadata, final HttpResponseStatus status,
-        final MessageMetadata resultMetadata, final ByteBuf body) {
+        final MessageMetadata resultMetadata, final String contentType, final ByteBuf body) {
       final int contentLength = body.readableBytes();
+
+      if (status == null) {
+        Logger.error(new Exception("missing status"), "status missing");
+      }
 
       final FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, body, false);
       final HttpHeaders headers = response.headers();
-      headers.setInt(HttpHeaderNames.CONTENT_LENGTH, contentLength);
-      addHeaders(reqMetadata, headers);
+      addHeaders(headers, reqMetadata, contentType, contentLength);
       resultMetadata.forEach((k, v) -> {
         if (k.charAt(0) != ':') {
           headers.add(k, v);
@@ -160,8 +172,13 @@ public class HttpDispatcher extends UriDispatcher {
     }
 
     private static final boolean KEEP_ALIVE_SUPPORTED = true;
-    private static void addHeaders(final MessageMetadata reqMetadata, final HttpHeaders headers) {
+    private static void addHeaders(final HttpHeaders headers, final MessageMetadata reqMetadata, final String contentType, final int contentLength) {
+      // default response headers
       headers.add(HttpHeaderNames.DATE, new Date());
+      headers.setInt(HttpHeaderNames.CONTENT_LENGTH, contentLength);
+      if (contentType != null) {
+        headers.set(HttpHeaderNames.CONTENT_TYPE, contentType);
+      }
 
       // keep alive
       final String keepAlive = reqMetadata.getString("connection", null);

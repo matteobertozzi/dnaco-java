@@ -1,5 +1,6 @@
 package tech.dnaco.dispatcher.message;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -62,5 +63,14 @@ public interface MessageMetadata {
 
   default int[] getIntList(final String key, final int[] defaultValue) {
     return StringConverter.toIntList(key, get(key), defaultValue);
+  }
+
+  default String[] toStringArray() {
+    final ArrayList<String> kvs = new ArrayList<>(size());
+    forEach((k, v) -> {
+      kvs.add(k);
+      kvs.add(v);
+    });
+    return kvs.toArray(new String[0]);
   }
 }

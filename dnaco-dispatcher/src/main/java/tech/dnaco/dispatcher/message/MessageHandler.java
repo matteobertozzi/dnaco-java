@@ -177,4 +177,23 @@ public interface MessageHandler {
   @Target(METHOD)
   @interface Task {
   }
+
+  @Retention(RUNTIME)
+  @Target(TYPE)
+  @interface LoggerAuthSession {
+    String module();
+  }
+
+  @Retention(RUNTIME)
+  @Target(TYPE)
+  @interface DocPath {
+    String value();
+  }
+
+  @Retention(RUNTIME)
+  @Target(METHOD)
+  @interface Doc {
+    String name();
+    String description();
+  }
 }
