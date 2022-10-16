@@ -19,6 +19,7 @@
 
 package tech.dnaco.net.http;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
@@ -65,6 +66,11 @@ public class HttpMessageResponse implements Message {
 
   @Override
   public long writeContentToStream(final OutputStream stream) throws IOException {
+    return ByteBufDataFormatUtil.transferTo(response.content(), stream);
+  }
+
+  @Override
+  public long writeContentToStream(final DataOutput stream) throws IOException {
     return ByteBufDataFormatUtil.transferTo(response.content(), stream);
   }
 

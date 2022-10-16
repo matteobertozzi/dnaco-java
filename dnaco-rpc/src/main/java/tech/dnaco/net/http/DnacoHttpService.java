@@ -37,6 +37,13 @@ import io.netty.handler.codec.http.cors.CorsConfig;
 import io.netty.handler.codec.http.cors.CorsConfigBuilder;
 import io.netty.handler.codec.http.cors.CorsHandler;
 import io.netty.util.concurrent.EventExecutorGroup;
+import tech.dnaco.dispatcher.DispatchLaterException;
+import tech.dnaco.dispatcher.DispatchOnShardException;
+import tech.dnaco.dispatcher.Invokable;
+import tech.dnaco.dispatcher.message.Message;
+import tech.dnaco.dispatcher.message.MessageError;
+import tech.dnaco.dispatcher.message.MessageMetadata;
+import tech.dnaco.dispatcher.message.UriDispatcher.MessageTask;
 import tech.dnaco.net.AbstractService;
 import tech.dnaco.net.http.HttpMessageResponse.HttpMessageResponseEncoder;
 import tech.dnaco.net.message.DnacoMessageHttpEncoder;
@@ -60,7 +67,9 @@ public class DnacoHttpService extends AbstractService {
     this.handler = new HttpFrameHandler(processor);
 
     if (enableCors) {
-      this.corsConfig = CorsConfigBuilder.forAnyOrigin().allowNullOrigin()
+      this.corsConfig = CorsConfigBuilder
+        .forAnyOrigin()
+        .allowNullOrigin()
         .maxAge(3600)
         .allowCredentials()
         .allowedRequestMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)
@@ -138,5 +147,59 @@ public class DnacoHttpService extends AbstractService {
     default void sessionDisconnected(final AbstractServiceSession session) {}
 
     void sessionMessageReceived(ChannelHandlerContext ctx, FullHttpRequest message) throws Exception;
+  }
+
+  public static class DnacoSimpleHttpServiceProcessor implements DnacoHttpServiceProcessor {
+    private final EventExecutorGroup[] shardExecutors;
+    private final HttpDispatcher dispatcher;
+
+    public DnacoSimpleHttpServiceProcessor(final HttpDispatcher dispatcher) {
+      this(dispatcher, null);
+    }
+
+    public DnacoSimpleHttpServiceProcessor(final HttpDispatcher dispatcher, final EventExecutorGroup[] shardExecutors) {
+      this.shardExecutors = shardExecutors;
+      this.dispatcher = dispatcher;
+    }
+
+    @Override
+    public void sessionMessageReceived(final ChannelHandlerContext ctx, final FullHttpRequest request) throws Exception {
+      final MessageTask task = dispatcher.prepare(request);
+      if (task == null) {
+        handleTaskNotFound(ctx, request);
+        return;
+      }
+
+      try {
+        dispatcher.execute(ctx, task);
+      } catch (final DispatchOnShardException e) {
+        handleTaskDispatchOnshard(ctx, task, e);
+      } catch (final DispatchLaterException e) {
+        handleTaskDispatchLater(ctx, task, e);
+      }
+    }
+
+    protected void handleTaskNotFound(final ChannelHandlerContext ctx, final FullHttpRequest request) {
+      dispatcher.sendErrorMessage(ctx, request, MessageError.notFound());
+    }
+
+    protected void handleTaskDispatchOnshard(final ChannelHandlerContext ctx, final MessageTask task, final DispatchOnShardException e) {
+      final EventExecutorGroup executor = shardExecutors[(e.shardHash() & 0x7fffffff) % shardExecutors.length];
+      executor.submit(() -> execInvocable(ctx, task.metadata(), e.executor()));
+    }
+
+    protected void handleTaskDispatchLater(final ChannelHandlerContext ctx, final MessageTask task, final DispatchLaterException e) throws Exception {
+      throw e;
+    }
+
+    private void execInvocable(final ChannelHandlerContext ctx, final MessageMetadata reqMetadata, final Invokable func) {
+      try {
+        final Message result = dispatcher.execute(reqMetadata, func, false, false);
+        ctx.writeAndFlush(result);
+      } catch (final DispatchLaterException ex) {
+        final Message result = dispatcher.newErrorMessage(reqMetadata, MessageError.newInternalServerError("unexpected dispatch later"));
+        ctx.writeAndFlush(result);
+      }
+    }
   }
 }

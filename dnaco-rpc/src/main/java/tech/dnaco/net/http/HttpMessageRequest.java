@@ -19,6 +19,7 @@
 
 package tech.dnaco.net.http;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
@@ -94,6 +95,11 @@ public class HttpMessageRequest implements UriMessage {
 
   @Override
   public long writeContentToStream(final OutputStream stream) throws IOException {
+    return ByteBufDataFormatUtil.transferTo(request.content(), stream);
+  }
+
+  @Override
+  public long writeContentToStream(final DataOutput stream) throws IOException {
     return ByteBufDataFormatUtil.transferTo(request.content(), stream);
   }
 

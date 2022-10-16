@@ -1,5 +1,6 @@
 package tech.dnaco.dispatcher.message;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -8,12 +9,16 @@ import tech.dnaco.data.DataFormat;
 import tech.dnaco.data.hashes.Hash;
 
 public interface MessageContent {
+  MessageContent retain();
+  MessageContent release();
+
   /**
    * @return the length of the message content
    */
   int contentLength();
 
   long writeContentToStream(OutputStream stream) throws IOException;
+  long writeContentToStream(DataOutput stream) throws IOException;
   <T> T convertContent(DataFormat format, Class<T> classOfT);
 
   default boolean hasContent() {

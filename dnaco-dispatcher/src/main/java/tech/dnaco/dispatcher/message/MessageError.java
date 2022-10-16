@@ -1,6 +1,7 @@
 package tech.dnaco.dispatcher.message;
 
 import tech.dnaco.data.DataFormat;
+import tech.dnaco.strings.StringUtil;
 import tech.dnaco.tracing.TraceId;
 import tech.dnaco.tracing.Tracer;
 
@@ -35,8 +36,16 @@ public class MessageError {
     this.data = data;
   }
 
+  public MessageError(final int statusCode) {
+    this(statusCode, null, null, null);
+  }
+
   public MessageError() {
-    // used by jackson deserialized
+    // used by jackson deserialize
+  }
+
+  public boolean hasBody() {
+    return StringUtil.isNotEmpty(status);
   }
 
   public static MessageError fromBytes(final DataFormat format, final int statusCode, final byte[] data) {
@@ -56,8 +65,9 @@ public class MessageError {
     return INTERNAL_SERVER_ERROR;
   }
 
-  public static MessageError newInternalServerError(final String message) {
-    return new MessageError(500, "INTERNAL_SERVER_ERROR", message);
+  private static MessageError NOT_MODIFIED = new MessageError(304);
+  public static MessageError notModified() {
+    return NOT_MODIFIED;
   }
 
   public static MessageError newBadRequestError(final String message) {
@@ -83,6 +93,10 @@ public class MessageError {
 
   public static MessageError newExpectationFailed(final String status, final String message) {
     return new MessageError(417, status, message);
+  }
+
+  public static MessageError newInternalServerError(final String message) {
+    return new MessageError(500, "INTERNAL_SERVER_ERROR", message);
   }
 
   private static MessageError NOT_IMPLEMENTED_ERROR = new MessageError(501, "NOT_IMPLEMENTED", "not implemented");

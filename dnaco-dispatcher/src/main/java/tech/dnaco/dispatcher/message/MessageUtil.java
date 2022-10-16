@@ -1,5 +1,6 @@
 package tech.dnaco.dispatcher.message;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.function.BiConsumer;
 
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.collections.LongValue;
+import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.data.CborFormat;
 import tech.dnaco.data.DataFormat;
 import tech.dnaco.data.JsonFormat;
@@ -146,7 +148,15 @@ public final class MessageUtil {
 
     @Override
     public long writeContentToStream(final OutputStream stream) throws IOException {
-      if (content == null) return 0;
+      if (ArrayUtil.isEmpty(content)) return 0;
+
+      stream.write(content);
+      return content.length;
+    }
+
+    @Override public long writeContentToStream(final DataOutput stream) throws IOException {
+      if (ArrayUtil.isEmpty(content)) return 0;
+
       stream.write(content);
       return content.length;
     }
@@ -186,6 +196,7 @@ public final class MessageUtil {
 
     @Override public int contentLength() { throw new UnsupportedOperationException(); }
     @Override public long writeContentToStream(final OutputStream stream) { throw new UnsupportedOperationException(); }
+    @Override public long writeContentToStream(final DataOutput stream) { throw new UnsupportedOperationException(); }
 
     @Override
     public <T> T convertContent(final DataFormat format, final Class<T> classOfT) {
@@ -204,6 +215,7 @@ public final class MessageUtil {
 
     @Override public int contentLength() { return 0; }
     @Override public long writeContentToStream(final OutputStream stream) { return 0; }
+    @Override public long writeContentToStream(final DataOutput stream) { return 0; }
     @Override public <T> T convertContent(final DataFormat format, final Class<T> classOfT) { return null; }
   }
 

@@ -103,13 +103,21 @@ public class HttpDispatcher extends UriDispatcher {
   }
 
   public void execute(final ChannelHandlerContext ctx, final MessageTask task) throws DispatchLaterException {
-    final HttpMessageResponse message = (HttpMessageResponse) task.execute();
-    ctx.write(message.rawResponse());
+    final Message response = task.execute();
+    if (response instanceof final HttpMessageResponse httpResponse) {
+      ctx.write(httpResponse.rawResponse());
+    } else {
+      throw new IllegalArgumentException("unexpected message " + response.getClass() + ": " + response);
+    }
   }
 
   public void sendErrorMessage(final ChannelHandlerContext ctx, final FullHttpRequest request, final MessageError error) {
-    final HttpMessageResponse message = (HttpMessageResponse) newErrorMessage(request, error);
-    ctx.write(message.rawResponse());
+    final Message response = newErrorMessage(request, error);
+    if (response instanceof final HttpMessageResponse httpResponse) {
+      ctx.write(httpResponse.rawResponse());
+    } else {
+      throw new IllegalArgumentException("unexpected message " + response.getClass() + ": " + response);
+    }
   }
 
   public Message newErrorMessage(final FullHttpRequest request, final MessageError error) {
@@ -126,7 +134,7 @@ public class HttpDispatcher extends UriDispatcher {
     @Override
     public Message newErrorMessage(final MessageMetadata reqMetadata, final MessageMetadata resultMetadata,
         final DataFormat format, final MessageError error) {
-      final ByteBuf buffer = ByteBufDataFormatUtil.asBytes(format, error);
+      final ByteBuf buffer = error.hasBody() ? ByteBufDataFormatUtil.asBytes(format, error) : Unpooled.EMPTY_BUFFER;
       final HttpResponseStatus status = HttpResponseStatus.valueOf(error.statusCode());
       return newMessage(reqMetadata, status, resultMetadata, format.contentType(), buffer);
     }

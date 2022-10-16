@@ -17,7 +17,4 @@ public interface Message extends MessageContent {
   default String getMetadata(final String key, final String defaultValue) {
     return metadata().getString(key, defaultValue);
   }
-
-  Message retain();
-  Message release();
 }

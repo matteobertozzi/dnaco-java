@@ -20,6 +20,7 @@
 package tech.dnaco.io;
 
 import java.io.Closeable;
+import java.io.DataOutput;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -123,5 +124,27 @@ public final class IOUtil {
       IntEncoder.writeUnsignedVarLong(stream, blob.length);
       stream.write(blob);
     }
+  }
+
+  public static long copy(final InputStream in, final OutputStream out) throws IOException {
+    final byte[] buffer = new byte[8192];
+    long transferred = 0;
+    int read;
+    while ((read = in.readNBytes(buffer, 0, 8192)) >= 0) {
+      out.write(buffer, 0, read);
+      transferred += read;
+    }
+    return transferred;
+  }
+
+  public static long copy(final InputStream in, final DataOutput out) throws IOException {
+    final byte[] buffer = new byte[8192];
+    long transferred = 0;
+    int read;
+    while ((read = in.readNBytes(buffer, 0, 8192)) >= 0) {
+      out.write(buffer, 0, read);
+      transferred += read;
+    }
+    return transferred;
   }
 }

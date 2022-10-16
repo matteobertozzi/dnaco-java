@@ -19,6 +19,7 @@
 
 package tech.dnaco.net.util;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -37,6 +38,7 @@ import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import tech.dnaco.data.DataFormat;
 import tech.dnaco.data.modules.DataMapperModules;
+import tech.dnaco.io.IOUtil;
 
 public final class ByteBufDataFormatUtil {
   private ByteBufDataFormatUtil() {
@@ -73,6 +75,17 @@ public final class ByteBufDataFormatUtil {
     try (ByteBufInputStream bufStream = new ByteBufInputStream(buffer, false)) {
       try {
         return bufStream.transferTo(stream);
+        // assert(length == body.readableBytes());
+      } finally {
+        bufStream.reset();
+      }
+    }
+  }
+
+  public static long transferTo(final ByteBuf buffer, final DataOutput stream) throws IOException {
+    try (ByteBufInputStream bufStream = new ByteBufInputStream(buffer, false)) {
+      try {
+        return IOUtil.copy(bufStream, stream);
         // assert(length == body.readableBytes());
       } finally {
         bufStream.reset();

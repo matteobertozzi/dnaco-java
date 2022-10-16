@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
+import tech.dnaco.collections.lists.ListUtil;
+
 public final class ThreadUtil {
   private ThreadUtil() {
     // no-op
@@ -112,12 +114,14 @@ public final class ThreadUtil {
   }
 
   public static void shutdown(final Collection<Thread> threads) {
+    if (ListUtil.isEmpty(threads)) return;
     for (final Thread thread: threads) {
       shutdown(thread, Long.MAX_VALUE);
     }
   }
 
   public static void shutdown(final Collection<Thread> threads, final long joinWait, final TimeUnit unit) {
+    if (ListUtil.isEmpty(threads)) return;
     for (final Thread thread: threads) {
       shutdown(thread, unit.toMillis(joinWait));
     }
