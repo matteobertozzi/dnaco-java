@@ -26,6 +26,11 @@ import java.util.function.Supplier;
 public class ThreadData<T> {
   private final ConcurrentHashMap<Thread, ThreadLocalData<T>> threadData = new ConcurrentHashMap<>();
 
+  public static void main(final String[] args) throws Exception {
+    final ThreadData<String> localBuffers = new ThreadData<>();
+    BenchUtil.run("foo", 1_000_000, () -> localBuffers.computeIfAbsent(Thread.currentThread(), () -> "hello").get());
+  }
+
   public ThreadLocalData<T> get() {
     return get(Thread.currentThread());
   }

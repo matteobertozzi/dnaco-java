@@ -20,7 +20,7 @@ package tech.dnaco.bytes.encoding;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import tech.dnaco.collections.arrays.ByteArray;
+import tech.dnaco.bytes.ByteArrayAppender;
 
 public abstract class IntEncoder {
   public static final IntEncoder LITTLE_ENDIAN = new LittleEndian();
@@ -53,7 +53,7 @@ public abstract class IntEncoder {
   public void writeFixed64(final OutputStream stream, final long v) throws IOException { writeFixed(stream, v, 8); }
 
   public abstract void writeFixed(final OutputStream stream, final long v, final int bytesWidth) throws IOException;
-  public abstract void writeFixed(final ByteArray stream, final long v, final int bytesWidth);
+  public abstract void writeFixed(final ByteArrayAppender stream, final long v, final int bytesWidth);
 
   // ================================================================================
   //  Variable Size methods
@@ -79,7 +79,7 @@ public abstract class IntEncoder {
     return length + 1;
   }
 
-  public static int writeUnsignedVarLong(final ByteArray stream, long v) {
+  public static int writeUnsignedVarLong(final ByteArrayAppender stream, long v) {
     int length = 0;
     while ((v & 0xFFFFFFFFFFFFFF80L) != 0L) {
       stream.add((int)((v & 0x7F) | 0x80));
@@ -121,7 +121,7 @@ public abstract class IntEncoder {
     }
 
     @Override
-    public void writeFixed(final ByteArray stream, final long v, final int bytesWidth) {
+    public void writeFixed(final ByteArrayAppender stream, final long v, final int bytesWidth) {
       final byte[] buf = new byte[bytesWidth];
       writeFixed(buf, 0, v, bytesWidth);
       stream.add(buf, 0, bytesWidth);
@@ -151,7 +151,7 @@ public abstract class IntEncoder {
     }
 
     @Override
-    public void writeFixed(final ByteArray stream, final long v, final int bytesWidth) {
+    public void writeFixed(final ByteArrayAppender stream, final long v, final int bytesWidth) {
       for (int i = 0; i < bytesWidth; ++i) {
         stream.add((byte)((v >>> (i << 3)) & 0xff));
       }

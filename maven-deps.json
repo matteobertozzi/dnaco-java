@@ -34,7 +34,7 @@
   "com.github.luben": {
     "zstd-jni": {
       "name": "zstd.version",
-      "version": "1.5.2-4"
+      "version": "1.5.2-5"
     }
   },
   "com.google.firebase": {
@@ -172,7 +172,7 @@
     },
     "maven-shade-plugin": {
       "name": "maven.shade.version",
-      "version": "3.4.0"
+      "version": "3.4.1"
     },
     "maven-surefire-plugin": {
       "name": "maven.surefire.version",
@@ -252,7 +252,7 @@
   "org.rocksdb": {
     "rocksdbjni": {
       "name": "rocksdb.version",
-      "version": "7.6.0"
+      "version": "7.7.3"
     }
   },
   "org.duckdb": {
@@ -270,23 +270,23 @@
   "software.amazon.awssdk": {
     "dynamodb-enhanced": {
       "name": "aws.sdk.version",
-      "version": "2.17.292"
+      "version": "2.18.7"
     },
     "lambda": {
       "name": "aws.sdk.version",
-      "version": "2.17.292"
+      "version": "2.18.7"
     },
     "s3": {
       "name": "aws.sdk.version",
-      "version": "2.17.292"
+      "version": "2.18.7"
     },
     "s3-transfer-manager": {
       "name": "aws.sdk.version",
-      "version": "2.17.292-PREVIEW"
+      "version": "2.18.7-PREVIEW"
     },
     "sqs": {
       "name": "aws.sdk.version",
-      "version": "2.17.292"
+      "version": "2.18.7"
     }
   },
   "software.aws.rds": {

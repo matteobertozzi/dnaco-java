@@ -17,6 +17,9 @@
 
 package tech.dnaco.data.hashes;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -95,7 +98,15 @@ public final class HashUtil {
     return hash("SHA-256", content);
   }
 
+  public static byte[] sha256(final File content) throws IOException {
+    return hash("SHA-256", content);
+  }
+
   public static byte[] sha512(final byte[]... content) {
+    return hash("SHA-512", content);
+  }
+
+  public static byte[] sha512(final File content) throws IOException {
     return hash("SHA-512", content);
   }
 
@@ -103,7 +114,15 @@ public final class HashUtil {
     return hash("SHA3-256", content);
   }
 
+  public static byte[] sha3_256(final File content) throws IOException {
+    return hash("SHA3-256", content);
+  }
+
   public static byte[] sha3_512(final byte[]... content) {
+    return hash("SHA3-512", content);
+  }
+
+  public static byte[] sha3_512(final File content) throws IOException {
     return hash("SHA3-512", content);
   }
 
@@ -111,6 +130,20 @@ public final class HashUtil {
     final MessageDigest digest = digest(algo);
     for (int i = 0; i < content.length; ++i) {
       digest.update(content[i]);
+    }
+    return digest.digest();
+  }
+
+  private static byte[] hash(final String algo, final File file) throws IOException {
+    final MessageDigest digest = digest(algo);
+    try (FileInputStream stream = new FileInputStream(file)) {
+      final byte[] buffer = new byte[8192];
+      while (stream.available() > 0) {
+        final int n = stream.read(buffer);
+        if (n < 0) break;
+
+        digest.update(buffer, 0, n);
+      }
     }
     return digest.digest();
   }
