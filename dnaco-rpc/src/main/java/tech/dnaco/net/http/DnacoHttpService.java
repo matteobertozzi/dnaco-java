@@ -55,15 +55,15 @@ public class DnacoHttpService extends AbstractService {
   private final CorsConfig corsConfig;
 
   public DnacoHttpService(final DnacoHttpServiceProcessor processor) {
-    this(processor, false);
+    this(processor, false, null);
   }
 
-  public DnacoHttpService(final DnacoHttpServiceProcessor processor, final boolean enableCors) {
-    this(processor, enableCors, null);
+  public DnacoHttpService(final DnacoHttpServiceProcessor processor, final boolean enableCors, final String[] corsHeaders) {
+    this(processor, enableCors, corsHeaders, null);
   }
 
   public DnacoHttpService(final DnacoHttpServiceProcessor processor,
-      final boolean enableCors, final EventExecutorGroup[] shards) {
+      final boolean enableCors, final String[] corsHeaders, final EventExecutorGroup[] shards) {
     this.handler = new HttpFrameHandler(processor);
 
     if (enableCors) {
@@ -74,15 +74,7 @@ public class DnacoHttpService extends AbstractService {
         .allowCredentials()
         .allowedRequestMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)
         .allowedRequestHeaders("*")
-        .exposeHeaders("x-goal-chunk-hasmore",
-                          "x-goal-execms",
-                          "x-goal-longtask",
-                          "x-goal-status",
-                          "x-goal-targetproject",
-                          "x-goal-targeturi",
-                          "x-goal-taskid",
-                          "x-goal-taskstate",
-                          "x-request-query")
+        .exposeHeaders(corsHeaders)
         .build();
     } else {
       this.corsConfig = null;

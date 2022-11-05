@@ -46,7 +46,7 @@
   "com.google.zxing": {
     "core": {
       "name": "zxing.version",
-      "version": "3.5.0"
+      "version": "3.5.1"
     }
   },
   "com.graphql-java": {
@@ -204,17 +204,17 @@
   "org.graalvm.sdk": {
     "graal-sdk": {
       "name": "graalvm.version",
-      "version": "22.2.0.1"
+      "version": "22.3.0"
     }
   },
   "org.graalvm.truffle": {
     "truffle-api": {
       "name": "graalvm.version",
-      "version": "22.2.0.1"
+      "version": "22.3.0"
     },
     "truffle-dsl-processor": {
       "name": "graalvm.version",
-      "version": "22.2.0.1"
+      "version": "22.3.0"
     }
   },
   "org.jctools": {
@@ -270,23 +270,23 @@
   "software.amazon.awssdk": {
     "dynamodb-enhanced": {
       "name": "aws.sdk.version",
-      "version": "2.18.7"
+      "version": "2.18.11"
     },
     "lambda": {
       "name": "aws.sdk.version",
-      "version": "2.18.7"
+      "version": "2.18.11"
     },
     "s3": {
       "name": "aws.sdk.version",
-      "version": "2.18.7"
+      "version": "2.18.11"
     },
     "s3-transfer-manager": {
       "name": "aws.sdk.version",
-      "version": "2.18.7-PREVIEW"
+      "version": "2.18.11-PREVIEW"
     },
     "sqs": {
       "name": "aws.sdk.version",
-      "version": "2.18.7"
+      "version": "2.18.11"
     }
   },
   "software.aws.rds": {
