@@ -2,27 +2,27 @@
   "com.fasterxml.jackson.core": {
     "jackson-core": {
       "name": "jackson.version",
-      "version": "2.13.4"
+      "version": "2.14.0"
     },
     "jackson-databind": {
       "name": "jackson.databind.version",
-      "version": "2.13.4.2"
+      "version": "2.14.0"
     }
   },
   "com.fasterxml.jackson.dataformat": {
     "jackson-dataformat-cbor": {
       "name": "jackson.version",
-      "version": "2.13.4"
+      "version": "2.14.0"
     },
     "jackson-dataformat-xml": {
       "name": "jackson.version",
-      "version": "2.13.4"
+      "version": "2.14.0"
     }
   },
   "com.fasterxml.jackson.module": {
     "jackson-module-parameter-names": {
       "name": "jackson.version",
-      "version": "2.13.4"
+      "version": "2.14.0"
     }
   },
   "com.github.jai-imageio": {
