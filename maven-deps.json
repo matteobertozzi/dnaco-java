@@ -2,27 +2,27 @@
   "com.fasterxml.jackson.core": {
     "jackson-core": {
       "name": "jackson.version",
-      "version": "2.14.0"
+      "version": "2.14.1"
     },
     "jackson-databind": {
       "name": "jackson.databind.version",
-      "version": "2.14.0"
+      "version": "2.14.1"
     }
   },
   "com.fasterxml.jackson.dataformat": {
     "jackson-dataformat-cbor": {
       "name": "jackson.version",
-      "version": "2.14.0"
+      "version": "2.14.1"
     },
     "jackson-dataformat-xml": {
       "name": "jackson.version",
-      "version": "2.14.0"
+      "version": "2.14.1"
     }
   },
   "com.fasterxml.jackson.module": {
     "jackson-module-parameter-names": {
       "name": "jackson.version",
-      "version": "2.14.0"
+      "version": "2.14.1"
     }
   },
   "com.github.jai-imageio": {
@@ -52,7 +52,7 @@
   "com.graphql-java": {
     "graphql-java": {
       "name": "graphql.version",
-      "version": "19.2"
+      "version": "20.0"
     }
   },
   "com.jayway.jsonpath": {
@@ -70,13 +70,13 @@
   "com.microsoft.sqlserver": {
     "mssql-jdbc": {
       "name": "sqlserver.version",
-      "version": "11.2.1.jre17"
+      "version": "11.2.2.jre17"
     }
   },
   "com.oracle.database.jdbc": {
     "ojdbc11": {
       "name": "oracle.version",
-      "version": "21.7.0.0"
+      "version": "21.8.0.0"
     }
   },
   "com.rabbitmq": {
@@ -94,41 +94,41 @@
   "commons-net": {
     "commons-net": {
       "name": "commons.net.version",
-      "version": "3.8.0"
+      "version": "3.9.0"
     }
   },
   "io.netty": {
     "netty-buffer": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     },
     "netty-codec": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     },
     "netty-codec-http": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     },
     "netty-codec-http2": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     },
     "netty-common": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     },
     "netty-handler": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     },
     "netty-transport-native-epoll": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     },
     "netty-transport-native-kqueue": {
       "name": "netty.version",
-      "version": "4.1.84.Final"
+      "version": "4.1.86.Final"
     }
   },
   "mysql": {
@@ -160,7 +160,7 @@
     },
     "maven-dependency-plugin": {
       "name": "maven.dependency.version",
-      "version": "3.3.0"
+      "version": "3.4.0"
     },
     "maven-failsafe-plugin": {
       "name": "maven.failsafe.version",
@@ -192,7 +192,7 @@
   "org.apache.tika": {
     "tika-core": {
       "name": "tika.version",
-      "version": "2.5.0"
+      "version": "2.6.0"
     }
   },
   "org.codehaus.mojo": {
@@ -236,17 +236,17 @@
   "org.openjdk.jmh": {
     "jmh-core": {
       "name": "jmh.version",
-      "version": "1.35"
+      "version": "1.36"
     },
     "jmh-generator-annprocess": {
       "name": "jmh.version",
-      "version": "1.35"
+      "version": "1.36"
     }
   },
   "org.postgresql": {
     "postgresql": {
       "name": "postgresql.version",
-      "version": "42.5.0"
+      "version": "42.5.1"
     }
   },
   "org.rocksdb": {
@@ -258,41 +258,41 @@
   "org.duckdb": {
     "duckdb_jdbc": {
       "name": "duckdb.version",
-      "version": "0.5.1"
+      "version": "0.6.1"
     }
   },
   "org.xerial": {
     "sqlite-jdbc": {
       "name": "sqlite.version",
-      "version": "3.39.3.0"
+      "version": "3.40.0.0"
     }
   },
   "software.amazon.awssdk": {
     "dynamodb-enhanced": {
       "name": "aws.sdk.version",
-      "version": "2.18.11"
+      "version": "2.18.41"
     },
     "lambda": {
       "name": "aws.sdk.version",
-      "version": "2.18.11"
+      "version": "2.18.41"
     },
     "s3": {
       "name": "aws.sdk.version",
-      "version": "2.18.11"
+      "version": "2.18.41"
     },
     "s3-transfer-manager": {
       "name": "aws.sdk.version",
-      "version": "2.18.11-PREVIEW"
+      "version": "2.18.41-PREVIEW"
     },
     "sqs": {
       "name": "aws.sdk.version",
-      "version": "2.18.11"
+      "version": "2.18.41"
     }
   },
   "software.aws.rds": {
     "aws-mysql-jdbc": {
       "name": "aws.mysql.version",
-      "version": "1.1.1"
+      "version": "1.1.2"
     },
     "aws-postgresql-jdbc": {
       "name": "aws.postgresql.version",

@@ -49,17 +49,6 @@ public final class IndexedHashSet<K> {
     Arrays.fill(buckets, -1);
   }
 
-
-  public static void main(final String[] args) {
-    final IndexedHashSet<String> index = new IndexedHashSet<>();
-    index.addAll(List.of("__group__", "__op__", "__seqId__", "__ts__", "date", "id", "latitude", "longitude", "subtypes"));
-    System.out.println();
-    for (int i = 0; i < index.size(); ++i) {
-      System.out.println(i + " -> " + index.get(index.get(i)));
-    }
-  }
-
-
   public int size() {
     return count;
   }

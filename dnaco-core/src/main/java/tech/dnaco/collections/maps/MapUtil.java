@@ -38,6 +38,14 @@ public final class MapUtil {
     return new HashMap<>((int) Math.ceil(expectedSize / 0.75));
   }
 
+  public static Map<String, String> newHashMap(final String[] entries) {
+    final Map<String, String> map = newHashMap(entries.length);
+    for (int i = 0; i < entries.length; i += 2) {
+      map.put(entries[i], entries[i + 1]);
+    }
+    return map;
+  }
+
   public static <K, V> int size(final Map<K, V> input) {
     return input != null ? input.size() : 0;
   }

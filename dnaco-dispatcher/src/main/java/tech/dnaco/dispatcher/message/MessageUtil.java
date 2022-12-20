@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.collections.LongValue;
@@ -38,10 +39,19 @@ public final class MessageUtil {
   //  Metadata util
   // ====================================================================================================
   public static DataFormat parseAcceptFormat(final MessageMetadata metadata) {
-    final String accept = metadata.getString(METADATA_ACCEPT, null);
-    if (StringUtil.isEmpty(accept)) return JsonFormat.INSTANCE;
+    return parseAcceptFormat(metadata, JsonFormat.INSTANCE);
+  }
 
-    DataFormat format = parseAcceptFormat(accept);
+  public static DataFormat parseAcceptFormat(final MessageMetadata metadata, final DataFormat defaultFormat) {
+    return parseAcceptFormat(metadata, defaultFormat, MessageUtil::parseAcceptFormat);
+  }
+
+  public static <T> T parseAcceptFormat(final MessageMetadata metadata, final T defaultFormat,
+      final Function<String, T> parseFormat) {
+    final String accept = metadata.getString(METADATA_ACCEPT, null);
+    if (StringUtil.isEmpty(accept)) return defaultFormat;
+
+    T format = parseFormat.apply(accept);
     if (format != null) return format;
 
     int lastIndex = 0;
@@ -53,11 +63,12 @@ public final class MessageUtil {
       final int qIndex = type.lastIndexOf(';');
       if (qIndex > 0) type = type.substring(0, qIndex);
 
-      format = parseAcceptFormat(type);
+      format = parseFormat.apply(type);
       if (format != null) return format;
+
       lastIndex = eof + 1;
     }
-    return JsonFormat.INSTANCE;
+    return defaultFormat;
   }
 
   private static DataFormat parseAcceptFormat(final String type) {

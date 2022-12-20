@@ -64,7 +64,7 @@ public final class SetUtil {
 
   @SafeVarargs
   public static <T> Set<T> newHashSet(final T... items) {
-    return new HashSet<>(List.of(items));
+    return new HashSet<>(items != null ? List.of(items) : List.of());
   }
 
   public static <T> void andAndEnsureLimit(final Set<T> set, final int limit, final T valueToAdd) {

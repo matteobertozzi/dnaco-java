@@ -23,8 +23,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.StackWalker.StackFrame;
 import java.lang.System.Logger.Level;
-import java.text.MessageFormat;
-import java.util.ResourceBundle;
 
 public final class LogUtil {
   private LogUtil() {
@@ -121,7 +119,7 @@ public final class LogUtil {
     }
     throw new UnsupportedOperationException("unsupported log level " + level);
   }
-
+/*
   public static final class SystemLogger implements System.Logger {
     static {
       Logger.EXCLUDE_CLASSES.add(System.Logger.class.getName());
@@ -164,4 +162,5 @@ public final class LogUtil {
       return new SystemLogger();
     }
   }
+   */
 }

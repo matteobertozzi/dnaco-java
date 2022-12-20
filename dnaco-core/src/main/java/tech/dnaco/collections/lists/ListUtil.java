@@ -31,11 +31,6 @@ public final class ListUtil {
     // no-op
   }
 
-  public static <T> T add(final List<T> list, final T value) {
-    list.add(value);
-    return value;
-  }
-
   public static <T> int size(final Collection<T> input) {
     return input != null ? input.size() : 0;
   }
@@ -58,6 +53,25 @@ public final class ListUtil {
 
   public static List<String> newArrayList(final List<String> input) {
     return input != null ? new ArrayList<>(input) : new ArrayList<>();
+  }
+
+  public static <T> T add(final Collection<T> list, final T value) {
+    list.add(value);
+    return value;
+  }
+
+  public static <T> void addAll(final Collection<T> list, final T[] values) {
+    if (ArrayUtil.isEmpty(values)) return;
+
+    for (int i = 0; i < values.length; ++i) {
+      list.add(values[i]);
+    }
+  }
+
+  public static <T> void addAll(final Collection<T> list, final Collection<T> values) {
+    if (isNotEmpty(values)) {
+      list.addAll(values);
+    }
   }
 
   public static <T> List<T> subList(final List<T> records, final int offset, final int length) {

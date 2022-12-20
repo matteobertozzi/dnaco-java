@@ -49,18 +49,6 @@ public class HashIndexedArray<K> extends AbstractSet<K> {
     }
   }
 
-  public static void main(final String[] args) {
-    final String[] keys = new String[] { "actual_shipm_start", "sales_document", "delivery", "shipment"};
-    final HashIndexedArray<String> hash = new HashIndexedArray<>(keys);
-    boolean result = false;
-    for (int i = 0; i < 1; ++i) {
-      for (int k = 0; k < keys.length; ++k) {
-        result |= hash.contains(keys[k]);
-      }
-    }
-    System.out.println(result);
-  }
-
   public int size() {
     return keys.length;
   }

@@ -12,10 +12,10 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <jackson.version>2.14.0</jackson.version>
-    <jackson.databind.version>2.14.0</jackson.databind.version>
+    <jackson.version>2.14.1</jackson.version>
+    <jackson.databind.version>2.14.1</jackson.databind.version>
     <zstd.version>1.5.2-5</zstd.version>
-    <tika.version>2.5.0</tika.version>
+    <tika.version>2.6.0</tika.version>
 
     <junit.version>5.9.1</junit.version>
     <maven.jar.version>3.3.0</maven.jar.version>
