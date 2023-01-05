@@ -45,6 +45,7 @@ import tech.dnaco.dispatcher.message.MessageError;
 import tech.dnaco.dispatcher.message.MessageMetadata;
 import tech.dnaco.dispatcher.message.UriDispatcher.MessageTask;
 import tech.dnaco.net.AbstractService;
+import tech.dnaco.net.http.HttpMessageFileResponse.HttpMessageFileResponseEncoder;
 import tech.dnaco.net.http.HttpMessageResponse.HttpMessageResponseEncoder;
 import tech.dnaco.net.message.DnacoMessageHttpEncoder;
 
@@ -95,6 +96,7 @@ public class DnacoHttpService extends AbstractService {
     }
     pipeline.addLast(DnacoMessageHttpEncoder.INSTANCE);
     pipeline.addLast(HttpMessageResponseEncoder.INSTANCE);
+    pipeline.addLast(HttpMessageFileResponseEncoder.INSTANCE);
     pipeline.addLast(handler);
   }
 

@@ -18,6 +18,7 @@
  */
 package tech.dnaco.net.http;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Parameter;
@@ -29,7 +30,9 @@ import java.util.Map;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.DefaultFileRegion;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -43,6 +46,7 @@ import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import io.netty.handler.codec.http.multipart.InterfaceHttpData.HttpDataType;
 import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.data.DataFormat;
+import tech.dnaco.data.util.MimeUtil;
 import tech.dnaco.dispatcher.DispatchLaterException;
 import tech.dnaco.dispatcher.MessageMapper;
 import tech.dnaco.dispatcher.message.Message;
@@ -105,7 +109,9 @@ public class HttpDispatcher extends UriDispatcher {
   public void execute(final ChannelHandlerContext ctx, final MessageTask task) throws DispatchLaterException {
     final Message response = task.execute();
     if (response instanceof final HttpMessageResponse httpResponse) {
-      ctx.write(httpResponse.rawResponse());
+      httpResponse.write(ctx);
+    } else if (response instanceof final HttpMessageFileResponse httpResponse) {
+      httpResponse.write(ctx);
     } else {
       throw new IllegalArgumentException("unexpected message " + response.getClass() + ": " + response);
     }
@@ -129,6 +135,36 @@ public class HttpDispatcher extends UriDispatcher {
 
     private HttpMessageBuilder() {
       // no-op
+    }
+
+    @Override
+    public Message newFileStream(final MessageMetadata reqMetadata, final MessageMetadata resultMetadata, final File file) {
+      final DefaultHttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+      final HttpHeaders headers = response.headers();
+      addHeaders(headers, reqMetadata);
+      copyHeaders(headers, resultMetadata);
+      if (!headers.contains(HttpHeaderNames.CONTENT_TYPE)) {
+        try {
+          headers.set(HttpHeaderNames.CONTENT_TYPE, MimeUtil.INSTANCE.detectMimeType(file));
+        } catch (final IOException e) {
+          Logger.warn("unable to detect MIME type of file: {}", file);
+        }
+      }
+
+      if (!headers.contains(HttpHeaderNames.CONTENT_ENCODING)) {
+        // Forcefully disable the content compressor as it cannot compress a DefaultFileRegion
+        headers.set(HttpHeaderNames.CONTENT_ENCODING, HttpHeaderValues.IDENTITY);
+      }
+
+      long length;
+      if (headers.contains(HttpHeaderNames.CONTENT_LENGTH)) {
+        length = Long.parseLong(headers.get(HttpHeaderNames.CONTENT_LENGTH));
+      } else {
+        length = file.length();
+      }
+
+      final DefaultFileRegion region = new DefaultFileRegion(file, 0, length);
+      return new HttpMessageFileResponse(response, region);
     }
 
     @Override
@@ -169,30 +205,36 @@ public class HttpDispatcher extends UriDispatcher {
 
       final FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, body, false);
       final HttpHeaders headers = response.headers();
-      addHeaders(headers, reqMetadata, contentType, contentLength);
-      resultMetadata.forEach((k, v) -> {
-        if (k.charAt(0) != ':') {
-          headers.add(k, v);
-        }
-      });
+      addHeaders(headers, reqMetadata);
+      copyHeaders(headers, resultMetadata);
+
+      headers.setInt(HttpHeaderNames.CONTENT_LENGTH, contentLength);
+      if (contentType != null) {
+        headers.set(HttpHeaderNames.CONTENT_TYPE, contentType);
+      }
+
       //System.out.println("NEW MESSAGE STATUS " + status + " HEADERS: " + headers);
       return new HttpMessageResponse(response);
     }
 
     private static final boolean KEEP_ALIVE_SUPPORTED = true;
-    private static void addHeaders(final HttpHeaders headers, final MessageMetadata reqMetadata, final String contentType, final int contentLength) {
+    private static void addHeaders(final HttpHeaders headers, final MessageMetadata reqMetadata) {
       // default response headers
       headers.add(HttpHeaderNames.DATE, new Date());
-      headers.setInt(HttpHeaderNames.CONTENT_LENGTH, contentLength);
-      if (contentType != null) {
-        headers.set(HttpHeaderNames.CONTENT_TYPE, contentType);
-      }
 
       // keep alive
       final String keepAlive = reqMetadata.getString("connection", null);
       if (KEEP_ALIVE_SUPPORTED && StringUtil.equalsIgnoreCase(keepAlive, "keep-alive")) {
         headers.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
       }
+    }
+
+    private static void copyHeaders(final HttpHeaders headers, final MessageMetadata resultMetadata) {
+      resultMetadata.forEach((k, v) -> {
+        if (k.charAt(0) != ':') {
+          headers.add(k, v);
+        }
+      });
     }
   }
 

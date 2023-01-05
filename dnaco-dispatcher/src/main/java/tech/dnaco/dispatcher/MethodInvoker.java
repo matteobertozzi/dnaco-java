@@ -43,8 +43,8 @@ public class MethodInvoker {
     this.actionParsers = actionParsers;
     this.asyncResult = hasAnnotation(AsyncResult.class);
     this.voidResult = hasVoidResult(method);
-    Logger.trace("{handler} {method} {asyncResult} {voidResult} {actions} {params}",
-      handler, method, voidResult, actionParsers, paramParsers);
+    //Logger.trace("{handler} {method} {voidResult} {actions} {params}",
+      //handler, method, voidResult, actionParsers, paramParsers);
   }
 
   private static boolean hasVoidResult(final Method method) {

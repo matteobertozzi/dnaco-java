@@ -19,10 +19,13 @@
 
 package tech.dnaco.strings;
 
+import java.io.IOException;
 import java.math.BigInteger;
+import java.security.MessageDigest;
 import java.util.Arrays;
 
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.util.RandData;
 
 public final class BaseN {
   private static final BaseNTable BASE_35 = new BaseNTable("0123456789ABCDEFGHIJKLMNOPQRTUVWXYZ");
@@ -37,12 +40,38 @@ public final class BaseN {
   }
 
   public static void main(final String[] args) throws Exception {
-    final byte[] h = new byte[16];
-    Arrays.fill(h, (byte)0xff);
-    System.out.println(h.length + "/" + (h.length * 8));
-    System.out.println(" - 32: " + BaseN.encodeBase32(h).length());
-    System.out.println(" - 58: " + BaseN.encodeBase58(new BigInteger(1, h)).length());
-    System.out.println(" - 62: " + BaseN.encodeBase62(new BigInteger(1, h)).length());
+    final byte[] inputData = new byte[8192];
+    for (int i = 0; i < 1_000_000; ++i) {
+      RandData.generateBytes(inputData);
+
+      final MessageDigest digest = MessageDigest.getInstance("SHA3-512");
+      digest.update(inputData);
+      final byte[] key = digest.digest();
+      final String b62enc = encodeBase62(key);
+      final byte[] decKey = bigIntToBytes(decodeBigBase62(b62enc), key.length);
+      if (!BytesUtil.equals(key, decKey)) {
+        System.out.println(key.length + " -> " + BytesUtil.toHexString(key));
+        System.out.println(decKey.length + " -> " + BytesUtil.toHexString(decKey));
+        throw new IOException("invalid input " + BytesUtil.toHexString(key));
+      }
+    }
+  }
+
+  private static byte[] bigIntToBytes(final BigInteger value, final int length) {
+    final byte[] vBytes = value.toByteArray();
+    if (vBytes.length == length) return vBytes;
+
+    final byte[] result = new byte[length];
+    if (vBytes.length == (length + 1)) {
+      System.arraycopy(vBytes, 1, result, 0, length);
+    } else if (vBytes.length == (length - 1)) {
+      System.arraycopy(vBytes, 0, result, 1, length - 1);
+    } else if (vBytes.length == (length - 2)) {
+      System.arraycopy(vBytes, 0, result, 2, length - 2);
+    } else {
+      throw new UnsupportedOperationException("unexpected length " + length + " vs " + vBytes.length);
+    }
+    return result;
   }
 
   // --------------------------------------------------------------------------------

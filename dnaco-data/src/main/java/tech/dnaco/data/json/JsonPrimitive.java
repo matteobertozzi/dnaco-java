@@ -17,6 +17,7 @@
 
 package tech.dnaco.data.json;
 
+import java.util.Base64;
 import java.util.Objects;
 
 import tech.dnaco.strings.StringConverter;
@@ -36,11 +37,15 @@ public class JsonPrimitive extends JsonElement {
     this.value = value;
   }
 
+  public JsonPrimitive(final Number value) {
+    this.value = value;
+  }
+
   public JsonPrimitive(final String value) {
     this.value = value;
   }
 
-  public JsonPrimitive(final Number value) {
+  public JsonPrimitive(final byte[] value) {
     this.value = value;
   }
 
@@ -75,7 +80,20 @@ public class JsonPrimitive extends JsonElement {
 
   @Override
   public String getAsString() {
+    if (value instanceof final byte[] bytesValue) {
+      return Base64.getEncoder().encodeToString(bytesValue);
+    }
     return String.valueOf(value);
+  }
+
+  @Override
+  public byte[] getAsBytes() {
+    if (value instanceof final byte[] bytesValue) {
+      return bytesValue;
+    } else if (value instanceof final String sValue) {
+      return Base64.getDecoder().decode(sValue);
+    }
+    return null;
   }
 
   @Override

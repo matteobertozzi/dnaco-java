@@ -19,8 +19,11 @@
 
 package tech.dnaco.dispatcher.message;
 
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -221,7 +224,17 @@ public class MessageMetadataMap implements MessageMetadata {
     return set(key, String.valueOf(value));
   }
 
+  public String set(final String key, final URL value) {
+    return set(key, String.valueOf(value));
+  }
+
+  public String set(final String key, final ZonedDateTime dateTime) {
+    return set(key, DateTimeFormatter.RFC_1123_DATE_TIME.format(dateTime));
+  }
+
   public String set(final String key, final String value) {
+    if (StringUtil.isEmpty(value)) return null;
+
     final String lowerKey = key.toLowerCase();
     final int hashCode = Objects.hashCode(lowerKey) & 0x7FFFFFFF;
     final MetadataEntry entry = findEntry(lowerKey, hashCode);
@@ -244,6 +257,8 @@ public class MessageMetadataMap implements MessageMetadata {
   }
 
   public MessageMetadataMap add(final String key, final String value) {
+    if (StringUtil.isEmpty(value)) return this;
+
     final String lowerKey = key.toLowerCase();
     final int hashCode = Objects.hashCode(lowerKey) & 0x7FFFFFFF;
     insertNewEntry(hashCode, lowerKey, value);

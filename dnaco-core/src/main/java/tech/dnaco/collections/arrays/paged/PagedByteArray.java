@@ -18,6 +18,7 @@
 package tech.dnaco.collections.arrays.paged;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
 
 import tech.dnaco.bytes.ByteArrayAppender;
@@ -170,6 +171,22 @@ public class PagedByteArray implements ByteArrayAppender {
     }
   }
 
+  public void fill(final int value, int len) {
+    final byte bValue = (byte) (value & 0xff);
+    while (len > 0) {
+      int avail = lastPage.length - pageItems;
+      if (avail == 0) {
+        rollPage();
+        avail = pageSize;
+      }
+
+      final int copyLen = Math.min(avail, len);
+      Arrays.fill(lastPage, pageItems, pageItems + copyLen, bValue);
+      pageItems += copyLen;
+      len -= copyLen;
+    }
+  }
+
   public void addFixed32(final int value) {
     addFixed(4, value);
   }
@@ -312,6 +329,10 @@ public class PagedByteArray implements ByteArrayAppender {
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public int writeTo(final OutputStream stream) throws IOException {
+    return forEach(stream::write);
   }
 
   // ================================================================================

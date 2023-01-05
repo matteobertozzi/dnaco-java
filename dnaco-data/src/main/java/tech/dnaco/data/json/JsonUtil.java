@@ -26,7 +26,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
-import tech.dnaco.collections.maps.StringMap;
 import tech.dnaco.data.JsonFormat;
 import tech.dnaco.logging.Logger;
 
@@ -230,15 +229,5 @@ public final class JsonUtil {
 
   public interface Jsonable {
     JsonElement toJson();
-  }
-
-
-  public static void main(final String[] args) {
-    final StringMap x = new StringMap();
-    x.put("a", "10");
-    x.put("b", "20");
-    x.put("c", "30");
-    System.out.println(x);
-    System.out.println(JsonUtil.toJson(x));
   }
 }

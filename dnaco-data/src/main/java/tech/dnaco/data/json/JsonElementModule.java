@@ -18,7 +18,6 @@
 package tech.dnaco.data.json;
 
 import java.io.IOException;
-import java.util.Base64;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -149,7 +148,7 @@ public final class JsonElementModule {
       if (node.isLong()) return new JsonPrimitive(node.longValue());
       if (node.isInt()) return new JsonPrimitive(node.intValue());
       if (node.isBoolean()) return new JsonPrimitive(node.booleanValue());
-      if (node.isBinary()) return new JsonPrimitive(Base64.getEncoder().encodeToString(node.binaryValue()));
+      if (node.isBinary()) return new JsonPrimitive(node.binaryValue());
       if (node.isBigInteger()) return new JsonPrimitive(node.bigIntegerValue());
       if (node.isBigDecimal()) return new JsonPrimitive(node.decimalValue());
       if (node.isPojo()) {

@@ -19,6 +19,7 @@
 package tech.dnaco.dispatcher.message;
 
 import java.io.Closeable;
+import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Parameter;
 import java.util.Collections;
@@ -71,6 +72,7 @@ public abstract class UriDispatcher implements Closeable {
     Message newMessage(MessageMetadata request, MessageMetadata resultMetadata, DataFormat format, Object result);
     Message newMessage(MessageMetadata request, MessageMetadata resultMetadata, byte[] result);
     Message newEmptyMessage(MessageMetadata request, MessageMetadata resultMetadata);
+    Message newFileStream(MessageMetadata requestMetadata, MessageMetadata resultMetadata, File file);
   }
 
   private final MessageMapper messageDispatcher;
@@ -202,6 +204,8 @@ public abstract class UriDispatcher implements Closeable {
       return messageBuilder.newMessage(requestMetadata, objResult.metadata(), format, objResult.content());
     } else if (result instanceof final EmptyMessage emptyResult) {
       return messageBuilder.newEmptyMessage(requestMetadata, emptyResult.metadata());
+    } else if (result instanceof final MessageFile fileResult) {
+      return messageBuilder.newFileStream(requestMetadata, fileResult.metadata(), fileResult.file());
     }
     throw new IllegalArgumentException("unsupported message type: " + result.getClass().getName());
   }

@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.Objects;
 
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.strings.StringFormat;
 
 public final class ArrayUtil {
   public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
@@ -703,6 +704,14 @@ public final class ArrayUtil {
   // ================================================================================
   //  PUBLIC Array toString() helpers
   // ================================================================================
+  public static <T> String toString(final T[] items) {
+    return toString(items, 0, length(items));
+  }
+
+  public static <T> StringBuilder toString(final StringBuilder sb, final T[] items) {
+    return toString(sb, items, 0, length(items));
+  }
+
   public static String toString(final int[] buf, final int off, final int len) {
     if (buf == null) return "null";
     if (len == 0 || off >= buf.length) return "[]";
@@ -757,7 +766,7 @@ public final class ArrayUtil {
     sb.append('[');
     for (int i = 0; i < len; ++i) {
       if (i > 0) sb.append(", ");
-      sb.append(buf[off + i]);
+      sb.append(StringFormat.valueOf(buf[off + i]));
     }
     sb.append(']');
     return sb;

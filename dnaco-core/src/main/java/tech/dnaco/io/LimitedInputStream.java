@@ -5,20 +5,34 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class LimitedInputStream extends FilterInputStream {
+  private final boolean closeInput;
   private final long maxReadable;
 
   private long consumed;
 
   public LimitedInputStream(final InputStream in, final long maxReadable) {
+    this(in, maxReadable, true);
+  }
+
+  public LimitedInputStream(final InputStream in, final long maxReadable, final boolean closeInput) {
     super(in);
     this.maxReadable = maxReadable;
     this.consumed = 0;
+    this.closeInput = closeInput;
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (closeInput) {
+      super.close();
+    }
   }
 
   public long consumed() {
     return consumed;
   }
 
+  @Override
   public int read() throws IOException {
     if (consumed == maxReadable) return -1;
 
@@ -27,10 +41,12 @@ public class LimitedInputStream extends FilterInputStream {
     return c;
   }
 
+  @Override
   public int read(final byte[] b) throws IOException {
     return this.read(b, 0, b.length);
   }
 
+  @Override
   public int read(final byte[] b, final int off, final int len) throws IOException {
     if (consumed == maxReadable) return -1;
 

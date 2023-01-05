@@ -71,6 +71,10 @@ public abstract class JsonElement {
     throw new UnsupportedOperationException(getClass().getSimpleName());
   }
 
+  public byte[] getAsBytes() {
+    throw new UnsupportedOperationException(getClass().getSimpleName());
+  }
+
   public double getAsDouble() {
     throw new UnsupportedOperationException(getClass().getSimpleName());
   }

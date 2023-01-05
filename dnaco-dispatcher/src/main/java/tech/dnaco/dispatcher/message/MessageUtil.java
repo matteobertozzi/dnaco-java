@@ -43,12 +43,16 @@ public final class MessageUtil {
   }
 
   public static DataFormat parseAcceptFormat(final MessageMetadata metadata, final DataFormat defaultFormat) {
-    return parseAcceptFormat(metadata, defaultFormat, MessageUtil::parseAcceptFormat);
+    return parseAcceptFormat(metadata, defaultFormat, MessageUtil::parseTypeToDataFormat);
   }
 
   public static <T> T parseAcceptFormat(final MessageMetadata metadata, final T defaultFormat,
       final Function<String, T> parseFormat) {
     final String accept = metadata.getString(METADATA_ACCEPT, null);
+    return parseAcceptFormat(accept, defaultFormat, parseFormat);
+  }
+
+  public static <T> T parseAcceptFormat(final String accept, final T defaultFormat, final Function<String, T> parseFormat) {
     if (StringUtil.isEmpty(accept)) return defaultFormat;
 
     T format = parseFormat.apply(accept);
@@ -63,7 +67,7 @@ public final class MessageUtil {
       final int qIndex = type.lastIndexOf(';');
       if (qIndex > 0) type = type.substring(0, qIndex);
 
-      format = parseFormat.apply(type);
+      format = parseFormat.apply(type.trim());
       if (format != null) return format;
 
       lastIndex = eof + 1;
@@ -71,11 +75,25 @@ public final class MessageUtil {
     return defaultFormat;
   }
 
-  private static DataFormat parseAcceptFormat(final String type) {
+  public static <T> T parseContentType(final String accept, final T defaultFormat, final Function<String, T> parseFormat) {
+    if (StringUtil.isEmpty(accept)) return defaultFormat;
+
+    T format = parseFormat.apply(accept);
+    if (format != null) return format;
+
+    int eof = accept.indexOf(';');
+    if (eof < 0) eof = accept.length();
+
+    final String type = accept.substring(0, eof);
+    format = parseFormat.apply(type.trim());
+    return format != null ? format : defaultFormat;
+  }
+
+  public static DataFormat parseTypeToDataFormat(final String type) {
     return switch (type) {
-      case CONTENT_TYPE_APP_XML, CONTENT_TYPE_TEXT_XML -> XmlFormat.INSTANCE;
       case CONTENT_TYPE_APP_CBOR -> CborFormat.INSTANCE;
       case CONTENT_TYPE_APP_JSON -> JsonFormat.INSTANCE;
+      case CONTENT_TYPE_APP_XML, CONTENT_TYPE_TEXT_XML -> XmlFormat.INSTANCE;
       default -> null;
     };
   }

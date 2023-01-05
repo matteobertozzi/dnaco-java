@@ -68,6 +68,16 @@ public class JsonObject extends JsonElement {
     return members.containsKey(memberName);
   }
 
+  public boolean hasObject(final String memberName) {
+    final JsonElement element = members.get(memberName);
+    return element != null && element.isJsonObject();
+  }
+
+  public boolean hasArray(final String memberName) {
+    final JsonElement element = members.get(memberName);
+    return element != null && element.isJsonArray();
+  }
+
   public JsonElement get(final String memberName) {
     return members.get(memberName);
   }

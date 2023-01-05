@@ -26,10 +26,37 @@ public final class ArraySortUtil {
     return -(low + 1);  // key not found.
   }
 
+  public static int binarySearch(final int off, final int len, final ArrayIndexKeyComparator comparator) {
+    int low = off;
+    int high = off + len - 1;
+
+    while (low <= high) {
+      final int mid = (low + high) >>> 1;
+      final int cmp = comparator.compareKeyWith(mid);
+
+      if (cmp > 0) {
+        low = mid + 1;
+      } else if (cmp < 0) {
+        high = mid - 1;
+      } else {
+        return mid; // key found
+      }
+    }
+
+    return -(low + 1);  // key not found.
+  }
+
+  @FunctionalInterface
+  public interface ArrayIndexKeyComparator {
+    int compareKeyWith(int index);
+  }
+
+  @FunctionalInterface
   public interface ArrayIndexComparator {
     int compare(int aIndex, int bIndex);
   }
 
+  @FunctionalInterface
   public interface ArrayIndexSwapper {
     void swap(int aIndex, int bIndex);
   }

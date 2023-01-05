@@ -89,6 +89,10 @@ public class HttpMessageResponse implements Message {
     return metadata;
   }
 
+  protected void write(final ChannelHandlerContext ctx) {
+    ctx.write(response);
+  }
+
   @Sharable
   public static final class HttpMessageResponseEncoder extends MessageToMessageEncoder<HttpMessageResponse> {
     public static final HttpMessageResponseEncoder INSTANCE = new HttpMessageResponseEncoder();
@@ -99,7 +103,7 @@ public class HttpMessageResponse implements Message {
 
     @Override
     protected void encode(final ChannelHandlerContext ctx, final HttpMessageResponse msg, final List<Object> out) throws Exception {
-      out.add(msg.rawResponse());
+      out.add(msg.response);
     }
   }
 }

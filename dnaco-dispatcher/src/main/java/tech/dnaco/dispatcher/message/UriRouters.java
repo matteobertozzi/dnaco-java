@@ -202,7 +202,9 @@ public class UriRouters {
         }
 
         if (StringUtil.isNotEmpty(bestAlias)) {
-          routesWithAliases.add(route.newWithAlias(bestAlias));
+          final UriRoute aliasRoute = route.newWithAlias(bestAlias);
+          routesWithAliases.add(aliasRoute);
+          Logger.debug("Add alias URI Mapping {} -> {}", aliasRoute.getUri(), bestAlias);
         }
       }
       return routesWithAliases;

@@ -17,6 +17,10 @@
 
 package tech.dnaco.bytes.encoding;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import tech.dnaco.bytes.ByteArrayAppender;
 import tech.dnaco.bytes.ByteArraySlice;
 import tech.dnaco.collections.LongValue;
@@ -26,7 +30,7 @@ public final class VarInt {
     // no-op
   }
 
-  private static long shift(final byte v, final int shift) {
+  private static long shift(final int v, final int shift) {
     return ((long) (v & 0xff)) << shift;
   }
 
@@ -87,6 +91,61 @@ public final class VarInt {
       return 8;
     }
     result.set((x << 32) + shift(buffer[off+5], 24) + (shift(buffer[off+6], 16) + (shift(buffer[off+7], 8) + shift(buffer[off+8], 0))));
+    return 9;
+  }
+
+  public static int read(final InputStream stream, final LongValue result) throws IOException {
+    final int z0 = stream.read() & 0xff;
+    if (z0 <= 240) {
+      result.set(z0);
+      return 1;
+    }
+
+    final int b1 = stream.read();
+    if (z0 <= 248) {
+      result.set((z0 - 241) * 256 + shift(b1, 0) + 240);
+      return 2;
+    }
+
+    final int b2 = stream.read();
+    if (z0 == 249) {
+      result.set(2288 + 256 * shift(b1, 0) + shift(b2, 0));
+      return 3;
+    }
+
+    final int b3 = stream.read();
+    if (z0 == 250) {
+      result.set(shift(b1, 16) + shift(b2, 8) + shift(b3, 0));
+      return 4;
+    }
+
+    final int b4 = stream.read();
+    final long x = shift(b1, 24) + shift(b2, 16) + shift(b3, 8) + (b4 & 0xff);
+    if (z0 == 251) {
+      result.set(x);
+      return 5;
+    }
+
+    final int b5 = stream.read();
+    if (z0 == 252) {
+      result.set((x << 8) + (b5 & 0xff));
+      return 6;
+    }
+
+    final int b6 = stream.read();
+    if (z0 == 253) {
+      result.set((x << 16) + shift(b5, 8) + shift(b6, 0));
+      return 7;
+    }
+
+    final int b7 = stream.read();
+    if (z0 == 254) {
+      result.set((x << 24) + shift(b6, 16) + shift(b6, 8) + shift(b7, 0));
+      return 8;
+    }
+
+    final int b8 = stream.read();
+    result.set((x << 32) + shift(b5, 24) + (shift(b6, 16) + (shift(b7, 8) + shift(b8, 0))));
     return 9;
   }
 
@@ -246,6 +305,13 @@ public final class VarInt {
     write32(buffer, 1, w);
     write32(buffer, 5, y);
     return 9;
+  }
+
+  public static int write(final OutputStream stream, final long value) throws IOException {
+    final byte[] buf = new byte[9];
+    final int n = write(buf, value);
+    stream.write(buf, 0, n);
+    return n;
   }
 
   /*

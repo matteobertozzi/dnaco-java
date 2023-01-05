@@ -28,12 +28,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import tech.dnaco.bytes.ByteArrayAppender;
 import tech.dnaco.bytes.ByteArrayReader;
 import tech.dnaco.bytes.ByteArraySlice;
+import tech.dnaco.bytes.BytesAppenderOutputStream;
 import tech.dnaco.bytes.BytesUtil;
-import tech.dnaco.collections.arrays.ByteArray;
 import tech.dnaco.collections.arrays.paged.PagedByteArray;
 import tech.dnaco.collections.arrays.paged.PagedByteArrayWriter;
+import tech.dnaco.io.LimitedInputStream;
 import tech.dnaco.strings.StringUtil;
 
 public abstract class DataFormat {
@@ -89,6 +91,18 @@ public abstract class DataFormat {
 
   public <T> T fromStream(final InputStream stream, final TypeReference<T> valueType) throws IOException {
     return getObjectMapper().readValue(stream, valueType);
+  }
+
+  public <T> T fromStream(final InputStream stream, final int length, final Class<T> valueType) throws IOException {
+    try (LimitedInputStream limitedStream = new LimitedInputStream(stream, length, false)) {
+      return getObjectMapper().readValue(limitedStream, valueType);
+    }
+  }
+
+  public <T> T fromStream(final InputStream stream, final int length, final TypeReference<T> valueType) throws IOException {
+    try (LimitedInputStream limitedStream = new LimitedInputStream(stream, length, false)) {
+      return getObjectMapper().readValue(limitedStream, valueType);
+    }
   }
 
   public <T> T fromBytes(final byte[] data, final Class<T> valueType) {
@@ -147,10 +161,13 @@ public abstract class DataFormat {
     getObjectMapper().writerWithDefaultPrettyPrinter().writeValue(stream, obj);
   }
 
-  public void addToByteArray(final ByteArray buffer, final Object obj) {
-    final PagedByteArray wbuffer = new PagedByteArray(64 << 10);
-    addToByteArray(wbuffer, obj);
-    wbuffer.writeTo(buffer);
+  public void addToByteArray(final ByteArrayAppender buffer, final Object obj) {
+    try (BytesAppenderOutputStream stream = new BytesAppenderOutputStream(buffer)) {
+      getObjectMapper().writeValue(stream, obj);
+      stream.flush();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void addToByteArray(final PagedByteArray buffer, final Object obj) {
@@ -178,8 +195,12 @@ public abstract class DataFormat {
     }
   }
 
-  public byte[] asBytes(final Object value) throws JsonProcessingException {
-    return getObjectMapper().writeValueAsBytes(value);
+  public byte[] asBytes(final Object value) {
+    try {
+      return getObjectMapper().writeValueAsBytes(value);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public static final class DataFormatException extends RuntimeException {

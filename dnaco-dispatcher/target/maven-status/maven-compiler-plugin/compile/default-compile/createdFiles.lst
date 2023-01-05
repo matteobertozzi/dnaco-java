@@ -52,6 +52,8 @@ tech/dnaco/dispatcher/message/MessageUtil$TypedMessage.class
 tech/dnaco/dispatcher/message/MessageUtil$ObjectMessage.class
 tech/dnaco/dispatcher/Actions$HighPriority.class
 tech/dnaco/dispatcher/message/UriRouters$UriVariableHandler.class
+tech/dnaco/dispatcher/message/UriRouters$TestHandler.class
+tech/dnaco/dispatcher/message/MessageHandler$Headers.class
 tech/dnaco/dispatcher/message/MessageHandler$Doc.class
 tech/dnaco/dispatcher/message/MessageHandler$UriVariable.class
 tech/dnaco/dispatcher/message/MessageHandler$XmlBody.class
