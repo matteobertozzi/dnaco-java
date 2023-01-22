@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.function.Function;
 
+import tech.dnaco.dispatcher.ParamMappers.ParamConverter;
 import tech.dnaco.dispatcher.message.Message;
 import tech.dnaco.dispatcher.message.MessageError;
 import tech.dnaco.logging.Logger;
@@ -33,6 +34,10 @@ public class MessageMapper {
   private final HashMap<Class<?>, Function<Object, Message>> typeToMessageMappers = new HashMap<>(64);
   private final ActionMappers actionMappers = new ActionMappers();
   private final ParamMappers paramMappers = new ParamMappers();
+
+  public ParamConverter paramConverter() {
+    return paramMappers.paramConverter();
+  }
 
   public boolean addActionMapper(final Class<? extends Annotation> annotationType, final ActionParserFactory factory) {
     return actionMappers.addMapper(annotationType, factory);

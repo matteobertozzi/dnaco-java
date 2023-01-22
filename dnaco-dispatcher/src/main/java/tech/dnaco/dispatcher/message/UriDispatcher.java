@@ -35,12 +35,12 @@ import tech.dnaco.data.DataFormat;
 import tech.dnaco.data.DataFormat.DataFormatException;
 import tech.dnaco.data.JsonFormat;
 import tech.dnaco.data.XmlFormat;
-import tech.dnaco.data.json.JsonUtil;
 import tech.dnaco.dispatcher.CallContext;
 import tech.dnaco.dispatcher.DispatchLaterException;
 import tech.dnaco.dispatcher.Invokable;
 import tech.dnaco.dispatcher.MessageMapper;
 import tech.dnaco.dispatcher.MethodInvoker;
+import tech.dnaco.dispatcher.ParamMappers.ParamConverter;
 import tech.dnaco.dispatcher.ParamParser;
 import tech.dnaco.dispatcher.message.MessageHandler.CborBody;
 import tech.dnaco.dispatcher.message.MessageHandler.HeaderValue;
@@ -53,6 +53,7 @@ import tech.dnaco.dispatcher.message.MessageHandler.UriVariable;
 import tech.dnaco.dispatcher.message.MessageHandler.XmlBody;
 import tech.dnaco.dispatcher.message.MessageUtil.EmptyMessage;
 import tech.dnaco.dispatcher.message.MessageUtil.EmptyMetadata;
+import tech.dnaco.dispatcher.message.MessageUtil.ErrorMessage;
 import tech.dnaco.dispatcher.message.MessageUtil.RawMessage;
 import tech.dnaco.dispatcher.message.MessageUtil.TypedMessage;
 import tech.dnaco.dispatcher.message.UriRouters.UriPatternHandler;
@@ -63,7 +64,6 @@ import tech.dnaco.dispatcher.message.UriRouters.UriStaticRouter;
 import tech.dnaco.dispatcher.message.UriRouters.UriVariableHandler;
 import tech.dnaco.dispatcher.message.UriRouters.UriVariableRouter;
 import tech.dnaco.logging.Logger;
-import tech.dnaco.strings.StringConverter;
 import tech.dnaco.strings.StringUtil;
 
 public abstract class UriDispatcher implements Closeable {
@@ -113,7 +113,7 @@ public abstract class UriDispatcher implements Closeable {
     if (handler == null) {
       return newErrorMessage(message.metadata(), MessageError.notFound());
     }
-    return execute(message.metadata(), () -> handler.invoke(ctx, message),
+    return execute(message.metadata(), () -> handler.invoke(ctx, messageDispatcher.paramConverter(), message),
       handler.hasAsyncResult(), handler.hasVoidResult());
   }
 
@@ -152,9 +152,12 @@ public abstract class UriDispatcher implements Closeable {
       } else {
         Logger.error("message exception: {}", e.getMessage());
       }
-      return newErrorMessage(requestMetadata, e.getMessageError());
+      return newErrorMessage(requestMetadata, e.getMetadata(), e.getMessageError());
     } catch (final DataFormatException e) {
       Logger.error(e, "data format exception");
+      return newErrorMessage(requestMetadata, MessageError.newBadRequestError(e.getMessage()));
+    } catch (final IllegalArgumentException e) {
+      Logger.error(e, "illegal argument exception");
       return newErrorMessage(requestMetadata, MessageError.newBadRequestError(e.getMessage()));
     } catch (final Throwable e) {
       final MessageError error =  messageDispatcher.mapException(e);
@@ -206,13 +209,19 @@ public abstract class UriDispatcher implements Closeable {
       return messageBuilder.newEmptyMessage(requestMetadata, emptyResult.metadata());
     } else if (result instanceof final MessageFile fileResult) {
       return messageBuilder.newFileStream(requestMetadata, fileResult.metadata(), fileResult.file());
+    } else if (result instanceof final ErrorMessage errorResult) {
+      return newErrorMessage(requestMetadata, defaultResultMetadata, errorResult.error());
     }
     throw new IllegalArgumentException("unsupported message type: " + result.getClass().getName());
   }
 
   public Message newErrorMessage(final MessageMetadata request, final MessageError error) {
+    return newErrorMessage(request, EmptyMetadata.INSTANCE, error);
+  }
+
+  public Message newErrorMessage(final MessageMetadata request, final MessageMetadata resultMetadata, final MessageError error) {
     final DataFormat format = MessageUtil.parseAcceptFormat(request);
-    return messageBuilder.newErrorMessage(request, EmptyMetadata.INSTANCE, format, error);
+    return messageBuilder.newErrorMessage(request, resultMetadata != null ? resultMetadata : EmptyMetadata.INSTANCE, format, error);
   }
 
   // ================================================================================
@@ -296,7 +305,7 @@ public abstract class UriDispatcher implements Closeable {
     }
 
     protected Object invoke() throws Throwable {
-      return methodInvoker.invoke(ctx, message);
+      return methodInvoker.invoke(ctx, dispatcher.messageDispatcher.paramConverter(), message);
     }
 
     public UriMessage message() {
@@ -375,42 +384,6 @@ public abstract class UriDispatcher implements Closeable {
     return mapper;
   }
 
-  private static Object convertValue(final Class<?> type, List<String> values, final String defaultValue) {
-    if (ListUtil.isEmpty(values)) {
-      if (StringUtil.isEmpty(defaultValue)) return null;
-      values = Collections.singletonList(defaultValue);
-    }
-
-    if (type.isArray()) {
-      return JsonUtil.fromJson(JsonUtil.toJson(values), type);
-    }
-    return convertValue(type, values.get(0));
-  }
-
-  private static Object convertValue(final Class<?> type, final String value) {
-    if (type == String.class) {
-      return value;
-    } else if (type == boolean.class) {
-      return StringConverter.toBoolean(value, false);
-    } else if (type == int.class) {
-      return StringConverter.toInt(value, 0);
-    } else if (type == long.class) {
-      return StringConverter.toLong(value, 0);
-    } else if (type == float.class) {
-      return StringConverter.toFloat(value, 0);
-    } else if (type == double.class) {
-      return StringConverter.toDouble(value, 0);
-    }
-
-    // gson Strings should be quoted.
-    // TODO: Handle String[]
-    if (String.class.isAssignableFrom(type) || type.isEnum()) {
-      final String json = "\"" + value.replace("\"", "\\\"") + "\"";
-      return JsonUtil.fromJson(json, type);
-    }
-    return JsonUtil.fromJson(value, type);
-  }
-
   // ================================================================================
   //  PRIVATE Request Param Parsers
   // ================================================================================
@@ -423,7 +396,7 @@ public abstract class UriDispatcher implements Closeable {
     }
 
     @Override
-    public Object parse(final CallContext rawContext, final Object message) throws Exception {
+    public Object parse(final CallContext rawContext, final ParamConverter converter, final Object message) throws Exception {
       final Matcher matcher = ((MessageCallContext)rawContext).getUriMatcher();
       return (groupId >= 0) ? matcher.group(groupId) : matcher;
     }
@@ -440,8 +413,8 @@ public abstract class UriDispatcher implements Closeable {
     }
 
     @Override
-    public Object parse(final CallContext rawContext, final Object message) throws Exception {
-      return convertValue(type, getUriVariable((MessageCallContext)rawContext, name));
+    public Object parse(final CallContext rawContext, final ParamConverter converter, final Object message) throws Exception {
+      return converter.convertValue(type, getUriVariable((MessageCallContext)rawContext, name));
     }
 
     private static String getUriVariable(final MessageCallContext ctx, final String name) {
@@ -460,18 +433,24 @@ public abstract class UriDispatcher implements Closeable {
     private final String defaultValue;
     private final Class<?> type;
     private final String name;
+    private final boolean required;
 
     private HeaderParamParser(final Parameter param, final Annotation annotation) {
       final HeaderValue header = (HeaderValue)annotation;
       this.name = StringUtil.defaultIfEmpty(header.value(), header.name());
       this.defaultValue = StringUtil.nullIfEmpty(header.defaultValue());
+      this.required = header.required();
       this.type = param.getType();
     }
 
     @Override
-    public Object parse(final CallContext rawContext, final Object rawMessage) throws Exception {
+    public Object parse(final CallContext rawContext, final ParamConverter converter, final Object rawMessage) throws Exception {
       final Message message = (Message)rawMessage;
-      return convertValue(type, message.metadataValueAsList(name), defaultValue);
+      final Object value = converter.convertValue(type, message.metadataValueAsList(name), defaultValue);
+      if (required && value == null) {
+        throw new MessageException(MessageError.newBadRequestError("header '" + name + "' required"));
+      }
+      return value;
     }
   }
 
@@ -479,19 +458,25 @@ public abstract class UriDispatcher implements Closeable {
     private final String defaultValue;
     private final Class<?> type;
     private final String name;
+    private final boolean required;
 
     private QueryParamParser(final Parameter param, final Annotation annotation) {
       final QueryParam queryParam = (QueryParam)annotation;
       this.name = StringUtil.defaultIfEmpty(queryParam.value(), queryParam.name());
       this.defaultValue = StringUtil.nullIfEmpty(queryParam.defaultValue());
+      this.required = queryParam.required();
       this.type = param.getType();
     }
 
     @Override
-    public Object parse(final CallContext rawContext, final Object rawMessage) throws Exception {
+    public Object parse(final CallContext rawContext, final ParamConverter converter, final Object rawMessage) throws Exception {
       final UriMessage message = (UriMessage)rawMessage;
       final List<String> values = message.queryParamAsList(name);
-      return convertValue(type, values, defaultValue);
+      final Object value = converter.convertValue(type, values, defaultValue);
+      if (required && value == null) {
+        throw new MessageException(MessageError.newBadRequestError("header '" + name + "' required"));
+      }
+      return value;
     }
   }
 
@@ -500,21 +485,28 @@ public abstract class UriDispatcher implements Closeable {
     private final Class<?> type;
     private final String queryParam;
     private final String headerKey;
+    private final boolean required;
 
     private MetaParamParser(final Parameter param, final Annotation annotation) {
       final MetaParam metaParam = (MetaParam)annotation;
       this.queryParam = metaParam.query();
       this.headerKey = metaParam.header();
+      this.required = metaParam.required();
       this.defaultValue = StringUtil.nullIfEmpty(metaParam.defaultValue());
       this.type = param.getType();
     }
 
     @Override
-    public Object parse(final CallContext rawContext, final Object rawMessage) throws Exception {
+    public Object parse(final CallContext rawContext, final ParamConverter converter, final Object rawMessage) throws Exception {
       final UriMessage message = (UriMessage)rawMessage;
       List<String> values = message.metadataValueAsList(headerKey);
       if (ListUtil.isEmpty(values)) values = message.queryParamAsList(queryParam);
-      return convertValue(type, values, defaultValue);
+
+      final Object value = converter.convertValue(type, values, defaultValue);
+      if (required && value == null) {
+        throw new MessageException(MessageError.newBadRequestError("header '" + headerKey + "' or query param '" + queryParam + "' required"));
+      }
+      return value;
     }
   }
 
@@ -533,7 +525,7 @@ public abstract class UriDispatcher implements Closeable {
     }
 
     @Override
-    public Object parse(final CallContext context, final Object rawMessage) throws Exception {
+    public Object parse(final CallContext context, final ParamConverter converter, final Object rawMessage) throws Exception {
       return parseBody((MessageCallContext)context, (UriMessage)rawMessage);
     }
 
@@ -588,6 +580,8 @@ public abstract class UriDispatcher implements Closeable {
         return message.convertContentToBytes();
       }
 
+      //if (valueType().isAssignableFrom())
+
       // perform a format conversion to the desired type
       final String contentType = message.getMetadata(MessageUtil.METADATA_CONTENT_TYPE, "");
       switch (contentType) {
@@ -613,4 +607,9 @@ public abstract class UriDispatcher implements Closeable {
     }
   }
 */
+
+  public static void main(final String[] args) {
+
+  }
 }
+

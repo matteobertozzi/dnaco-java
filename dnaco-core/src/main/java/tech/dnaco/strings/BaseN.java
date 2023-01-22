@@ -292,17 +292,17 @@ public final class BaseN {
   // ================================================================================
   //  BaseN precomputed
   // ================================================================================
-  private static final class BaseNTable {
+  public static final class BaseNTable {
     private final BigInteger[] bigDecodeMap;
     private final int[] decodeMap;
     private final long[] pows;
     private final char[] alphabet;
 
-    private BaseNTable(final String alphabet) {
+    public BaseNTable(final String alphabet) {
       this(alphabet.toCharArray());
     }
 
-    private BaseNTable(final char[] alphabet) {
+    public BaseNTable(final char[] alphabet) {
       this.alphabet = alphabet;
 
       this.pows = computePows(alphabet);
@@ -365,7 +365,7 @@ public final class BaseN {
     }
 
     private static String encode(final char[] dictionary, final byte[] data, final int offset, int length) {
-      if (BytesUtil.isEmpty(data)) return null;
+      if (length == 0) return null;
 
       final StringBuilder builder = new StringBuilder(getEncodedLength(length));
 
@@ -434,7 +434,7 @@ public final class BaseN {
     }
 
     public static byte[] decode(final byte[] encoded, final int offset, int length) {
-      if (BytesUtil.isEmpty(encoded)) return encoded;
+      if (length == 0) return null;
 
       final byte[] data = new byte[getDecodedLength(length)];
       int dataIndex = 0;

@@ -19,6 +19,7 @@ package tech.dnaco.util;
 
 import java.security.SecureRandom;
 
+import tech.dnaco.bytes.BytesUtil;
 import tech.dnaco.strings.StringUtil;
 
 public final class RandData {
@@ -51,6 +52,13 @@ public final class RandData {
 
   public static byte[] generateBytes(final byte[] buf) {
     Holder.secureRand.nextBytes(buf);
+    return buf;
+  }
+
+  public static byte[] generateNonZeroBytes(final byte[] buf) {
+    do {
+      Holder.secureRand.nextBytes(buf);
+    } while (BytesUtil.isFilledWithZeros(buf));
     return buf;
   }
 

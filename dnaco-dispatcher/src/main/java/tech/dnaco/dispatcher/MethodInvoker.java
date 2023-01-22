@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 
 import tech.dnaco.collections.arrays.ArrayUtil;
 import tech.dnaco.dispatcher.Actions.AsyncResult;
+import tech.dnaco.dispatcher.ParamMappers.ParamConverter;
 import tech.dnaco.logging.Logger;
 
 public class MethodInvoker {
@@ -65,7 +66,7 @@ public class MethodInvoker {
     return voidResult;
   }
 
-  public Object invoke(final CallContext context, final Object message) throws Throwable {
+  public Object invoke(final CallContext context, final ParamConverter converter, final Object message) throws Throwable {
     // call action-parsers (before param-parse)
     for (int i = 0; i < actionParsers.length; ++i) {
       if (actionParsers[i].beforeParamParse(context, message)) {
@@ -76,7 +77,7 @@ public class MethodInvoker {
     // call param-parsers
     final Object[] params = new Object[paramParsers.length];
     for (int i = 0; i < params.length; ++i) {
-      params[i] = paramParsers[i].parse(context, message);
+      params[i] = paramParsers[i].parse(context, converter, message);
     }
 
     // call action-parsers (before execute)

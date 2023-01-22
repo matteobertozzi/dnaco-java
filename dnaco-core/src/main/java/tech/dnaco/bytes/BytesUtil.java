@@ -352,12 +352,15 @@ public final class BytesUtil {
   //  Bytes to hex
   // ================================================================================
   public static byte[] fromHexString(final String data) {
-    if (StringUtil.isEmpty(data)) return null;
+    return fromHexString(data, 0, StringUtil.length(data));
+  }
 
-    final int length = data.length();
+  public static byte[] fromHexString(final String data, final int offset, final int length) {
+    if (length == 0) return null;
+
     final byte[] buffer = new byte[length >> 1];
     for (int i = 0; i < length; i += 2) {
-      buffer[i >> 1] = (byte) ((Character.digit(data.charAt(i), 16) << 4) + Character.digit(data.charAt(i+1), 16));
+      buffer[i >> 1] = (byte) ((Character.digit(data.charAt(offset + i), 16) << 4) + Character.digit(data.charAt(offset + i+1), 16));
     }
     return buffer;
   }
@@ -377,7 +380,7 @@ public final class BytesUtil {
   }
 
   public static String toHexString(final byte[] buf) {
-    return toHexString(buf, 0, buf.length);
+    return toHexString(buf, 0, length(buf));
   }
 
   public static String toHexString(final byte[] buf, final int off, final int len) {
@@ -385,6 +388,8 @@ public final class BytesUtil {
   }
 
   public static StringBuilder toHexString(final StringBuilder hex, final byte[] buf, final int off, final int len) {
+    if (len == 0) return hex;
+
     for (int i = 0; i < len; ++i) {
       final int val = buf[off + i] & 0xff;
       hex.append(StringUtil.HEX_DIGITS[(val >> 4) & 0xf]);
@@ -394,7 +399,7 @@ public final class BytesUtil {
   }
 
   public static String toString(final byte[] buf) {
-    return toString(buf, 0, buf.length);
+    return toString(buf, 0, length(buf));
   }
 
   public static String toString(final byte[] buf, final int off, final int len) {

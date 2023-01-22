@@ -23,18 +23,25 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.FileRegion;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.unix.DomainSocketAddress;
@@ -43,6 +50,10 @@ import io.netty.channel.unix.UnixChannel;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.EventExecutor;
 import tech.dnaco.logging.Logger;
+import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.ConcurrentTimeRangeCounter;
+import tech.dnaco.telemetry.ConcurrentTimeRangeGauge;
+import tech.dnaco.telemetry.TelemetryCollector;
 import tech.dnaco.threading.ShutdownUtil;
 import tech.dnaco.tracing.Span;
 import tech.dnaco.tracing.TraceAttributes;
@@ -182,6 +193,74 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
   }
 
   // ================================================================================
+  //  Network In/Out Stats
+  // ================================================================================
+  protected void addNetworkIoStats(final ChannelPipeline pipeline) {
+    pipeline.addLast(InboundHandlerStats.INSTANCE);
+    pipeline.addLast(OutboundHandlerStats.INSTANCE);
+  }
+
+  @Sharable
+  private static final class OutboundHandlerStats extends ChannelOutboundHandlerAdapter {
+    private static final OutboundHandlerStats INSTANCE = new OutboundHandlerStats();
+
+    private final ConcurrentTimeRangeCounter netOutBytes = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_SIZE)
+      .setName("service_net_out_bytes")
+      .setLabel("Service Network Out Bytes")
+      .register(new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
+
+    private OutboundHandlerStats() {
+      // no-op
+    }
+
+    @Override
+    public void write(final ChannelHandlerContext ctx, final Object msg, final ChannelPromise promise) throws Exception {
+      computeWriteStats(msg);
+      super.write(ctx, msg, promise);
+    }
+
+    private void computeWriteStats(final Object msg) {
+      if (msg instanceof final ByteBuf byteBuf) {
+        netOutBytes.inc(byteBuf.readableBytes());
+      } else if (msg instanceof final FileRegion fileRegion) {
+        netOutBytes.inc(fileRegion.count());
+      } else {
+        Logger.warn("unhandled WRITE type:{} -> {}", msg.getClass(), msg);
+      }
+    }
+  }
+
+  @Sharable
+  private static final class InboundHandlerStats extends ChannelInboundHandlerAdapter {
+    private static final InboundHandlerStats INSTANCE = new InboundHandlerStats();
+
+    private final ConcurrentTimeRangeCounter netInBytes = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_SIZE)
+      .setName("service_net_in_bytes")
+      .setLabel("Service Network In Bytes")
+      .register(new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
+
+    private InboundHandlerStats() {
+      // no-op
+    }
+
+    @Override
+    public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
+      computeReadStats(msg);
+      super.channelRead(ctx, msg);
+    }
+
+    private void computeReadStats(final Object msg) {
+      if (msg instanceof final ByteBuf byteBuf) {
+        netInBytes.inc(byteBuf.readableBytes());
+      } else {
+        Logger.warn("unhandled READ type:{} -> {}", msg.getClass(), msg);
+      }
+    }
+  }
+
+  // ================================================================================
   //  Client connection related
   // ================================================================================
   public static abstract class AbstractServiceSession {
@@ -230,6 +309,18 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
   protected static abstract class ServiceChannelInboundHandler<T> extends SimpleChannelInboundHandler<T> {
     private final AtomicLong activeChannels = new AtomicLong();
 
+    private final ConcurrentTimeRangeGauge activeConnectionsGauge = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_COUNT)
+      .setName("services_active_connections")
+      .setLabel("Service Active Connections")
+      .register(new ConcurrentTimeRangeGauge(24 * 60, 1, TimeUnit.MINUTES));
+
+    private final ConcurrentTimeRangeCounter newConnections = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_COUNT)
+      .setName("services_new_connections")
+      .setLabel("Service New Connections")
+      .register(new ConcurrentTimeRangeCounter(24 * 60, 1, TimeUnit.MINUTES));
+
     protected ServiceChannelInboundHandler() {
       super();
     }
@@ -246,6 +337,8 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
     @Override
     public void channelActive(final ChannelHandlerContext ctx) throws Exception {
       super.channelActive(ctx);
+      activeConnectionsGauge.inc();
+      newConnections.inc();
 
       try (Span span = Tracer.newTask()) {
         span.setLabel("client connected");
@@ -284,6 +377,7 @@ public abstract class AbstractService implements ShutdownUtil.StopSignal {
           }
         }
       }
+      activeConnectionsGauge.dec();
       super.channelInactive(ctx);
     }
 

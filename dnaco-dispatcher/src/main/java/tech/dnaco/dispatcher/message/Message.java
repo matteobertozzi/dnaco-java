@@ -8,6 +8,8 @@ public interface Message extends MessageContent {
    */
   int estimateSize();
 
+  long timestampNs();
+
   MessageMetadata metadata();
 
   default List<String> metadataValueAsList(final String key) {

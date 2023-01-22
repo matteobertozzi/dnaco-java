@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package tech.dnaco.data.hashes;
+package tech.dnaco.hashes;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,6 +24,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.hashes.Hash.HashAlgo;
 
 public final class HashUtil {
   private HashUtil() {
@@ -68,65 +69,65 @@ public final class HashUtil {
     return x;
   }
 
-  public static byte[] hash(final String algo, final byte[] buf) {
+  public static byte[] hash(final HashAlgo algo, final byte[] buf) {
     return hash(algo, buf, 0, BytesUtil.length(buf));
   }
 
-  public static byte[] hash(final String algo, final byte[] buf, final int off, final int len) {
+  public static byte[] hash(final HashAlgo algo, final byte[] buf, final int off, final int len) {
     final MessageDigest digest = digest(algo);
     digest.update(buf, off, len);
     return digest.digest();
   }
 
-  public static MessageDigest digest(final String algo) {
+  public static MessageDigest digest(final HashAlgo algo) {
     try {
-      return MessageDigest.getInstance(algo);
+      return MessageDigest.getInstance(algo.algorithm());
     } catch (final NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
   }
 
   public static byte[] md5(final byte[]... content) {
-    return hash("MD5", content);
+    return hash(HashAlgo.MD5, content);
   }
 
   public static byte[] sha1(final byte[]... content) {
-    return hash("SHA1", content);
+    return hash(HashAlgo.SHA_1, content);
   }
 
   public static byte[] sha256(final byte[]... content) {
-    return hash("SHA-256", content);
+    return hash(HashAlgo.SHA_256, content);
   }
 
   public static byte[] sha256(final File content) throws IOException {
-    return hash("SHA-256", content);
+    return hash(HashAlgo.SHA_256, content);
   }
 
   public static byte[] sha512(final byte[]... content) {
-    return hash("SHA-512", content);
+    return hash(HashAlgo.SHA_512, content);
   }
 
   public static byte[] sha512(final File content) throws IOException {
-    return hash("SHA-512", content);
+    return hash(HashAlgo.SHA_512, content);
   }
 
   public static byte[] sha3_256(final byte[]... content) {
-    return hash("SHA3-256", content);
+    return hash(HashAlgo.SHA3_256, content);
   }
 
   public static byte[] sha3_256(final File content) throws IOException {
-    return hash("SHA3-256", content);
+    return hash(HashAlgo.SHA3_256, content);
   }
 
   public static byte[] sha3_512(final byte[]... content) {
-    return hash("SHA3-512", content);
+    return hash(HashAlgo.SHA3_512, content);
   }
 
   public static byte[] sha3_512(final File content) throws IOException {
-    return hash("SHA3-512", content);
+    return hash(HashAlgo.SHA3_512, content);
   }
 
-  private static byte[] hash(final String algo, final byte[][] content) {
+  private static byte[] hash(final HashAlgo algo, final byte[][] content) {
     final MessageDigest digest = digest(algo);
     for (int i = 0; i < content.length; ++i) {
       digest.update(content[i]);
@@ -134,7 +135,7 @@ public final class HashUtil {
     return digest.digest();
   }
 
-  private static byte[] hash(final String algo, final File file) throws IOException {
+  private static byte[] hash(final HashAlgo algo, final File file) throws IOException {
     final MessageDigest digest = digest(algo);
     try (FileInputStream stream = new FileInputStream(file)) {
       final byte[] buffer = new byte[8192];

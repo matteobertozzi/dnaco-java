@@ -36,6 +36,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
+import tech.dnaco.collections.arrays.ArrayUtil;
+import tech.dnaco.collections.maps.MapUtil;
 import tech.dnaco.strings.StringUtil;
 import tech.dnaco.util.BitUtil;
 
@@ -75,6 +77,8 @@ public class MessageMetadataMap implements MessageMetadata {
   }
 
   public static MessageMetadataMap fromKeyValues(final String[] kvs) {
+    if (ArrayUtil.isEmpty(kvs)) return new MessageMetadataMap();
+
     final MessageMetadataMap headers = new MessageMetadataMap(kvs.length / 2);
     for (int i = 0; i < kvs.length; i += 2) {
       headers.add(kvs[i], kvs[i + 1]);
@@ -83,6 +87,8 @@ public class MessageMetadataMap implements MessageMetadata {
   }
 
   public static MessageMetadataMap fromMultiMap(final Map<String, List<String>> multiMap) {
+    if (MapUtil.isEmpty(multiMap)) return new MessageMetadataMap();
+
     final MessageMetadataMap headers = new MessageMetadataMap(multiMap.size());
     for (final Entry<String, List<String>> entry: multiMap.entrySet()) {
       for (final String value: entry.getValue()) {

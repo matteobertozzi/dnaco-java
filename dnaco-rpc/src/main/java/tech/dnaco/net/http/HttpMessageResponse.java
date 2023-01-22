@@ -36,8 +36,10 @@ import tech.dnaco.net.util.ByteBufDataFormatUtil;
 public class HttpMessageResponse implements Message {
   private final HttpMessageMetadata metadata;
   private final FullHttpResponse response;
+  private final long timestamp;
 
   protected HttpMessageResponse(final FullHttpResponse response) {
+    this.timestamp = System.nanoTime();
     this.response = response;
     this.metadata = new HttpMessageMetadata(response.headers());
   }
@@ -48,11 +50,15 @@ public class HttpMessageResponse implements Message {
     return this;
   }
 
-
   @Override
   public Message release() {
     response.release();
     return this;
+  }
+
+  @Override
+  public long timestampNs() {
+    return timestamp;
   }
 
   protected FullHttpResponse rawResponse() {

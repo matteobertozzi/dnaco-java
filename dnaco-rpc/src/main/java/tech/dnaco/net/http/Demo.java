@@ -18,6 +18,7 @@
  */
 package tech.dnaco.net.http;
 
+import java.io.File;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Date;
@@ -175,7 +176,7 @@ public class Demo {
 
     @UriMapping(uri = "/msg")
     public Message helloMsg() {
-      return MessageUtil.newMessage(Map.of("X-Foo", "10"), List.of("a", "b", "c"));
+      return MessageUtil.newDataMessage(Map.of("X-Foo", "10"), List.of("a", "b", "c"));
     }
 
     @UriMapping(uri = "/except")
@@ -202,7 +203,7 @@ public class Demo {
     Logger.setDefaultLevel(LogLevel.INFO);
 
     final UriRouters.UriRoutesBuilder routes = new UriRouters.UriRoutesBuilder();
-    //routes.addStaticFileHandler("/static", new File("/Users/th30z/tmp"));
+    routes.addStaticFileHandler("/static", new File("/Users/th30z/tmp"));
     //routes.addStaticFileHandler("/foo", new File("/Users/th30z/tmp/bar"));
     //routes.addStaticFileHandler("/stat/(.*)/bar", new File("/Users/th30z/tmp"));
     routes.addHandler(new Foo());
@@ -226,7 +227,8 @@ public class Demo {
 
     final AtomicBoolean running = new AtomicBoolean(true);
     try (ServiceEventLoop eventLoop = new ServiceEventLoop(1, 8)) {
-      final DnacoHttpService service = new DnacoHttpService(new DefaultHttpProcessor(dispatcher));
+      //final DnacoHttpService service = new DnacoHttpService(new DefaultHttpProcessor(dispatcher));
+      final DnacoHttpService service = new DnacoHttpService(new StaticPerfProcessor(dispatcher));
       service.bindTcpService(eventLoop, 55123);
       //service.addShutdownHook();
       ShutdownUtil.addShutdownHook("services", running, service);

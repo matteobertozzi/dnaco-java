@@ -74,6 +74,14 @@ public class MessageError {
     return new MessageError(400, "BAD_REQUEST", message);
   }
 
+  public static MessageError newBadRequestError(final String status, final String message) {
+    return new MessageError(400, status, message, null);
+  }
+
+  public static MessageError newBadRequestError(final String status, final String message, final Object data) {
+    return new MessageError(400, status, message, data);
+  }
+
   public static MessageError newUnauthorized(final String message) {
     return new MessageError(401, "UNAUTHORIZED", message);
   }
@@ -91,8 +99,32 @@ public class MessageError {
     return new MessageError(404, "NOT_FOUND", message);
   }
 
+  public static MessageError newNotFound(final String status, final String message, final Object data) {
+    return new MessageError(404, status, message, data);
+  }
+
+  public static MessageError newConflict(final String status, final String message) {
+    return new MessageError(409, status, message);
+  }
+
+  public static MessageError newPreconditionFailed(final String status, final String message) {
+    return new MessageError(412, status, message);
+  }
+
+  public static MessageError newPayloadTooLarge(final String status, final String message) {
+    return new MessageError(413, status, message);
+  }
+
   public static MessageError newExpectationFailed(final String status, final String message) {
-    return new MessageError(417, status, message);
+    return newExpectationFailed(status, message, null);
+  }
+
+  public static MessageError newExpectationFailed(final String status, final String message, final Object data) {
+    return new MessageError(417, status, message, data);
+  }
+
+  public static MessageError newTooManyRequests(final String status, final String message) {
+    return new MessageError(429, status, message);
   }
 
   public static MessageError newInternalServerError(final String message) {

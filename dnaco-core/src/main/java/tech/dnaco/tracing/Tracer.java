@@ -144,4 +144,8 @@ public final class Tracer {
       localRootSpan.set(rootSpan);
     }
   }
+
+  public static Span createSpan(final String callerTraceId) {
+    return newTask();
+  }
 }

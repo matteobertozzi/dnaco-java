@@ -34,6 +34,8 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import tech.dnaco.dispatcher.ParamMappers.ParamConverter;
+
 public class TestMessageDispatcher {
   @Test
   public void testDispatcher() {
@@ -120,7 +122,7 @@ public class TestMessageDispatcher {
     }
 
     @Override
-    public Object parse(final CallContext context, final Object message) {
+    public Object parse(final CallContext context, final ParamConverter converter, final Object message) {
       // TODO Auto-generated method stub
       return null;
     }
@@ -132,7 +134,7 @@ public class TestMessageDispatcher {
     }
 
     @Override
-    public Object parse(final CallContext context, final Object message) {
+    public Object parse(final CallContext context, final ParamConverter converter, final Object message) {
       // TODO Auto-generated method stub
       return null;
     }
@@ -144,7 +146,7 @@ public class TestMessageDispatcher {
     }
 
     @Override
-    public Object parse(final CallContext context, final Object message) {
+    public Object parse(final CallContext context, final ParamConverter converter, final Object message) {
       // TODO Auto-generated method stub
       return null;
     }
@@ -156,7 +158,7 @@ public class TestMessageDispatcher {
     }
 
     @Override
-    public Object parse(final CallContext context, final Object message) {
+    public Object parse(final CallContext context, final ParamConverter converter, final Object message) {
       // TODO Auto-generated method stub
       return null;
     }

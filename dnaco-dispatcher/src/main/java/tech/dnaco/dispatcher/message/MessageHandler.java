@@ -123,6 +123,7 @@ public interface MessageHandler {
     String value() default "";
     String name() default "";
     String defaultValue() default "";
+    boolean required() default false;
   }
 
   @Retention(RUNTIME)
@@ -131,6 +132,7 @@ public interface MessageHandler {
     String value() default "";
     String name() default "";
     String defaultValue() default "";
+    boolean required() default false;
   }
 
   @Retention(RUNTIME)
@@ -144,6 +146,7 @@ public interface MessageHandler {
     String header() default "";
     String query() default "";
     String defaultValue() default "";
+    boolean required() default false;
   }
 
   @Retention(RUNTIME)

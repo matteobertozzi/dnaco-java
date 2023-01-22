@@ -19,6 +19,8 @@
 
 package tech.dnaco.dispatcher;
 
+import tech.dnaco.dispatcher.ParamMappers.ParamConverter;
+
 public interface ParamParser {
-  Object parse(CallContext context, Object message) throws Exception;
+  Object parse(CallContext context, ParamConverter converter, Object message) throws Exception;
 }

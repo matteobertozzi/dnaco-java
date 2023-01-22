@@ -19,11 +19,13 @@ public class HttpMessageFileResponse implements Message {
   private final HttpMessageMetadata metadata;
   private final DefaultHttpResponse response;
   private final DefaultFileRegion region;
+  private final long timestamp;
 
   public HttpMessageFileResponse(final DefaultHttpResponse response, final DefaultFileRegion region) {
     this.response = response;
     this.metadata = new HttpMessageMetadata(response.headers());
     this.region = region;
+    this.timestamp = System.nanoTime();
   }
 
   @Override
@@ -33,12 +35,16 @@ public class HttpMessageFileResponse implements Message {
     return this;
   }
 
-
   @Override
   public Message release() {
     region.release();
     //response.release();
     return this;
+  }
+
+  @Override
+  public long timestampNs() {
+    return timestamp;
   }
 
   @Override

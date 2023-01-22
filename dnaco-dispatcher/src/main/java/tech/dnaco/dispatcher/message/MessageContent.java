@@ -6,7 +6,7 @@ import java.io.OutputStream;
 
 import tech.dnaco.bytes.ByteArrayWriter;
 import tech.dnaco.data.DataFormat;
-import tech.dnaco.data.hashes.Hash;
+import tech.dnaco.hashes.Hash;
 
 public interface MessageContent {
   MessageContent retain();

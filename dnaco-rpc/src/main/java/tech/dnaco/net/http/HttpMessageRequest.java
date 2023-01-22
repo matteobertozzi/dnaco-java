@@ -43,8 +43,11 @@ public class HttpMessageRequest implements UriMessage {
   private final FullHttpRequest request;
   private final UriMethod method;
   private final String path;
+  private final long timestamp;
 
   public HttpMessageRequest(final FullHttpRequest request) {
+    this.timestamp = System.nanoTime();
+
     this.metadata = new HttpMessageMetadata(request.headers());
     this.request = request;
     this.method = UriMethod.valueOf(request.method().name());
@@ -64,6 +67,11 @@ public class HttpMessageRequest implements UriMessage {
   public Message release() {
     request.content().release();
     return this;
+  }
+
+  @Override
+  public long timestampNs() {
+    return timestamp;
   }
 
   protected FullHttpRequest rawRequest() {

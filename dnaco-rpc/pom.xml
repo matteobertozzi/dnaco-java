@@ -11,14 +11,14 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <netty.version>4.1.86.Final</netty.version>
+    <netty.version>4.1.87.Final</netty.version>
     <jctools.version>4.0.1</jctools.version>
 
-    <junit.version>5.9.1</junit.version>
+    <junit.version>5.9.2</junit.version>
     <maven.jar.version>3.3.0</maven.jar.version>
     <maven.compiler.version>3.10.1</maven.compiler.version>
-    <maven.surefire.version>3.0.0-M7</maven.surefire.version>
-    <maven.failsafe.version>3.0.0-M7</maven.failsafe.version>
+    <maven.surefire.version>3.0.0-M8</maven.surefire.version>
+    <maven.failsafe.version>3.0.0-M8</maven.failsafe.version>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>

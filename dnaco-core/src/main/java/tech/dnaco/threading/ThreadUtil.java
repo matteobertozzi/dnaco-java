@@ -204,6 +204,12 @@ public final class ThreadUtil {
     shutdown(threads);
   }
 
+  public static Thread runInThreadNoWait(final String threadName, final Runnable runnable) {
+    final Thread thread = new Thread(runnable, threadName);
+    thread.start();
+    return thread;
+  }
+
   public static List<Thread> runInThreadsNoWait(final String threadName, final int count, final Runnable runnable) {
     return runInThreadsNoWait(new NamedThreadFactory(threadName), count, runnable);
   }

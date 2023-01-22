@@ -3,6 +3,7 @@ package tech.dnaco.dispatcher.message;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -101,20 +102,28 @@ public final class MessageUtil {
   // ====================================================================================================
   //  Message util
   // ====================================================================================================
-  public static Message newMessage(final Map<String, String> metadata, final Object data) {
+  public static Message newDataMessage(final Map<String, String> metadata, final Object data) {
     return new ObjectMessage(metadata, data);
   }
 
-  public static Message newMessage(final MessageMetadata metadata, final Object data) {
+  public static Message newDataMessage(final MessageMetadata metadata, final Object data) {
     return new ObjectMessage(metadata, data);
   }
 
-  public static Message newMessage(final Map<String, String> metadata, final byte[] content) {
+  public static Message newRawMessage(final Map<String, String> metadata, final byte[] content) {
     return new RawMessage(metadata, content);
   }
 
-  public static Message newMessage(final MessageMetadata metadata, final byte[] content) {
+  public static Message newRawMessage(final MessageMetadata metadata, final byte[] content) {
     return new RawMessage(metadata, content);
+  }
+
+  public static Message newRawMessage(final Map<String, String> metadata, final String content) {
+    return new RawMessage(metadata, content.getBytes(StandardCharsets.UTF_8));
+  }
+
+  public static Message newRawMessage(final MessageMetadata metadata, final String content) {
+    return new RawMessage(metadata, content.getBytes(StandardCharsets.UTF_8));
   }
 
   public static Message newEmptyMessage(final Map<String, String> metadata) {
@@ -125,19 +134,30 @@ public final class MessageUtil {
     return new EmptyMessage(metadata);
   }
 
+  public static Message newErrorMessage(final MessageError error) {
+    return new ErrorMessage(error);
+  }
+
   private static abstract class AbstractMessage implements Message {
     private final MessageMetadata metadata;
+    private final long timestamp;
 
     protected AbstractMessage(final Map<String, String> metadata) {
-      this.metadata = new MessageMetadataMap(metadata);
+      this(new MessageMetadataMap(metadata));
     }
 
     protected AbstractMessage(final MessageMetadata metadata) {
       this.metadata = metadata;
+      this.timestamp = System.nanoTime();
     }
 
     @Override public Message retain() { return this; }
     @Override public Message release() { return this; }
+
+    @Override
+    public long timestampNs() {
+      return timestamp;
+    }
 
     @Override
     public MessageMetadata metadata() {
@@ -230,6 +250,28 @@ public final class MessageUtil {
     @Override
     public <T> T convertContent(final DataFormat format, final Class<T> classOfT) {
       return format.convert(data, classOfT);
+    }
+  }
+
+  public static final class ErrorMessage extends AbstractMessage {
+    private final MessageError error;
+
+    public ErrorMessage(final MessageError error) {
+      super(EmptyMetadata.INSTANCE);
+      this.error = error;
+    }
+
+    public MessageError error() {
+      return error;
+    }
+
+    @Override public int contentLength() { throw new UnsupportedOperationException(); }
+    @Override public long writeContentToStream(final OutputStream stream) { throw new UnsupportedOperationException(); }
+    @Override public long writeContentToStream(final DataOutput stream) { throw new UnsupportedOperationException(); }
+
+    @Override
+    public <T> T convertContent(final DataFormat format, final Class<T> classOfT) {
+      throw new UnsupportedOperationException();
     }
   }
 

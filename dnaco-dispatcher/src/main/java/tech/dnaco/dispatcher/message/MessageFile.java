@@ -13,6 +13,7 @@ import tech.dnaco.io.IOUtil;
 public class MessageFile implements Message {
   private final MessageMetadata metadata;
   private final File file;
+  private final long timestamp;
 
   public MessageFile(final File file) {
     this(EmptyMetadata.INSTANCE, file);
@@ -21,6 +22,7 @@ public class MessageFile implements Message {
   public MessageFile(final MessageMetadata metadata, final File file) {
     this.metadata = metadata;
     this.file = file;
+    this.timestamp = System.nanoTime();
   }
 
   public MessageMetadata metadata() {
@@ -73,5 +75,10 @@ public class MessageFile implements Message {
   @Override
   public Message release() {
     return this;
+  }
+
+  @Override
+  public long timestampNs() {
+    return timestamp;
   }
 }

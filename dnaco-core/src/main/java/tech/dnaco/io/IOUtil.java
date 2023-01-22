@@ -59,6 +59,20 @@ public final class IOUtil {
     }
   }
 
+  // ================================================================================
+  // Read related
+  // ================================================================================
+  public static String readAllAsString(final InputStream in, final boolean closeStream) throws IOException {
+    try {
+      final byte[] data = in.readAllBytes();
+      return data != null ? new String(data) : null;
+    } finally {
+      if (closeStream) {
+        closeQuietly(in);
+      }
+    }
+  }
+
   // ===============================================================================================
   //  Read related
   // ===============================================================================================

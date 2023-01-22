@@ -140,7 +140,7 @@ public final class VarInt {
 
     final int b7 = stream.read();
     if (z0 == 254) {
-      result.set((x << 24) + shift(b6, 16) + shift(b6, 8) + shift(b7, 0));
+      result.set((x << 24) + shift(b5, 16) + shift(b6, 8) + shift(b7, 0));
       return 8;
     }
 

@@ -19,6 +19,8 @@ package tech.dnaco.data.json;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -30,6 +32,7 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.POJONode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 
 public final class JsonElementModule {
   public static final SimpleModule INSTANCE = new SimpleModule();
@@ -53,7 +56,12 @@ public final class JsonElementModule {
       if (value.isJsonObject()) {
         provider.defaultSerializeValue(value.getAsJsonObject().getMembers(), gen);
       } else if (value.isJsonArray()) {
-        provider.defaultSerializeValue(value.getAsJsonArray().getElements(), gen);
+        if (gen instanceof final ToXmlGenerator toXmlGen) {
+          final List<JsonElement> elements = value.getAsJsonArray().getElements();
+          provider.defaultSerializeValue(Map.of("item", elements), toXmlGen);
+        } else {
+          provider.defaultSerializeValue(value.getAsJsonArray().getElements(), gen);
+        }
       } else if (value.isJsonPrimitive()) {
         provider.defaultSerializeValue(value.getAsJsonPrimitive().getValue(), gen);
       } else if (value.isJsonNull()) {

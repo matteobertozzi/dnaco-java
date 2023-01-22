@@ -22,10 +22,12 @@ package tech.dnaco.bytes.encoding;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.function.LongSupplier;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import tech.dnaco.collections.LongValue;
@@ -52,6 +54,39 @@ public class TestVarInt {
   public void testVarInt2() {
     final TestRand rand = new TestRand();
     testEncodeDecode(100_000_000, rand::nextLong);
+  }
+
+  @Test
+  public void testVarInt3() throws Exception {
+    final long[] values = new long[] {
+      11822617986553856L, 5247702235494131L, 8227192242961508L, 8748866098329721L,
+      (1L << 58), ((1L << 58) - 1),
+      (1L << 60), ((1L << 60) - 1),
+      (1L << 62), ((1L << 62) - 1),
+      (1L << 63), ((1L << 63) - 1),
+    };
+
+    for (int i = 0; i < values.length; ++i) {
+      final long v = values[i];
+
+      final byte[] buf = new byte[16];
+      final int wr = VarInt.write(buf, v);
+
+      try (ByteArrayInputStream stream = new ByteArrayInputStream(buf)) {
+        final LongValue result = new LongValue();
+        final int rd = VarInt.read(stream, result);
+        Assertions.assertEquals(wr, rd);
+        Assertions.assertEquals(v, result.get());
+      }
+
+
+      if (true) {
+        final LongValue result = new LongValue();
+        final int rd = VarInt.read(buf, 0, wr, result);
+        Assertions.assertEquals(wr, rd);
+        Assertions.assertEquals(v, result.get());
+      }
+    }
   }
 
   private static void testEncodeDecode(final int count, final LongSupplier rand) {
