@@ -349,6 +349,18 @@ public final class BytesUtil {
   }
 
   // ================================================================================
+  //  NOTE: Use only for testing
+  // ================================================================================
+  public static byte[] fromInts(final int[] intBytes) {
+    final byte[] bytes = new byte[intBytes.length];
+    for (int i = 0; i < intBytes.length; ++i) {
+      if (intBytes[i] > 0xff) throw new IllegalArgumentException("invalid byte " + intBytes[i] + " at position " + i);
+      bytes[i] = (byte)intBytes[i];
+    }
+    return bytes;
+  }
+
+  // ================================================================================
   //  Bytes to hex
   // ================================================================================
   public static byte[] fromHexString(final String data) {

@@ -43,7 +43,7 @@ public abstract class IntEncoder {
   // ================================================================================
   //  Fixed Size Stream methods
   // ================================================================================
-  public void writeFixed8(final OutputStream stream, final long v) throws IOException { writeFixed(stream, v, 1); }
+  public void writeFixed8(final OutputStream stream, final long v) throws IOException  { writeFixed(stream, v, 1); }
   public void writeFixed16(final OutputStream stream, final long v) throws IOException { writeFixed(stream, v, 2); }
   public void writeFixed24(final OutputStream stream, final long v) throws IOException { writeFixed(stream, v, 3); }
   public void writeFixed32(final OutputStream stream, final long v) throws IOException { writeFixed(stream, v, 4); }
@@ -53,6 +53,16 @@ public abstract class IntEncoder {
   public void writeFixed64(final OutputStream stream, final long v) throws IOException { writeFixed(stream, v, 8); }
 
   public abstract void writeFixed(final OutputStream stream, final long v, final int bytesWidth) throws IOException;
+
+  public void writeFixed8(final ByteArrayAppender stream, final long v)  { writeFixed(stream, v, 1); }
+  public void writeFixed16(final ByteArrayAppender stream, final long v) { writeFixed(stream, v, 2); }
+  public void writeFixed24(final ByteArrayAppender stream, final long v) { writeFixed(stream, v, 3); }
+  public void writeFixed32(final ByteArrayAppender stream, final long v) { writeFixed(stream, v, 4); }
+  public void writeFixed40(final ByteArrayAppender stream, final long v) { writeFixed(stream, v, 5); }
+  public void writeFixed48(final ByteArrayAppender stream, final long v) { writeFixed(stream, v, 6); }
+  public void writeFixed56(final ByteArrayAppender stream, final long v) { writeFixed(stream, v, 7); }
+  public void writeFixed64(final ByteArrayAppender stream, final long v) { writeFixed(stream, v, 8); }
+
   public abstract void writeFixed(final ByteArrayAppender stream, final long v, final int bytesWidth);
 
   // ================================================================================

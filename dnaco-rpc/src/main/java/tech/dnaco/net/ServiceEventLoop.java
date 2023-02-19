@@ -20,6 +20,7 @@
 package tech.dnaco.net;
 
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -41,6 +42,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import tech.dnaco.logging.Logger;
+import tech.dnaco.telemetry.TelemetryCollectorRegistry;
 
 public class ServiceEventLoop implements AutoCloseable {
   public record EventLoopConfig (String name, int nThreads) {}
@@ -109,6 +111,9 @@ public class ServiceEventLoop implements AutoCloseable {
         Logger.warn(KQueue.unavailabilityCause(), "kqueue unavailability cause: {}");
       }
     }
+
+    // update system metrics
+    bossGroup.scheduleAtFixedRate(TelemetryCollectorRegistry.INSTANCE::updateSystemUsage, 1, 20, TimeUnit.SECONDS);
   }
 
   public EventLoopGroup addWorkerGroup(final String name, final int nThreads) {

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 import tech.dnaco.data.json.JsonElement;
@@ -59,6 +60,20 @@ public final class XmlFormat extends DataFormat {
   record Foo (String a, int b) {}
 
   public static void main(final String[] args) {
+    if (true) {
+      final String xml = """
+        <root>
+          <item>Foo</item>
+          <item>Bar</item>
+          <item>Car</item>
+        </root>
+      """;
+      System.out.println(XmlFormat.INSTANCE.fromString(xml, JsonNode.class));
+      //System.out.println(List.of(XmlFormat.INSTANCE.fromString(xml, JsonElement[].class)));
+      System.out.println(List.of(XmlFormat.INSTANCE.fromString(xml, JsonNode[].class)));
+      return;
+    }
+
     final JsonElement j = JsonUtil.toJsonTree(new Foo[] { new Foo("a", 1), new Foo("b", 2) });
     System.out.println(XmlFormat.INSTANCE.asString(new Foo[] { new Foo("a", 1), new Foo("b", 2) }));
     System.out.println(XmlFormat.INSTANCE.asString(List.of(new Foo("a", 1), new Foo("b", 2))));

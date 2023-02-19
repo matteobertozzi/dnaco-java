@@ -2,27 +2,27 @@
   "com.fasterxml.jackson.core": {
     "jackson-core": {
       "name": "jackson.version",
-      "version": "2.14.1"
+      "version": "2.14.2"
     },
     "jackson-databind": {
       "name": "jackson.databind.version",
-      "version": "2.14.1"
+      "version": "2.14.2"
     }
   },
   "com.fasterxml.jackson.dataformat": {
     "jackson-dataformat-cbor": {
       "name": "jackson.version",
-      "version": "2.14.1"
+      "version": "2.14.2"
     },
     "jackson-dataformat-xml": {
       "name": "jackson.version",
-      "version": "2.14.1"
+      "version": "2.14.2"
     }
   },
   "com.fasterxml.jackson.module": {
     "jackson-module-parameter-names": {
       "name": "jackson.version",
-      "version": "2.14.1"
+      "version": "2.14.2"
     }
   },
   "com.github.jai-imageio": {
@@ -34,7 +34,7 @@
   "com.github.luben": {
     "zstd-jni": {
       "name": "zstd.version",
-      "version": "1.5.2-5"
+      "version": "1.5.4-1"
     }
   },
   "com.google.firebase": {
@@ -70,13 +70,13 @@
   "com.microsoft.sqlserver": {
     "mssql-jdbc": {
       "name": "sqlserver.version",
-      "version": "11.2.3.jre17"
+      "version": "12.2.0.jre11"
     }
   },
   "com.oracle.database.jdbc": {
     "ojdbc11": {
       "name": "oracle.version",
-      "version": "21.8.0.0"
+      "version": "21.9.0.0"
     }
   },
   "com.rabbitmq": {
@@ -100,35 +100,35 @@
   "io.netty": {
     "netty-buffer": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     },
     "netty-codec": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     },
     "netty-codec-http": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     },
     "netty-codec-http2": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     },
     "netty-common": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     },
     "netty-handler": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     },
     "netty-transport-native-epoll": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     },
     "netty-transport-native-kqueue": {
       "name": "netty.version",
-      "version": "4.1.87.Final"
+      "version": "4.1.89.Final"
     }
   },
   "com.mysql": {
@@ -164,7 +164,7 @@
     },
     "maven-failsafe-plugin": {
       "name": "maven.failsafe.version",
-      "version": "3.0.0-M8"
+      "version": "3.0.0-M9"
     },
     "maven-jar-plugin": {
       "name": "maven.jar.version",
@@ -174,9 +174,27 @@
       "name": "maven.shade.version",
       "version": "3.4.1"
     },
+    "maven-source-plugin": {
+      "name": "maven.source.version",
+      "version": "3.2.1"
+    },
+    "maven-javadoc-plugin": {
+      "name": "maven.javadoc.version",
+      "version": "3.5.0"
+    },
+    "maven-gpg-plugin": {
+      "name": "maven.gpg.version",
+      "version": "3.0.1"
+    },
     "maven-surefire-plugin": {
       "name": "maven.surefire.version",
-      "version": "3.0.0-M8"
+      "version": "3.0.0-M9"
+    }
+  },
+  "org.sonatype.plugins": {
+    "nexus-staging-maven-plugin": {
+      "name": "nexus.staging.maven.version",
+      "version": "1.6.13"
     }
   },
   "org.apache.poi": {
@@ -192,7 +210,7 @@
   "org.apache.tika": {
     "tika-core": {
       "name": "tika.version",
-      "version": "2.6.0"
+      "version": "2.7.0"
     }
   },
   "org.codehaus.mojo": {
@@ -231,6 +249,10 @@
     "junit-jupiter-engine": {
       "name": "junit.version",
       "version": "5.9.2"
+    },
+    "junit-jupiter-params": {
+      "name": "junit.version",
+      "version": "5.9.2"
     }
   },
   "org.openjdk.jmh": {
@@ -246,7 +268,7 @@
   "org.postgresql": {
     "postgresql": {
       "name": "postgresql.version",
-      "version": "42.5.1"
+      "version": "42.5.4"
     }
   },
   "org.rocksdb": {
@@ -258,41 +280,41 @@
   "org.duckdb": {
     "duckdb_jdbc": {
       "name": "duckdb.version",
-      "version": "0.6.1"
+      "version": "0.7.0"
     }
   },
   "org.xerial": {
     "sqlite-jdbc": {
       "name": "sqlite.version",
-      "version": "3.40.0.0"
+      "version": "3.40.1.0"
     }
   },
   "software.amazon.awssdk": {
     "dynamodb-enhanced": {
       "name": "aws.sdk.version",
-      "version": "2.19.21"
+      "version": "2.20.7"
     },
     "lambda": {
       "name": "aws.sdk.version",
-      "version": "2.19.21"
+      "version": "2.20.7"
     },
     "s3": {
       "name": "aws.sdk.version",
-      "version": "2.19.21"
+      "version": "2.20.7"
     },
     "s3-transfer-manager": {
       "name": "aws.sdk.version",
-      "version": "2.19.21"
+      "version": "2.20.7"
     },
     "sqs": {
       "name": "aws.sdk.version",
-      "version": "2.19.21"
+      "version": "2.20.7"
     }
   },
   "software.aws.rds": {
     "aws-mysql-jdbc": {
       "name": "aws.mysql.version",
-      "version": "1.1.3"
+      "version": "1.1.4"
     },
     "aws-postgresql-jdbc": {
       "name": "aws.postgresql.version",
