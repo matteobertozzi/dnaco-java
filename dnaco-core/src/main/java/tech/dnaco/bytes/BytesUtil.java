@@ -123,7 +123,7 @@ public final class BytesUtil {
     if (needleLen == 1) return indexOf(haystack, haystackOff, haystackLen, needle[0]);
 
     final int len = haystackLen - needleLen;
-    for (int i = 0; i < len; ++i) {
+    for (int i = 0; i <= len; ++i) {
       final int off = haystackOff + i;
       if (Arrays.equals(haystack, off, off + needleLen, needle, 0, needleLen)) {
         return off;

@@ -135,17 +135,18 @@ public abstract class IntDecoder {
     }
 
     @Override
+    @SuppressWarnings("fallthrough")
     public long readFixed(final byte[] buf, final int off, final int bytesWidth) {
       long result = 0;
       switch (bytesWidth) {
-        case 8: result |= ((long)(buf[7] & 0xff)) << 56;
-        case 7: result |= ((long)(buf[6] & 0xff)) << 48;
-        case 6: result |= ((long)(buf[5] & 0xff)) << 40;
-        case 5: result |= ((long)(buf[4] & 0xff)) << 32;
-        case 4: result |= ((long)(buf[3] & 0xff)) << 24;
-        case 3: result |= (buf[2] & 0xff) << 16;
-        case 2: result |= (buf[1] & 0xff) << 8;
-        case 1: result |= buf[0] & 0xff;
+        case 8: result |= (buf[off + 7] & 0xFFL) << 56;
+        case 7: result |= (buf[off + 6] & 0xFFL) << 48;
+        case 6: result |= (buf[off + 5] & 0xFFL) << 40;
+        case 5: result |= (buf[off + 4] & 0xFFL) << 32;
+        case 4: result |= (buf[off + 3] & 0xFFL) << 24;
+        case 3: result |= (buf[off + 2] & 0xFFL) << 16;
+        case 2: result |= (buf[off + 1] & 0xFFL) << 8;
+        case 1: result |= buf[off] & 0xFFL;
       }
       return result;
     }

@@ -34,7 +34,7 @@
   "com.github.luben": {
     "zstd-jni": {
       "name": "zstd.version",
-      "version": "1.5.4-1"
+      "version": "1.5.4-2"
     }
   },
   "com.google.firebase": {
@@ -47,6 +47,12 @@
     "core": {
       "name": "zxing.version",
       "version": "3.5.1"
+    }
+  },
+  "org.roaringbitmap": {
+    "RoaringBitmap": {
+      "name": "roaring.bitmap.version",
+      "version": "0.9.39"
     }
   },
   "com.graphql-java": {
@@ -100,35 +106,35 @@
   "io.netty": {
     "netty-buffer": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     },
     "netty-codec": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     },
     "netty-codec-http": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     },
     "netty-codec-http2": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     },
     "netty-common": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     },
     "netty-handler": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     },
     "netty-transport-native-epoll": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     },
     "netty-transport-native-kqueue": {
       "name": "netty.version",
-      "version": "4.1.89.Final"
+      "version": "4.1.90.Final"
     }
   },
   "com.mysql": {
@@ -140,11 +146,11 @@
   "org.antlr": {
     "antlr4-maven-plugin": {
       "name": "antlr.version",
-      "version": "4.11.1"
+      "version": "4.12.0"
     },
     "antlr4-runtime": {
       "name": "antlr.version",
-      "version": "4.11.1"
+      "version": "4.12.0"
     }
   },
   "org.apache.commons": {
@@ -156,7 +162,7 @@
   "org.apache.maven.plugins": {
     "maven-compiler-plugin": {
       "name": "maven.compiler.version",
-      "version": "3.10.1"
+      "version": "3.11.0"
     },
     "maven-dependency-plugin": {
       "name": "maven.dependency.version",
@@ -274,41 +280,41 @@
   "org.rocksdb": {
     "rocksdbjni": {
       "name": "rocksdb.version",
-      "version": "7.9.2"
+      "version": "7.10.2"
     }
   },
   "org.duckdb": {
     "duckdb_jdbc": {
       "name": "duckdb.version",
-      "version": "0.7.0"
+      "version": "0.7.1"
     }
   },
   "org.xerial": {
     "sqlite-jdbc": {
       "name": "sqlite.version",
-      "version": "3.40.1.0"
+      "version": "3.41.0.0"
     }
   },
   "software.amazon.awssdk": {
     "dynamodb-enhanced": {
       "name": "aws.sdk.version",
-      "version": "2.20.7"
+      "version": "2.20.23"
     },
     "lambda": {
       "name": "aws.sdk.version",
-      "version": "2.20.7"
+      "version": "2.20.23"
     },
     "s3": {
       "name": "aws.sdk.version",
-      "version": "2.20.7"
+      "version": "2.20.23"
     },
     "s3-transfer-manager": {
       "name": "aws.sdk.version",
-      "version": "2.20.7"
+      "version": "2.20.23"
     },
     "sqs": {
       "name": "aws.sdk.version",
-      "version": "2.20.7"
+      "version": "2.20.23"
     }
   },
   "software.aws.rds": {

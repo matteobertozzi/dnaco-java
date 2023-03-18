@@ -147,9 +147,17 @@ public abstract class IntEncoder {
     }
 
     @Override
+    @SuppressWarnings("fallthrough")
     public void writeFixed(final byte[] buf, final int off, final long v, final int bytesWidth) {
-      for (int i = 0; i < bytesWidth; ++i) {
-        buf[off + i] = (byte)((v >>> (i << 3)) & 0xff);
+      switch (bytesWidth) {
+        case 8: buf[off + 7] = ((byte)((v >>> 56) & 0xff));
+        case 7: buf[off + 6] = ((byte)((v >>> 48) & 0xff));
+        case 6: buf[off + 5] = ((byte)((v >>> 40) & 0xff));
+        case 5: buf[off + 4] = ((byte)((v >>> 32) & 0xff));
+        case 4: buf[off + 3] = ((byte)((v >>> 24) & 0xff));
+        case 3: buf[off + 2] = ((byte)((v >>> 16) & 0xff));
+        case 2: buf[off + 1] = ((byte)((v >>> 8) & 0xff));
+        case 1: buf[off] = (byte)(v & 0xff);
       }
     }
 

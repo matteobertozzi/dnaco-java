@@ -39,8 +39,16 @@ public final class RandData {
     return Holder.secureRand.nextLong();
   }
 
+  public static long generateLong(final long origin, final long bound) {
+    return Holder.secureRand.nextLong(origin, bound);
+  }
+
   public static int generateInt() {
     return Holder.secureRand.nextInt();
+  }
+
+  public static int generateInt(final int origin, final int bound) {
+    return Holder.secureRand.nextInt(origin, bound);
   }
 
   // ================================================================================

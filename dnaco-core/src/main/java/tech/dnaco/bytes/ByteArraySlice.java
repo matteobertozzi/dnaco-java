@@ -25,6 +25,8 @@ import java.util.Arrays;
 import tech.dnaco.collections.arrays.ArrayUtil.ByteArrayConsumer;
 
 public class ByteArraySlice implements BytesSlice {
+  public static final ByteArraySlice EMPTY_SLICE = new ByteArraySlice();
+
   private byte[] buf;
   private int off;
   private int len;
@@ -144,7 +146,7 @@ public class ByteArraySlice implements BytesSlice {
   public static int slowCompare(final BytesSlice a, final BytesSlice b) {
     final int len = Math.min(a.length(), b.length());
     for (int i = 0; i < len; ++i) {
-      final int cmp = Integer.compare(a.get(i), b.get(i));
+      final int cmp = Integer.compare(a.get(i) & 0xff, b.get(i) & 0xff);
       if (cmp != 0) return cmp;
     }
     return a.length() - b.length();

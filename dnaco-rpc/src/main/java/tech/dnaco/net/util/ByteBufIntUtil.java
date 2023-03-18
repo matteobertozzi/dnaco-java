@@ -7,6 +7,7 @@ public final class ByteBufIntUtil {
     // no-op
   }
 
+  @SuppressWarnings("fallthrough")
   public static void writeFixed(final ByteBuf buf, final long v, final int bytesWidth) {
     switch (bytesWidth) {
       case 8: buf.writeByte((int)((v >>> 56) & 0xff));
@@ -20,6 +21,7 @@ public final class ByteBufIntUtil {
     }
   }
 
+  @SuppressWarnings("fallthrough")
   public static long readFixed(final ByteBuf buf, final int bytesWidth) {
     long result = 0;
     switch (bytesWidth) {

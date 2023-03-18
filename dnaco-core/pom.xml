@@ -14,7 +14,7 @@
   <properties>
     <junit.version>5.9.2</junit.version>
     <maven.jar.version>3.3.0</maven.jar.version>
-    <maven.compiler.version>3.10.1</maven.compiler.version>
+    <maven.compiler.version>3.11.0</maven.compiler.version>
     <maven.surefire.version>3.0.0-M9</maven.surefire.version>
     <maven.failsafe.version>3.0.0-M9</maven.failsafe.version>
 

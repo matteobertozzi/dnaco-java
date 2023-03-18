@@ -21,6 +21,7 @@ package tech.dnaco.bytes.encoding;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -48,7 +49,7 @@ public final class RowKey {
     this.key = key;
     this.index = new IntArray(numOfKeyParts);
     for (int offset = off, length = off + len; offset < length; ) {
-      final int separator = BytesUtil.indexOf(key, offset, ZERO);
+      final int separator = BytesUtil.indexOf(key, offset, length - offset, ZERO);
       if (separator < 0) {
         index.add(offset);
         index.add(key.length - offset);
@@ -110,6 +111,7 @@ public final class RowKey {
     return Math.toIntExact(getLong(partIndex, bytesWidth));
   }
 
+  @SuppressWarnings("fallthrough")
   public long getLong(final int partIndex, final int bytesWidth) {
     final ByteArraySlice part = get(partIndex);
     int off = 0;
@@ -159,7 +161,6 @@ public final class RowKey {
         break;
       }
 
-      //System.out.println("offset -> " + offset + " -> " + (separator - offset));
       consumer.accept(decode(key, offset, separator - offset));
       offset = separator + ZERO.length;
     }
@@ -168,6 +169,10 @@ public final class RowKey {
   private static ByteArraySlice decode(final byte[] buf, final int off, final int len) {
     if (BytesUtil.indexOf(buf, off, len, (byte) 0) < 0) {
       return new ByteArraySlice(buf, off, len);
+    }
+
+    if (len == ZERO.length && Arrays.equals(buf, off, off + len, ZERO, 0, ZERO.length)) {
+      return ByteArraySlice.EMPTY_SLICE;
     }
 
     final ByteArray key = new ByteArray(len - 1);
@@ -223,6 +228,7 @@ public final class RowKey {
 
   public static final class RowKeyBuilder {
     private final ByteArray key = new ByteArray(32);
+    private int components = 0;
 
     private RowKeyBuilder() {
       // no-op
@@ -230,6 +236,7 @@ public final class RowKey {
 
     private RowKeyBuilder(final byte[] key) {
       this.key.add(key);
+      components++;
     }
 
     public RowKeyBuilder addKeySeparator() {
@@ -298,7 +305,7 @@ public final class RowKey {
     }
 
     public RowKeyBuilder add(final byte[] buf, final int off, final int len) {
-      if (key.isNotEmpty()) key.add(ZERO);
+      if (components++ > 0) key.add(ZERO);
 
       for (int i = 0; i < len; ++i) {
         final byte currentByte = buf[off + i];
