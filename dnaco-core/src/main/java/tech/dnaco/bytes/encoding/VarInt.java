@@ -58,39 +58,54 @@ public final class VarInt {
       result.set(z0);
       return 1;
     }
+
+    final int b1 = buffer[off + 1] & 0xff;
     if (z0 <= 248) {
       if (n < 2) return 0;
-      result.set((z0 - 241) * 256 + shift(buffer[off+1], 0) + 240);
+      result.set((z0 - 241) * 256 + shift(b1, 0) + 240);
       return 2;
     }
+
     if (n < z0 - 246) return 0;
+    final int b2 = buffer[off + 2] & 0xff;
     if (z0 == 249) {
-      result.set(2288 + 256 * shift(buffer[off+1], 0) + shift(buffer[off+2], 0));
+      result.set(2288 + 256 * shift(b1, 0) + shift(b2, 0));
       return 3;
     }
+
+    final int b3 = buffer[off + 3] & 0xff;
     if (z0 == 250) {
-      result.set(shift(buffer[off+1], 16) + shift(buffer[off+2], 8) + shift(buffer[off+3], 0));
+      result.set(shift(b1, 16) + shift(b2, 8) + shift(b3, 0));
       return 4;
     }
 
-    final long x = shift(buffer[off+1], 24) + shift(buffer[off+2], 16) + shift(buffer[off+3], 8) + (buffer[off+4] & 0xff);
+    final int b4 = buffer[off + 4] & 0xff;
+    final long x = shift(b1, 24) + shift(b2, 16) + shift(b3, 8) + (b4 & 0xff);
     if (z0 == 251) {
       result.set(x);
       return 5;
     }
+
+    final int b5 = buffer[off + 5] & 0xff;
     if (z0 == 252) {
-      result.set((x << 8) + (buffer[off+5] & 0xff));
+      result.set((x << 8) + (b5 & 0xff));
       return 6;
     }
+
+    final int b6 = buffer[off + 6] & 0xff;
     if (z0 == 253) {
-      result.set((x << 16) + shift(buffer[off+5], 8) + shift(buffer[off+6], 0));
+      result.set((x << 16) + shift(b5, 8) + shift(b6, 0));
       return 7;
     }
+
+    final int b7 = buffer[off + 7] & 0xff;
     if (z0 == 254) {
-      result.set((x << 24) + shift(buffer[off+5], 16) + shift(buffer[off+6], 8) + shift(buffer[off+7], 0));
+      result.set((x << 24) + shift(b5, 16) + shift(b6, 8) + shift(b7, 0));
       return 8;
     }
-    result.set((x << 32) + shift(buffer[off+5], 24) + (shift(buffer[off+6], 16) + (shift(buffer[off+7], 8) + shift(buffer[off+8], 0))));
+
+    final int b8 = buffer[off + 8] & 0xff;
+    result.set((x << 32) + shift(b5, 24) + (shift(b6, 16) + (shift(b7, 8) + shift(b8, 0))));
     return 9;
   }
 

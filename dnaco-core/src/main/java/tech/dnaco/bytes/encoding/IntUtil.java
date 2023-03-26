@@ -58,11 +58,11 @@ public final class IntUtil {
   }
 
   public static int zigZagDecode(final int n) {
-    return (n >> 1) ^ -(n & 1);
+    return (n >> 1) ^ (-(n & 1));
   }
 
   public static long zigZagDecode(final long n) {
-    return (n >> 1) ^ -(n & 1);
+    return (n >> 1) ^ (-(n & 1));
   }
 
   public static BigInteger toUnsignedBigInteger(final long v) {

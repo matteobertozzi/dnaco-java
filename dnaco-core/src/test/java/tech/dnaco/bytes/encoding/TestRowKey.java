@@ -129,8 +129,7 @@ public class TestRowKey {
     Assertions.assertEquals(6, key.getInt48(5));
     Assertions.assertEquals(7, key.getInt56(6));
     Assertions.assertEquals(8, key.getInt64(7));
-    Assertions.assertEquals(9, key.getLong(8));
-    Assertions.assertEquals(9, key.getInt(8));
+    Assertions.assertEquals(9, key.getVarInt(8));
     Assertions.assertEquals("foo", key.getString(9));
   }
 
@@ -230,6 +229,66 @@ public class TestRowKey {
       assertEquals(rec.a(), key.get(0));
       assertEquals(rec.b(), key.getString(1));
       assertEquals(rec.c(), key.getInt32(2));
+    }
+  }
+
+  @Test
+  public void testRandomVarInt() {
+    final ArrayList<CompositeKey1> k1Record = new ArrayList<>();
+    final ArrayList<CompositeKey2> k2Record = new ArrayList<>();
+    final ArrayList<CompositeKey3> k3Record = new ArrayList<>();
+    final ArrayList<ByteArraySlice> k1Raw = new ArrayList<>();
+    final ArrayList<ByteArraySlice> k2Raw = new ArrayList<>();
+    final ArrayList<ByteArraySlice> k3Raw = new ArrayList<>();
+    for (int i = 0; i < 3; ++i) {
+      final int strLen = RandData.generateInt(0, 16);
+      final String strValue = RandData.generateAlphaNumericString(strLen);
+      for (int j = 0; j < 3; ++j) {
+        final int bytesLen = RandData.generateInt(0, 32);
+        final byte[] bytesValue = RandData.generateBytes(bytesLen);
+        for (int k = 0; k < 3; ++k) {
+          final int intValue = RandData.generateInt(0, Integer.MAX_VALUE);
+          k1Record.add(new CompositeKey1(strValue, intValue, new ByteArraySlice(bytesValue)));
+          k2Record.add(new CompositeKey2(intValue, new ByteArraySlice(bytesValue), strValue));
+          k3Record.add(new CompositeKey3(new ByteArraySlice(bytesValue), strValue, intValue));
+          k1Raw.add(RowKey.newKeyBuilder().add(strValue).addVarInt(intValue).add(bytesValue).slice());
+          k2Raw.add(RowKey.newKeyBuilder().addVarInt(intValue).add(bytesValue).add(strValue).slice());
+          k3Raw.add(RowKey.newKeyBuilder().add(bytesValue).add(strValue).addVarInt(intValue).slice());
+        }
+      }
+    }
+
+    Collections.sort(k1Record);
+    Collections.sort(k2Record);
+    Collections.sort(k3Record);
+    Collections.sort(k1Raw);
+    Collections.sort(k2Raw);
+    Collections.sort(k3Raw);
+
+    for (int i = 0, len = k1Record.size(); i < len; ++i) {
+      final CompositeKey1 rec = k1Record.get(i);
+      final RowKey key = new RowKey(k1Raw.get(i).buffer());
+      System.out.println(rec);
+      System.out.println(k1Raw.get(i));
+      assertEquals(rec.a(), key.getString(0));
+      assertEquals(rec.b(), key.getVarInt(1));
+      assertEquals(rec.c(), key.get(2));
+    }
+
+    for (int i = 0, len = k2Record.size(); i < len; ++i) {
+      final CompositeKey2 rec = k2Record.get(i);
+      final RowKey key = new RowKey(k2Raw.get(i).buffer());
+      assertEquals(rec.a(), key.getVarInt(0));
+      assertEquals(rec.b(), key.get(1));
+      assertEquals(rec.c(), key.getString(2));
+    }
+
+    for (int i = 0, len = k3Record.size(); i < len; ++i) {
+      final CompositeKey3 rec = k3Record.get(i);
+      final RowKey key = new RowKey(k3Raw.get(i).buffer());
+      assertEquals(rec.a(), key.get(0));
+      assertEquals(rec.b(), key.getString(1));
+      assertEquals(rec.c(), key.getVarInt(2));
     }
   }
 }

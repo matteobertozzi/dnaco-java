@@ -75,6 +75,13 @@ public final class RowKey {
     return getInt8(partIndex) != 0;
   }
 
+  public long getVarInt(final int partIndex) {
+    final ByteArraySlice buf = get(partIndex);
+    final LongValue result = new LongValue();
+    VarInt.read(buf, result);
+    return result.get();
+  }
+
   public int getInt8(final int partIndex) {
     return get(partIndex).get(0);
   }
@@ -127,16 +134,6 @@ public final class RowKey {
       case 1: result += (((long)part.get(off) & 0xff));
     }
     return result;
-  }
-
-  public long getLong(final int partIndex) {
-    final LongValue result = new LongValue();
-    VarInt.read(get(partIndex), result);
-    return result.get();
-  }
-
-  public int getInt(final int partIndex) {
-    return Math.toIntExact(getLong(partIndex));
   }
 
   public String getString(final int partIndex) {
@@ -246,6 +243,12 @@ public final class RowKey {
 
     public RowKeyBuilder addBool(final boolean value) {
       return addInt(value ? 1 : 0, 1);
+    }
+
+    public RowKeyBuilder addVarInt(final long value) {
+      final byte[] buf = new byte[9];
+      final int n = VarInt.write(buf, value);
+      return add(buf, 0, n);
     }
 
     public RowKeyBuilder addInt8(final int value) {

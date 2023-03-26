@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
 import tech.dnaco.bytes.BytesUtil;
+import tech.dnaco.collections.arrays.LongArray;
 import tech.dnaco.strings.BaseN;
 import tech.dnaco.strings.HumansUtil;
 import tech.dnaco.strings.StringUtil;
@@ -54,6 +55,12 @@ public final class JvmMetrics implements TelemetryCollector {
     .setName("jvm.memory.used_memory")
     .setLabel("JVM Used Memory")
     .register(new MaxAndAvgTimeRangeGauge(60 * 24, 1, TimeUnit.MINUTES));
+
+  private final Histogram usedMemoryHisto = new TelemetryCollector.Builder()
+    .setUnit(HumansUtil.HUMAN_SIZE)
+    .setName("jvm.memory.allocated_memory_histo")
+    .setLabel("JVM Allocated Memory Histo")
+    .register(new Histogram(generateMaxMemoryBounds()));
 
   private final MaxAndAvgTimeRangeGauge cpuUsage = new TelemetryCollector.Builder()
     .setUnit(HumansUtil.HUMAN_PERCENT)
@@ -83,7 +90,9 @@ public final class JvmMetrics implements TelemetryCollector {
   public void collect(final long now) {
     // update memory metrics
     allocatedMemory.set(now, getTotalMemory());
-    usedMemory.set(now, getUsedMemory());
+    final long memUsed = getUsedMemory();
+    usedMemory.set(now, memUsed);
+    usedMemoryHisto.add(memUsed);
 
     // update cpu metrics
     cpuUsage.set(now, getCpuUsage());
@@ -154,6 +163,30 @@ public final class JvmMetrics implements TelemetryCollector {
 
   public long getFreeMemory() {
     return Runtime.getRuntime().freeMemory();
+  }
+
+  public static long[] generateMaxMemoryBounds() {
+    final long maxMemory = Runtime.getRuntime().maxMemory();
+    final LongArray bounds = new LongArray(64);
+    long slot = 32 << 20;
+    while (slot < maxMemory && slot <= 134217728) {
+      bounds.add(slot);
+      slot += 32 << 20;
+    }
+    while (slot < maxMemory && slot <= 536870912) {
+      bounds.add(slot);
+      slot += 64 << 20;
+    }
+    while (slot < maxMemory && slot <= 1073741824L) {
+      bounds.add(slot);
+      slot += 128 << 20;
+    }
+    while (slot < maxMemory) {
+      bounds.add(slot);
+      slot += 256 << 20;
+    }
+    bounds.add(maxMemory);
+    return bounds.buffer();
   }
 
   // ================================================================================
