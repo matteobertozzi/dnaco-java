@@ -34,7 +34,7 @@
   "com.github.luben": {
     "zstd-jni": {
       "name": "zstd.version",
-      "version": "1.5.4-2"
+      "version": "1.5.5-1"
     }
   },
   "com.google.firebase": {
@@ -58,7 +58,7 @@
   "com.graphql-java": {
     "graphql-java": {
       "name": "graphql.version",
-      "version": "20.1"
+      "version": "20.2"
     }
   },
   "com.jayway.jsonpath": {
@@ -82,7 +82,7 @@
   "com.oracle.database.jdbc": {
     "ojdbc11": {
       "name": "oracle.version",
-      "version": "21.9.0.0"
+      "version": "23.2.0.0"
     }
   },
   "com.rabbitmq": {
@@ -106,35 +106,35 @@
   "io.netty": {
     "netty-buffer": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     },
     "netty-codec": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     },
     "netty-codec-http": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     },
     "netty-codec-http2": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     },
     "netty-common": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     },
     "netty-handler": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     },
     "netty-transport-native-epoll": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     },
     "netty-transport-native-kqueue": {
       "name": "netty.version",
-      "version": "4.1.90.Final"
+      "version": "4.1.91.Final"
     }
   },
   "com.mysql": {
@@ -295,32 +295,42 @@
       "version": "3.41.2.1"
     }
   },
+  "com.amazonaws": {
+    "aws-lambda-java-core": {
+      "name": "aws.lambda.version",
+      "version": "1.2.2"
+    },
+    "aws-lambda-java-events": {
+      "name": "aws.lambda.events.version",
+      "version": "3.11.1"
+    }
+  },
   "software.amazon.awssdk": {
     "dynamodb-enhanced": {
       "name": "aws.sdk.version",
-      "version": "2.20.32"
+      "version": "2.20.42"
     },
     "lambda": {
       "name": "aws.sdk.version",
-      "version": "2.20.32"
+      "version": "2.20.42"
     },
     "s3": {
       "name": "aws.sdk.version",
-      "version": "2.20.32"
+      "version": "2.20.42"
     },
     "s3-transfer-manager": {
       "name": "aws.sdk.version",
-      "version": "2.20.32"
+      "version": "2.20.42"
     },
     "sqs": {
       "name": "aws.sdk.version",
-      "version": "2.20.32"
+      "version": "2.20.42"
     }
   },
   "software.aws.rds": {
     "aws-mysql-jdbc": {
       "name": "aws.mysql.version",
-      "version": "1.1.4"
+      "version": "1.1.5"
     },
     "aws-postgresql-jdbc": {
       "name": "aws.postgresql.version",

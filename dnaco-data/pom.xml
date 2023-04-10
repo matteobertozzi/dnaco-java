@@ -15,7 +15,7 @@
     <jackson.version>2.14.2</jackson.version>
     <jackson.databind.version>2.14.2</jackson.databind.version>
     <yajbe.jackson.version>0.9.5</yajbe.jackson.version>
-    <zstd.version>1.5.4-2</zstd.version>
+    <zstd.version>1.5.5-1</zstd.version>
     <tika.version>2.7.0</tika.version>
 
     <junit.version>5.9.2</junit.version>
