@@ -8,6 +8,7 @@ import java.util.List;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.DefaultFileRegion;
+import io.netty.channel.FileRegion;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.LastHttpContent;
@@ -52,6 +53,10 @@ public class HttpMessageFileResponse implements Message {
     return -1;
   }
 
+  public FileRegion region() {
+    return region;
+  }
+
   @Override
   public long writeContentToStream(final OutputStream stream) throws IOException {
     throw new UnsupportedOperationException();
@@ -78,7 +83,6 @@ public class HttpMessageFileResponse implements Message {
   }
 
   protected void write(final ChannelHandlerContext ctx) {
-    System.out.println("---> WRITE");
     ctx.write(response, ctx.channel().voidPromise());
     ctx.write(region, ctx.channel().voidPromise());
     ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);

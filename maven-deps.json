@@ -2,27 +2,27 @@
   "com.fasterxml.jackson.core": {
     "jackson-core": {
       "name": "jackson.version",
-      "version": "2.14.2"
+      "version": "2.15.3"
     },
     "jackson-databind": {
       "name": "jackson.databind.version",
-      "version": "2.14.2"
+      "version": "2.15.3"
     }
   },
   "com.fasterxml.jackson.dataformat": {
     "jackson-dataformat-cbor": {
       "name": "jackson.version",
-      "version": "2.14.2"
+      "version": "2.15.3"
     },
     "jackson-dataformat-xml": {
       "name": "jackson.version",
-      "version": "2.14.2"
+      "version": "2.15.3"
     }
   },
   "com.fasterxml.jackson.module": {
     "jackson-module-parameter-names": {
       "name": "jackson.version",
-      "version": "2.14.2"
+      "version": "2.15.3"
     }
   },
   "com.github.jai-imageio": {
@@ -34,31 +34,31 @@
   "com.github.luben": {
     "zstd-jni": {
       "name": "zstd.version",
-      "version": "1.5.5-1"
+      "version": "1.5.5-6"
     }
   },
   "com.google.firebase": {
     "firebase-admin": {
       "name": "firebase.version",
-      "version": "8.2.0"
+      "version": "9.2.0"
     }
   },
   "com.google.zxing": {
     "core": {
       "name": "zxing.version",
-      "version": "3.5.1"
+      "version": "3.5.2"
     }
   },
   "org.roaringbitmap": {
     "RoaringBitmap": {
       "name": "roaring.bitmap.version",
-      "version": "0.9.39"
+      "version": "1.0.0"
     }
   },
   "com.graphql-java": {
     "graphql-java": {
       "name": "graphql.version",
-      "version": "20.2"
+      "version": "21.2"
     }
   },
   "com.jayway.jsonpath": {
@@ -76,19 +76,19 @@
   "com.microsoft.sqlserver": {
     "mssql-jdbc": {
       "name": "sqlserver.version",
-      "version": "12.2.0.jre11"
+      "version": "12.4.1.jre11"
     }
   },
   "com.oracle.database.jdbc": {
     "ojdbc11": {
       "name": "oracle.version",
-      "version": "23.2.0.0"
+      "version": "23.3.0.23.09"
     }
   },
   "com.rabbitmq": {
     "amqp-client": {
       "name": "amqp.version",
-      "version": "5.17.0"
+      "version": "5.20.0"
     }
   },
   "com.sun.mail": {
@@ -100,57 +100,57 @@
   "commons-net": {
     "commons-net": {
       "name": "commons.net.version",
-      "version": "3.9.0"
+      "version": "3.10.0"
     }
   },
   "io.netty": {
     "netty-buffer": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     },
     "netty-codec": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     },
     "netty-codec-http": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     },
     "netty-codec-http2": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     },
     "netty-common": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     },
     "netty-handler": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     },
     "netty-transport-native-epoll": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     },
     "netty-transport-native-kqueue": {
       "name": "netty.version",
-      "version": "4.1.91.Final"
+      "version": "4.1.100.Final"
     }
   },
   "com.mysql": {
     "mysql-connector-j": {
       "name": "mysql.version",
-      "version": "8.0.32"
+      "version": "8.2.0"
     }
   },
   "org.antlr": {
     "antlr4-maven-plugin": {
       "name": "antlr.version",
-      "version": "4.12.0"
+      "version": "4.13.1"
     },
     "antlr4-runtime": {
       "name": "antlr.version",
-      "version": "4.12.0"
+      "version": "4.13.1"
     }
   },
   "org.apache.commons": {
@@ -166,11 +166,11 @@
     },
     "maven-dependency-plugin": {
       "name": "maven.dependency.version",
-      "version": "3.5.0"
+      "version": "3.6.1"
     },
     "maven-failsafe-plugin": {
       "name": "maven.failsafe.version",
-      "version": "3.0.0-M9"
+      "version": "3.2.1"
     },
     "maven-jar-plugin": {
       "name": "maven.jar.version",
@@ -178,23 +178,23 @@
     },
     "maven-shade-plugin": {
       "name": "maven.shade.version",
-      "version": "3.4.1"
+      "version": "3.5.1"
     },
     "maven-source-plugin": {
       "name": "maven.source.version",
-      "version": "3.2.1"
+      "version": "3.3.0"
     },
     "maven-javadoc-plugin": {
       "name": "maven.javadoc.version",
-      "version": "3.5.0"
+      "version": "3.6.0"
     },
     "maven-gpg-plugin": {
       "name": "maven.gpg.version",
-      "version": "3.0.1"
+      "version": "3.1.0"
     },
     "maven-surefire-plugin": {
       "name": "maven.surefire.version",
-      "version": "3.0.0-M9"
+      "version": "3.2.1"
     }
   },
   "org.sonatype.plugins": {
@@ -206,17 +206,17 @@
   "org.apache.poi": {
     "poi": {
       "name": "poi.version",
-      "version": "5.2.3"
+      "version": "5.2.4"
     },
     "poi-ooxml": {
       "name": "poi.version",
-      "version": "5.2.3"
+      "version": "5.2.4"
     }
   },
   "org.apache.tika": {
     "tika-core": {
       "name": "tika.version",
-      "version": "2.7.0"
+      "version": "2.9.1"
     }
   },
   "org.codehaus.mojo": {
@@ -228,17 +228,17 @@
   "org.graalvm.sdk": {
     "graal-sdk": {
       "name": "graalvm.version",
-      "version": "22.3.1"
+      "version": "23.0.0"
     }
   },
   "org.graalvm.truffle": {
     "truffle-api": {
       "name": "graalvm.version",
-      "version": "22.3.1"
+      "version": "23.0.0"
     },
     "truffle-dsl-processor": {
       "name": "graalvm.version",
-      "version": "22.3.1"
+      "version": "23.0.0"
     }
   },
   "org.jctools": {
@@ -250,25 +250,25 @@
   "org.junit.jupiter": {
     "junit-jupiter-api": {
       "name": "junit.version",
-      "version": "5.9.2"
+      "version": "5.10.0"
     },
     "junit-jupiter-engine": {
       "name": "junit.version",
-      "version": "5.9.2"
+      "version": "5.10.0"
     },
     "junit-jupiter-params": {
       "name": "junit.version",
-      "version": "5.9.2"
+      "version": "5.10.0"
     }
   },
   "org.openjdk.jmh": {
     "jmh-core": {
       "name": "jmh.version",
-      "version": "1.36"
+      "version": "1.37"
     },
     "jmh-generator-annprocess": {
       "name": "jmh.version",
-      "version": "1.36"
+      "version": "1.37"
     }
   },
   "org.postgresql": {
@@ -280,57 +280,57 @@
   "org.rocksdb": {
     "rocksdbjni": {
       "name": "rocksdb.version",
-      "version": "8.0.0"
+      "version": "8.5.4"
     }
   },
   "org.duckdb": {
     "duckdb_jdbc": {
       "name": "duckdb.version",
-      "version": "0.7.1"
+      "version": "0.9.1"
     }
   },
   "org.xerial": {
     "sqlite-jdbc": {
       "name": "sqlite.version",
-      "version": "3.41.2.1"
+      "version": "3.43.2.1"
     }
   },
   "com.amazonaws": {
     "aws-lambda-java-core": {
       "name": "aws.lambda.version",
-      "version": "1.2.2"
+      "version": "1.2.3"
     },
     "aws-lambda-java-events": {
       "name": "aws.lambda.events.version",
-      "version": "3.11.1"
+      "version": "3.11.3"
     }
   },
   "software.amazon.awssdk": {
     "dynamodb-enhanced": {
       "name": "aws.sdk.version",
-      "version": "2.20.42"
+      "version": "2.21.8"
     },
     "lambda": {
       "name": "aws.sdk.version",
-      "version": "2.20.42"
+      "version": "2.21.8"
     },
     "s3": {
       "name": "aws.sdk.version",
-      "version": "2.20.42"
+      "version": "2.21.8"
     },
     "s3-transfer-manager": {
       "name": "aws.sdk.version",
-      "version": "2.20.42"
+      "version": "2.21.8"
     },
     "sqs": {
       "name": "aws.sdk.version",
-      "version": "2.20.42"
+      "version": "2.21.8"
     }
   },
   "software.aws.rds": {
     "aws-mysql-jdbc": {
       "name": "aws.mysql.version",
-      "version": "1.1.5"
+      "version": "1.1.10"
     },
     "aws-postgresql-jdbc": {
       "name": "aws.postgresql.version",

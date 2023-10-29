@@ -144,7 +144,7 @@ public final class IOUtil {
     final byte[] buffer = new byte[8192];
     long transferred = 0;
     int read;
-    while ((read = in.readNBytes(buffer, 0, 8192)) >= 0) {
+    while ((read = in.readNBytes(buffer, 0, 8192)) > 0) {
       out.write(buffer, 0, read);
       transferred += read;
     }
@@ -155,7 +155,7 @@ public final class IOUtil {
     final byte[] buffer = new byte[8192];
     long transferred = 0;
     int read;
-    while ((read = in.readNBytes(buffer, 0, 8192)) >= 0) {
+    while ((read = in.readNBytes(buffer, 0, 8192)) > 0) {
       out.write(buffer, 0, read);
       transferred += read;
     }

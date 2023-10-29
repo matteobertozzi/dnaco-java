@@ -22,6 +22,7 @@ package tech.dnaco.net.util;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -34,13 +35,30 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import tech.dnaco.data.DataFormat;
 import tech.dnaco.data.modules.DataMapperModules;
 import tech.dnaco.io.IOUtil;
+import tech.dnaco.logging.Logger;
+import tech.dnaco.strings.HumansUtil;
+import tech.dnaco.telemetry.TelemetryCollector;
+import tech.dnaco.telemetry.TimeRangeCounter;
 
 public final class ByteBufDataFormatUtil {
+  private static final TimeRangeCounter byteBufLeaks = new TelemetryCollector.Builder()
+      .setUnit(HumansUtil.HUMAN_COUNT)
+      .setName("bytebuf_leaks")
+      .setLabel("ByteBuf Leaks")
+      .register(new TimeRangeCounter(60, 1, TimeUnit.HOURS));
+  static {
+    ByteBufUtil.setLeakListener((resType, record) -> {
+      Logger.critical("ByteBuf leak {} {}", resType, record);
+      byteBufLeaks.inc();
+    });
+  }
+
   private ByteBufDataFormatUtil() {
     // no-op
   }

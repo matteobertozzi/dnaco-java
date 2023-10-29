@@ -295,6 +295,7 @@ public class DnacoHttpService extends AbstractService {
 
     @Override
     public void sessionMessageReceived(final ChannelHandlerContext ctx, final FullHttpRequest request) throws Exception {
+      HttpRecorder.dumpRequest(ctx, request);
       final MessageTask task = dispatcher.prepare(request);
       if (task == null) {
         handleTaskNotFound(ctx, request);

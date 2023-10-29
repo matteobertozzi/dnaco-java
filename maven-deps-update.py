@@ -86,17 +86,52 @@ def split_version(v):
       items.append(p)
   return items
 
+def rank_version_component(component):
+  if isinstance(component, str):
+    component = component.lower()
+    if component.startswith('preview'):
+      return 1
+    if component.startswith('alpha'):
+      return 2
+    if component.startswith('beta'):
+      return 3
+    if component.startswith('rc'):
+      return 4
+    if component.startswith('final'):
+      return 5
+  return 0
+
 def compare_version(a, b):
   av = split_version(a)
   bv = split_version(b)
   try:
     for ap, bp in zip(av, bv):
+      if isinstance(ap, str) and isinstance(bp, str):
+        ar = rank_version_component(ap)
+        br = rank_version_component(bp)
+        if ar != br:
+          return br - ar
+      elif isinstance(ap, str):
+        # TODO: handle
+        pass
+      elif isinstance(bp, str):
+        # TODO: handle
+        pass
       if ap < bp:
         return -1
       elif ap > bp:
         return 1
+    if len(av) > len(bv):
+      next_c = av[min(len(av), len(bv)) - 1]
+      if rank_version_component(next_c) > 0:
+        return -1
+    elif len(av) < len(bv):
+      next_c = bv[min(len(bv), len(bv)) - 1]
+      if rank_version_component(next_c) > 0:
+        return 1
     return len(av) - len(bv)
-  except:
+  except Exception as e:
+    #print('error parsing', a, b, e)
     return len(av) - len(bv)
 
 def fetch_versions(pkg):

@@ -131,6 +131,10 @@ public class MessageError {
     return new MessageError(500, "INTERNAL_SERVER_ERROR", message);
   }
 
+  public static MessageError newInternalServerError(final String status, final String message) {
+    return new MessageError(500, status, message);
+  }
+
   private static MessageError NOT_IMPLEMENTED_ERROR = new MessageError(501, "NOT_IMPLEMENTED", "not implemented");
   public static MessageError notImplemented() {
     return NOT_IMPLEMENTED_ERROR;

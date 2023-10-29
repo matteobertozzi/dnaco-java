@@ -22,20 +22,32 @@ package tech.dnaco.net.http;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.ServerCookieDecoder;
 import tech.dnaco.collections.lists.ListUtil;
+import tech.dnaco.collections.sets.SetUtil;
 import tech.dnaco.data.DataFormat;
 import tech.dnaco.dispatcher.message.Message;
+import tech.dnaco.dispatcher.message.MessageError;
+import tech.dnaco.dispatcher.message.MessageException;
 import tech.dnaco.dispatcher.message.MessageHandler.UriMethod;
 import tech.dnaco.dispatcher.message.MessageMetadata;
 import tech.dnaco.dispatcher.message.UriMessage;
+import tech.dnaco.logging.Logger;
 import tech.dnaco.net.util.ByteBufDataFormatUtil;
+import tech.dnaco.net.util.UriUtil;
+import tech.dnaco.strings.StringUtil;
 
 public class HttpMessageRequest implements UriMessage {
   private final HttpMessageQueryParams queryParams;
@@ -123,6 +135,29 @@ public class HttpMessageRequest implements UriMessage {
 
   @Override
   public String path() {
+    return path;
+  }
+
+  public Map<String, String> decodeCookies() {
+    final String cookieString = request.headers().get(HttpHeaderNames.COOKIE);
+    if (StringUtil.isEmpty(cookieString)) return Collections.emptyMap();
+
+    final Set<Cookie> cookies = ServerCookieDecoder.LAX.decode(cookieString);
+    if (SetUtil.isEmpty(cookies)) return Collections.emptyMap();
+
+    final Map<String, String> cookieMap = new HashMap<>(cookies.size());
+    for (final Cookie cookie: cookies) {
+      cookieMap.put(cookie.name(), cookie.value());
+    }
+    return cookieMap;
+  }
+
+  public static String sanitizePath(final HttpMessageRequest request, final String uriPrefix) throws MessageException {
+    final String path = UriUtil.sanitizeUri(uriPrefix, request.path());
+    if (path == null) {
+      Logger.warn("forbidden file request {} uriPrefix {} - sanitization", request.path(), uriPrefix);
+      throw new MessageException(MessageError.newForbidden("path sanitization failed"));
+    }
     return path;
   }
 

@@ -97,6 +97,7 @@ public class HttpDispatcher extends UriDispatcher {
     } catch (final Throwable e) {
       Logger.error(e, "failed to serve the file: {}", request.uri());
       final FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.EMPTY_BUFFER);
+      HttpRecorder.dumpResponse(request, response);
       ctx.write(response);
     }
     return true;
@@ -109,8 +110,10 @@ public class HttpDispatcher extends UriDispatcher {
   public void execute(final ChannelHandlerContext ctx, final MessageTask task) throws DispatchLaterException {
     final Message response = task.execute();
     if (response instanceof final HttpMessageResponse httpResponse) {
+      HttpRecorder.dumpResponse(task.message(), httpResponse.rawResponse());
       httpResponse.write(ctx);
     } else if (response instanceof final HttpMessageFileResponse httpResponse) {
+      HttpRecorder.dumpResponse(task.message(), httpResponse);
       httpResponse.write(ctx);
     } else {
       throw new IllegalArgumentException("unexpected message " + response.getClass() + ": " + response);
@@ -120,6 +123,7 @@ public class HttpDispatcher extends UriDispatcher {
   public void sendErrorMessage(final ChannelHandlerContext ctx, final FullHttpRequest request, final MessageError error) {
     final Message response = newErrorMessage(request, error);
     if (response instanceof final HttpMessageResponse httpResponse) {
+      HttpRecorder.dumpResponse(request, httpResponse.rawResponse());
       ctx.write(httpResponse.rawResponse());
     } else {
       throw new IllegalArgumentException("unexpected message " + response.getClass() + ": " + response);

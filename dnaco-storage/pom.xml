@@ -12,17 +12,17 @@
   <url>https://github.com/matteobertozzi/dnaco-java</url>
 
   <properties>
-    <jmh.version>1.36</jmh.version>
-    <antlr.version>4.12.0</antlr.version>
-    <rocksdb.version>8.0.0</rocksdb.version>
-    <sqlite.version>3.41.2.1</sqlite.version>
-    <graphql.version>20.2</graphql.version>
+    <jmh.version>1.37</jmh.version>
+    <antlr.version>4.13.1</antlr.version>
+    <rocksdb.version>8.5.4</rocksdb.version>
+    <sqlite.version>3.43.2.1</sqlite.version>
+    <graphql.version>21.2</graphql.version>
 
-    <junit.version>5.9.2</junit.version>
+    <junit.version>5.10.0</junit.version>
     <maven.jar.version>3.3.0</maven.jar.version>
     <maven.compiler.version>3.11.0</maven.compiler.version>
-    <maven.surefire.version>3.0.0-M9</maven.surefire.version>
-    <maven.failsafe.version>3.0.0-M9</maven.failsafe.version>
+    <maven.surefire.version>3.2.1</maven.surefire.version>
+    <maven.failsafe.version>3.2.1</maven.failsafe.version>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>

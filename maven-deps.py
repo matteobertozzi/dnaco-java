@@ -110,8 +110,12 @@ def dump_deps(pom_path):
     maj = parts[0]
 
     latest_maj_min = versions.get(maj_min, [maj_min])[0]
-    latest_maj = versions[maj][0]
-    latest_next = list(find_next_major(versions, maj))
+    if maj in versions:
+      latest_maj = versions[maj][0]
+      latest_next = list(find_next_major(versions, maj))
+    else:
+      latest_maj = 0
+      latest_next = 0
     if latest_maj_min != dependency.version or latest_maj != dependency.version or latest_next:
       print('%s: using %s' % (dependency.artifact_id, dependency.version))
       if latest_maj_min != dependency.version:

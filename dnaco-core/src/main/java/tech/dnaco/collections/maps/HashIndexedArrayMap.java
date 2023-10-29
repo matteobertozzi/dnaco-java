@@ -70,6 +70,7 @@ public class HashIndexedArrayMap<K, V> extends AbstractMap<K, V> {
     return values;
   }
 
+  @Override
   public boolean containsKey(final Object key) {
     return keyIndex.contains(key);
   }
@@ -78,6 +79,11 @@ public class HashIndexedArrayMap<K, V> extends AbstractMap<K, V> {
     return keyIndex.get(index);
   }
 
+  public int getIndex(final K key) {
+    return keyIndex.getIndex(key);
+  }
+
+  @Override
   public V get(final Object key) {
     final int index = keyIndex.getIndex(key);
     return index < 0 ? null : get(index);
